@@ -1,0 +1,5 @@
+uint32 seed
+bool respawn
+---
+bool success
+string message

@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-07-12T11:09:25",
+  "field": {
+    "length_cm": 504.0,
+    "width_cm": 70.0
+  },
+  "count": 2,
+  "boxes": [
+    {
+      "id": 1,
+      "type": "unknown",
+      "confidence": 1.0,
+      "center_cm": {"x": 120.0, "y": 20.0},
+      "size_cm": {"width": 30.0, "height": 18.0},
+      "angle_deg": -15.0
+    },
+    {
+      "id": 2,
+      "type": "unknown",
+      "confidence": 1.0,
+      "center_cm": {"x": 155.0, "y": 48.0},
+      "size_cm": {"width": 15.0, "height": 9.0},
+      "angle_deg": 8.0
+    }
+  ]
+}

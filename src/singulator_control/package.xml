@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>singulator_control</name><version>0.2.0</version>
+  <description>Baseline controllers for integration tests.</description>
+  <maintainer email="team@example.com">Singulator Team</maintainer><license>Apache-2.0</license>
+  <exec_depend>rclpy</exec_depend><exec_depend>std_msgs</exec_depend><exec_depend>singulator_interfaces</exec_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

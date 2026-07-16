@@ -1,0 +1,31 @@
+matrix:
+  rows: 14
+  cols: 4
+
+  # Current Gazebo geometry. The active belt size and the pitch are different.
+  active_cell_length_m: 0.360
+  active_cell_width_m: 0.175
+  longitudinal_gap_m: 0.020
+  transverse_gap_m: 0.020
+  pitch_x_m: 0.380
+  pitch_y_m: 0.195
+  total_length_m: 5.300
+  total_width_m: 0.760
+  belt_height_m: 0.080
+
+  min_velocity_mps: -2.0
+  max_velocity_mps: 2.0
+  max_acceleration_mps2: 2.5
+  max_jerk_mps3: 10.0
+  command_timeout_s: 2.0
+
+  friction:
+    longitudinal_mu: 0.80
+    transverse_mu2: 0.20
+
+  coordinate_system:
+    travel_axis: "+X"
+    transverse_axis: "+Y"
+    vertical_axis: "+Z"
+    row_zero_x_m: -2.470
+    col_zero_y_m: -0.2925

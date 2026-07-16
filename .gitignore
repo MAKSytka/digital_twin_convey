@@ -1,0 +1,46 @@
+# ROS 2 / colcon
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary and backup files
+*.before_*
+*.backup
+*.bak
+*~
+*.swp
+
+# Historical workspace copies
+src_before_*/
+scripts_before_*/
+backup_src/
+old_workspace/
+
+# ROS bags and generated results
+*.bag
+*.db3
+*.mcap
+results/
+
+# Large binary artifacts kept in S3/cloud
+*.mp4
+*.avi
+*.mkv
+*.step
+*.stp
+*.exe
+*.zip
+*.tar
+*.tar.gz

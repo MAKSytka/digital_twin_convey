@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <world name="single_cell">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <light type="directional" name="sun">
+      <pose>0 0 10 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.3 0.1 -0.95</direction>
+    </light>
+
+    <model name="single_cell">
+      <static>true</static>
+      <link name="belt">
+        <pose>0 0 0.04 0 0 0</pose>
+        <collision name="belt_collision">
+          <geometry><box><size>0.3563 0.17275 0.08</size></box></geometry>
+          <surface><friction><ode>
+            <mu>0.60</mu><mu2>0.80</mu2><fdir1>0 1 0</fdir1>
+          </ode></friction></surface>
+        </collision>
+        <visual name="belt_visual">
+          <geometry><box><size>0.3563 0.17275 0.08</size></box></geometry>
+          <material><ambient>0.08 0.20 0.60 1</ambient><diffuse>0.08 0.20 0.60 1</diffuse></material>
+        </visual>
+      </link>
+      <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
+        <link>belt</link>
+        <velocity_topic>/singulator/cell/r00_c00/cmd_vel</velocity_topic>
+        <min_velocity>0.0</min_velocity><max_velocity>2.0</max_velocity>
+        <min_acceleration>-2.5</min_acceleration><max_acceleration>2.5</max_acceleration>
+        <min_jerk>-10.0</min_jerk><max_jerk>10.0</max_jerk>
+        <max_command_age>0.25</max_command_age>
+        <odometry_publish_frequency>20</odometry_publish_frequency>
+      </plugin>
+    </model>
+    <include>
+      <uri>model://box_medium</uri><name>box_0001</name>
+      <pose>-0.03 0 0.16 0 0 0.15</pose>
+    </include>
+    <gui fullscreen="0">
+      <plugin filename="MinimalScene" name="3D View">
+        <gz-gui><title>3D View</title><property type="bool" key="showTitleBar">false</property><property type="string" key="state">docked</property></gz-gui>
+        <engine>ogre2</engine><scene>scene</scene><ambient_light>0.6 0.6 0.6</ambient_light>
+        <background_color>0.8 0.8 0.8</background_color><camera_pose>-1.0 -1.2 1.2 0 0.55 0.75</camera_pose>
+      </plugin>
+      <plugin filename="WorldControl" name="World control"/>
+      <plugin filename="WorldStats" name="World stats"/>
+    </gui>
+  </world>
+</sdf>
