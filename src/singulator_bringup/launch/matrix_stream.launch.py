@@ -19,12 +19,19 @@ def generate_launch_description() -> LaunchDescription:
     gazebo_share = Path(get_package_share_directory("singulator_gazebo"))
     bringup_share = Path(get_package_share_directory("singulator_bringup"))
     ros_gz_share = Path(get_package_share_directory("ros_gz_sim"))
+    description_share = Path(
+        get_package_share_directory("singulator_description")
+    )
 
     world = gazebo_share / "worlds" / "matrix_14x4_stream.sdf"
 
     start_spawner = LaunchConfiguration("start_spawner")
     start_demo_controller = LaunchConfiguration("start_demo_controller")
     start_cleanup = LaunchConfiguration("start_cleanup")
+    start_perception = LaunchConfiguration("start_perception")
+    start_singulation_controller = LaunchConfiguration(
+        "start_singulation_controller"
+    )
     infeed_speed = LaunchConfiguration("infeed_speed_mps")
     outfeed_speed = LaunchConfiguration("outfeed_speed_mps")
     demo_speed = LaunchConfiguration("demo_speed_mps")
@@ -63,12 +70,94 @@ def generate_launch_description() -> LaunchDescription:
         for index, filename in enumerate(bridge_files)
     ]
 
+    camera_model = description_share / "models" / "vision_station" / "model.sdf"
+
+    camera_spawner = Node(
+        package="ros_gz_sim",
+        executable="create",
+        name="vision_station_spawner",
+        output="screen",
+        condition=IfCondition(start_perception),
+        arguments=[
+            "-world",
+            "matrix_14x4_stream",
+            "-file",
+            str(camera_model),
+            "-name",
+            "vision_station",
+        ],
+    )
+
+    camera_bridge = Node(
+        package="ros_gz_image",
+        executable="image_bridge",
+        name="singulator_camera_bridge",
+        output="screen",
+        condition=IfCondition(start_perception),
+        arguments=["/singulator/camera/image_raw"],
+    )
+
+    perception = Node(
+        package="singulator_perception",
+        executable="vision_stream_node",
+        name="vision_stream_node",
+        output="screen",
+        condition=IfCondition(start_perception),
+        parameters=[
+            {
+                "image_topic": "/singulator/camera/image_raw",
+                "boxes_topic": "/singulator/boxes",
+                "field_length_m": 7.70,
+                "field_width_m": 0.90,
+                "field_min_x_m": -3.95,
+                "field_max_y_m": 0.45,
+                "calibration_frames": 15,
+                "use_background_subtraction": True,
+                "use_sim_time": True,
+            }
+        ],
+    )
+
+    delayed_vision_station = TimerAction(
+        period=1.5,
+        actions=[camera_spawner],
+    )
+
     fanout = Node(
         package="singulator_sim",
         executable="matrix_command_fanout",
         name="matrix_command_fanout",
         output="screen",
         parameters=[{"rows": 14, "cols": 4, "use_sim_time": True}],
+    )
+
+    singulation_controller = Node(
+        package="singulator_control",
+        executable="singulation_controller",
+        name="singulation_controller",
+        output="screen",
+        condition=IfCondition(start_singulation_controller),
+        parameters=[
+            {
+                "rows": 14,
+                "cols": 4,
+                "cell_length_m": 0.360,
+                "cell_width_m": 0.175,
+                "gap_x_m": 0.020,
+                "gap_y_m": 0.020,
+                "base_speed_mps": 1.20,
+                "minimum_speed_mps": 0.15,
+                "maximum_speed_mps": 2.00,
+                "leader_speed_mps": 1.90,
+                "target_gap_m": 0.16,
+                "hard_gap_m": 0.04,
+                "gap_gain": 1.80,
+                "yaw_gain": 1.10,
+                "maximum_yaw_delta_mps": 0.55,
+                "publish_rate_hz": 20.0,
+                "use_sim_time": True,
+            }
+        ],
     )
 
     auxiliary_conveyors = Node(
@@ -144,7 +233,8 @@ def generate_launch_description() -> LaunchDescription:
     # delayed so the bridge is ready and all belts have already ramped to the
     # requested 2 m/s before the first box reaches the matrix.
     delayed_box_nodes = TimerAction(
-        period=4.0,
+        # Leave an empty-camera interval for field/background calibration.
+        period=6.0,
         actions=[spawner, cleanup],
     )
 
@@ -155,6 +245,11 @@ def generate_launch_description() -> LaunchDescription:
                 "start_demo_controller", default_value="false"
             ),
             DeclareLaunchArgument("start_cleanup", default_value="true"),
+            DeclareLaunchArgument("start_perception", default_value="true"),
+            DeclareLaunchArgument(
+                "start_singulation_controller",
+                default_value="false",
+            ),
             DeclareLaunchArgument("infeed_speed_mps", default_value="2.0"),
             DeclareLaunchArgument("outfeed_speed_mps", default_value="2.0"),
             DeclareLaunchArgument("demo_speed_mps", default_value="2.0"),
@@ -164,7 +259,11 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("seed", default_value="42"),
             gazebo,
             *bridges,
+            camera_bridge,
+            perception,
+            delayed_vision_station,
             fanout,
+            singulation_controller,
             auxiliary_conveyors,
             demo_controller,
             delayed_box_nodes,

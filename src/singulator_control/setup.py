@@ -22,10 +22,12 @@ setup(
     entry_points={
         "console_scripts": [
             "aux_conveyor_controller = singulator_control.aux_conveyor_controller:main",
+            "singulation_controller = singulator_control.singulation_controller:main",
             "matrix_test_controller = singulator_control.matrix_test_controller:main",
             "single_cell_commander = singulator_control.single_cell_commander:main",
             "uniform_matrix_controller = singulator_control.uniform_matrix_controller:main",
             "row_1x4_controller = singulator_control.row_1x4_controller:main",
+            "roller_throat_controller = singulator_control.roller_throat_controller:main",
         ]
     },
 )

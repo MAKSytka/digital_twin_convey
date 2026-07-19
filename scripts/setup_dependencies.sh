@@ -19,6 +19,10 @@ sudo apt install -y \
   ros-jazzy-ros-gz \
   ros-jazzy-ros-gz-sim \
   ros-jazzy-ros-gz-bridge \
+  ros-jazzy-ros-gz-image \
+  ros-jazzy-cv-bridge \
+  python3-opencv \
+  python3-numpy \
   python3-colcon-common-extensions \
   python3-rosdep \
   python3-yaml
