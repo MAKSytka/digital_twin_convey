@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <model name="vision_station">
+    <static>true</static>
+
+    <!--
+      The field includes infeed, 14x4 matrix and outfeed.
+      Its top-left image corner maps to world (-3.95, +0.45).
+    -->
+    <link name="calibration_field">
+      <pose>-0.10 0 0.071 0 0 0</pose>
+      <visual name="calibration_field_visual">
+        <geometry>
+          <box>
+            <size>7.70 0.90 0.004</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.95 0.65 0.05 1</ambient>
+          <diffuse>0.95 0.65 0.05 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+
+    <link name="camera_link">
+      <!-- Camera optical +X points down. Image right follows world +X. -->
+      <pose>-0.10 0 6.0 0 1.57079632679 1.57079632679</pose>
+      <sensor name="overhead_camera" type="camera">
+        <always_on>true</always_on>
+        <update_rate>15</update_rate>
+        <topic>/singulator/camera/image_raw</topic>
+        <camera>
+          <horizontal_fov>1.25</horizontal_fov>
+          <image>
+            <width>1600</width>
+            <height>300</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.10</near>
+            <far>20.0</far>
+          </clip>
+        </camera>
+        <visualize>true</visualize>
+      </sensor>
+    </link>
+  </model>
+</sdf>

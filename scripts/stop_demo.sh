@@ -5,10 +5,13 @@ patterns=(
   "matrix_stream.launch.py"
   "gz sim"
   "parameter_bridge"
+  "image_bridge"
   "matrix_command_fanout"
   "aux_conveyor_controller"
   "singulation_row_spawner"
   "uniform_matrix_controller"
+  "singulation_controller"
+  "vision_stream_node"
   "cleanup_passed_boxes"
 )
 
