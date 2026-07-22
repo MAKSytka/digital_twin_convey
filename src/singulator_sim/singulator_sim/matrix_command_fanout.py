@@ -22,7 +22,7 @@ class MatrixCommandFanout(Node):
 
     def on_command(self,msg):
         if msg.rows!=self.rows or msg.cols!=self.cols:
-            self.get_logger().error(f"Matrix dimensions mismatch: got {msg.rows}x{msg.cols}")
+            self.get_logger().debug(f"Matrix dimensions mismatch: got {msg.rows}x{msg.cols}")
             return
         if len(msg.target_speed_mps)!=self.cell_count:
             self.get_logger().error(f"Expected {self.cell_count} speeds, got {len(msg.target_speed_mps)}")

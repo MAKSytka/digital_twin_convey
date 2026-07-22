@@ -15,6 +15,14 @@ grep -q 'control_v7:' "$CONTROLLER"
 grep -q 'global_order' "$CONTROLLER"
 grep -q 'build_pairwise_speed_profile' "$CONTROLLER"
 grep -q 'merged_track_timeout_s' "$CONTROLLER"
+grep -q 'cell_r17_c03' 'src/singulator_gazebo/worlds/matrix_14x4_stream_v2.sdf'
+grep -q '/singulator/cell/r17_c03/cmd_vel' \
+  'src/singulator_bringup/config/bridge_rows_14_17.yaml'
+grep -q '/singulator/outfeed/cmd_vel' \
+  'src/singulator_bringup/config/bridge_aux.yaml'
+grep -q '/singulator/throat/left/cmd_vel' \
+  'src/singulator_bringup/config/bridge_throat.yaml'
+grep -q '"4.590"' "$LAUNCH"
 
 if grep -qE 'next_available_exit_s|slot_time_by_id|_assign_exit_slots' "$CONTROLLER"; then
   echo "FAIL: obsolete exit-slot scheduler symbols are still present." >&2
@@ -53,8 +61,8 @@ count="$(printf '%s\n' "$message" | awk '
   END {print count+0}
 ')"
 
-if [[ "$count" -ne 56 ]]; then
-  echo "FAIL: expected 56 speed commands, got $count." >&2
+if [[ "$count" -ne 72 ]]; then
+  echo "FAIL: expected 72 speed commands, got $count." >&2
   exit 4
 fi
 
@@ -71,4 +79,4 @@ if ! printf '%s\n' "$message" | awk '
   exit 5
 fi
 
-echo "PASS: 56 live matrix commands are within 1.00..3.00 m/s."
+echo "PASS: 72 live matrix commands are within 1.00..3.00 m/s."
