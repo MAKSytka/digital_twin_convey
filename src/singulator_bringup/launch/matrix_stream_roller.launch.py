@@ -54,6 +54,20 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
+    separator_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="singulator_separator_bridge",
+        output="screen",
+        parameters=[
+            {
+                "config_file": str(
+                    bringup_share / "config" / "bridge_separator.yaml"
+                )
+            }
+        ],
+    )
+
     throat_controller = Node(
         package="singulator_control",
         executable="roller_throat_controller",
@@ -81,6 +95,7 @@ def generate_launch_description() -> LaunchDescription:
                 "cell_width_m": 0.175,
                 "gap_x_m": 0.020,
                 "gap_y_m": 0.020,
+                "separator_length_m": 0.360,
                 "minimum_speed_mps": 1.00,
                 "maximum_speed_mps": 3.00,
                 "idle_speed_mps": 2.20,
@@ -146,7 +161,7 @@ def generate_launch_description() -> LaunchDescription:
             "-name",
             "roller_throat",
             "-x",
-            "3.070",
+            "3.450",
             "-y",
             "0.0",
             "-z",
@@ -169,6 +184,7 @@ def generate_launch_description() -> LaunchDescription:
     entities.extend(
         [
             throat_bridge,
+            separator_bridge,
             throat_controller,
             advanced_controller,
             TimerAction(period=1.5, actions=[throat_spawner]),
