@@ -199,6 +199,10 @@ class SingulationController(Node):
         self.declare_parameter("maximum_relative_speed_mps", 2.00)
         self.declare_parameter("order_inversion_margin_m", 0.03)
         self.declare_parameter("exit_gap_check_margin_m", 0.80)
+        self.declare_parameter("deadline_separation_distance_m", 1.80)
+        self.declare_parameter("deadline_gap_margin_m", 0.04)
+        self.declare_parameter("deadline_recovery_gain", 1.35)
+        self.declare_parameter("deadline_min_time_s", 0.10)
 
         self.declare_parameter("entry_gate_offset_m", 0.30)
         self.declare_parameter("entry_capture_window_s", 0.18)
@@ -285,6 +289,18 @@ class SingulationController(Node):
         )
         self.exit_gap_check_margin = float(
             self.get_parameter("exit_gap_check_margin_m").value
+        )
+        self.deadline_separation_distance = float(
+            self.get_parameter("deadline_separation_distance_m").value
+        )
+        self.deadline_gap_margin = float(
+            self.get_parameter("deadline_gap_margin_m").value
+        )
+        self.deadline_recovery_gain = float(
+            self.get_parameter("deadline_recovery_gain").value
+        )
+        self.deadline_min_time = float(
+            self.get_parameter("deadline_min_time_s").value
         )
 
         self.entry_gate_offset = float(
@@ -410,6 +426,7 @@ class SingulationController(Node):
         self.last_recovered_orphans = 0
         self.last_order_inversions = 0
         self.last_unresolved_at_exit = 0
+        self.last_deadline_boost_pairs = 0
         self.last_min_adjacent_gap = math.inf
         self.last_shared_cells = 0
         self.last_uncontrollable_pairs = 0
@@ -464,6 +481,14 @@ class SingulationController(Node):
             raise ValueError("maximum_acceleration_mps2 must be positive")
         if self.target_gap <= 0.0 or self.inter_wave_target_gap <= 0.0:
             raise ValueError("target gaps must be positive")
+        if self.deadline_separation_distance <= 0.0:
+            raise ValueError("deadline_separation_distance_m must be positive")
+        if self.deadline_gap_margin < 0.0:
+            raise ValueError("deadline_gap_margin_m must be >= 0")
+        if self.deadline_recovery_gain <= 0.0:
+            raise ValueError("deadline_recovery_gain must be positive")
+        if self.deadline_min_time <= 0.0:
+            raise ValueError("deadline_min_time_s must be positive")
         if self.entry_capture_window <= 0.0:
             raise ValueError("entry_capture_window_s must be positive")
         if self.entry_wave_max_size <= 0:
@@ -1021,6 +1046,47 @@ class SingulationController(Node):
                 )
             )
 
+        # Near the throat a proportional controller may detect a small deficit
+        # too late.  Add the minimum relative speed that can create a safe
+        # clearance before the leading edge reaches the matrix exit.
+        deadline_deltas: list[float] = []
+        deadline_boost_pairs = 0
+        for index, (leader, follower) in enumerate(zip(ordered, ordered[1:])):
+            clearance = (
+                states[index].x
+                - states[index].half_length
+                - states[index + 1].x
+                - states[index + 1].half_length
+            )
+            remaining_distance = self.matrix_max_x - max(
+                control_x[leader.uid], control_x[follower.uid]
+            )
+            deadline_delta = 0.0
+            if remaining_distance < self.deadline_separation_distance:
+                time_to_exit = max(
+                    self.deadline_min_time,
+                    max(0.0, remaining_distance)
+                    / max(self.transport_speed, 1.0e-6),
+                )
+                exit_deficit = max(
+                    0.0,
+                    states[index].target_gap_to_follower
+                    + self.deadline_gap_margin
+                    - clearance,
+                )
+                deadline_delta = (
+                    self.deadline_recovery_gain * exit_deficit / time_to_exit
+                )
+                nominal_delta = (
+                    self.gap_gain
+                    * max(0.0, states[index].target_gap_to_follower - clearance)
+                    + self.relative_velocity_gain
+                    * max(0.0, states[index + 1].vx - states[index].vx)
+                )
+                if deadline_delta > nominal_delta + 1.0e-6:
+                    deadline_boost_pairs += 1
+            deadline_deltas.append(deadline_delta)
+
         profile = build_pairwise_speed_profile(
             states,
             transport_speed=self.transport_speed,
@@ -1030,7 +1096,9 @@ class SingulationController(Node):
             relative_velocity_gain=self.relative_velocity_gain,
             maximum_relative_speed=self.maximum_relative_speed,
             inversion_margin=self.order_inversion_margin,
+            minimum_delta_by_pair=deadline_deltas,
         )
+        self.last_deadline_boost_pairs = deadline_boost_pairs
         self.last_order_inversions = profile.inversion_count
         self.last_min_adjacent_gap = min(
             profile.clearance_by_pair,
@@ -1286,6 +1354,7 @@ class SingulationController(Node):
         self.last_ghost_tracks = 0
         self.last_order_inversions = 0
         self.last_unresolved_at_exit = 0
+        self.last_deadline_boost_pairs = 0
         self.last_min_adjacent_gap = math.inf
         self.last_shared_cells = 0
         self.last_uncontrollable_pairs = 0
@@ -1318,6 +1387,7 @@ class SingulationController(Node):
             f"orphans={self.last_recovered_orphans}, "
             f"inversions={self.last_order_inversions}, "
             f"unresolved_exit={self.last_unresolved_at_exit}, "
+            f"deadline_boost={self.last_deadline_boost_pairs}, "
             f"min_gap={min_gap}, "
             f"shared_cells={self.last_shared_cells}, "
             f"uncontrollable={self.last_uncontrollable_pairs}, "

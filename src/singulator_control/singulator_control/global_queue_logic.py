@@ -96,6 +96,7 @@ def build_pairwise_speed_profile(
     relative_velocity_gain: float,
     maximum_relative_speed: float,
     inversion_margin: float,
+    minimum_delta_by_pair: Sequence[float] | None = None,
 ) -> PairwiseProfile:
     """Create product speeds from adjacent queue gaps.
 
@@ -104,6 +105,11 @@ def build_pairwise_speed_profile(
     clearance is below its target.  The pair requests are accumulated and then
     fitted into the available speed range.
     """
+
+    if minimum_delta_by_pair is not None and len(minimum_delta_by_pair) != max(
+        0, len(ordered) - 1
+    ):
+        raise ValueError("minimum_delta_by_pair must match adjacent pair count")
 
     if not ordered:
         return PairwiseProfile({}, {}, (), (), 0)
@@ -138,6 +144,11 @@ def build_pairwise_speed_profile(
             gap_gain * deficit
             + relative_velocity_gain * closing_speed
         )
+        if minimum_delta_by_pair is not None:
+            requested_delta = max(
+                requested_delta,
+                minimum_delta_by_pair[len(pair_deltas)],
+            )
 
         # The follower has physically moved in front of its immutable leader.
         # Use the full differential range until the inversion is removed.

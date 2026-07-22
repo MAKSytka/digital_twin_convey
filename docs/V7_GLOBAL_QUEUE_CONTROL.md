@@ -66,6 +66,17 @@ v_leader - v_follower =
 `transport_speed_mps = 2.50 м/с`. Никакого отдельного состояния повторной
 сингуляризации нет.
 
+### Deadline recovery перед выходом
+
+На последних `deadline_separation_distance_m` метрах обычный регулятор
+дополняется расчётом по оставшемуся времени. Для пары с дефицитом он требует
+минимальную разность скоростей, необходимую для достижения
+`target_gap + deadline_gap_margin_m` до выхода из матрицы. Это предотвращает
+ситуацию, когда небольшой зазор обнаружен слишком поздно и товар попадает в
+горлышко несингуляризованным. Команда всё равно ограничена
+`maximum_relative_speed_mps`; если общая опора физически не позволяет создать
+разность скоростей, пара остаётся `uncontrollable`.
+
 ## 3. Логическая идентичность поверх raw-ID зрения
 
 Контроллер хранит собственный `uid`. Raw-ID машинного зрения является только
@@ -131,6 +142,10 @@ inter_wave_target_gap_m        = 0.28
 gap_gain                       = 3.00
 relative_velocity_gain         = 0.50
 maximum_relative_speed_mps     = 2.00
+deadline_separation_distance_m = 1.80
+deadline_gap_margin_m          = 0.04
+deadline_recovery_gain         = 1.35
+deadline_min_time_s            = 0.10
 
 entry_capture_window_s         = 0.18
 entry_wave_dx_m                = 0.36
@@ -156,6 +171,7 @@ ghosts
 orphans
 inversions
 unresolved_exit
+deadline_boost
 min_gap
 shared_cells
 uncontrollable

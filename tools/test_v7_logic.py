@@ -39,6 +39,24 @@ def build(xs: list[float], target_gap: float = 0.18):
     )
 
 
+def deadline_profile():
+    states = [
+        GapState(1, 4.90, 0.10, 2.5, 0.18),
+        GapState(2, 4.90, 0.10, 2.5, 0.18),
+    ]
+    return build_pairwise_speed_profile(
+        states,
+        transport_speed=2.50,
+        minimum_speed=1.00,
+        maximum_speed=3.00,
+        gap_gain=3.00,
+        relative_velocity_gain=0.50,
+        maximum_relative_speed=2.00,
+        inversion_margin=0.03,
+        minimum_delta_by_pair=[1.50],
+    )
+
+
 def assert_bounded(speeds: dict[int, float]) -> None:
     assert speeds
     assert min(speeds.values()) >= 1.00 - 1.0e-9
@@ -116,6 +134,10 @@ def main() -> None:
     assert inverted.inversion_count == 1
     assert inverted.speed_by_uid[1] > inverted.speed_by_uid[2]
 
+    deadline = deadline_profile()
+    assert deadline.required_delta_by_pair == (1.50,)
+    assert deadline.speed_by_uid[1] - deadline.speed_by_uid[2] >= 1.49
+
     _, simulated_clearances = simulate_transverse_wave()
     assert min(simulated_clearances) >= 0.17, simulated_clearances
 
@@ -143,6 +165,7 @@ def main() -> None:
     print("transverse:", [round(value, 3) for value in transverse_speeds])
     print("separated:", separated.speed_by_uid)
     print("partial:", [round(value, 3) for value in partial])
+    print("deadline delta:", deadline.required_delta_by_pair)
     print("simulated clearances:", [round(value, 3) for value in simulated_clearances])
     print("cell-aware allocation:", [round(value, 3) for value in allocation])
 
