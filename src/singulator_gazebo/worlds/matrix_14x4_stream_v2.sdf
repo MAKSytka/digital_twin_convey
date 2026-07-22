@@ -31,7 +31,7 @@
 
     <model name="infeed_conveyor">
       <static>true</static>
-      <pose>-3.270000 0.000000 0 0 0 0</pose>
+      <pose>-4.030000 0.000000 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
