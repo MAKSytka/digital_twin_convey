@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-ROWS = 14
+ROWS = 18
 COLS = 4
 CELL_X = 0.360
 CELL_Y = 0.175

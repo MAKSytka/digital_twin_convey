@@ -53,8 +53,8 @@ count="$(printf '%s\n' "$message" | awk '
   END {print count+0}
 ')"
 
-if [[ "$count" -ne 56 ]]; then
-  echo "FAIL: expected 56 speed commands, got $count." >&2
+if [[ "$count" -ne 72 ]]; then
+  echo "FAIL: expected 72 speed commands, got $count." >&2
   exit 4
 fi
 
@@ -71,4 +71,4 @@ if ! printf '%s\n' "$message" | awk '
   exit 5
 fi
 
-echo "PASS: 56 live matrix commands are within 1.00..3.00 m/s."
+echo "PASS: 72 live matrix commands are within 1.00..3.00 m/s."
