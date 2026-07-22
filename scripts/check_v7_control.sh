@@ -18,6 +18,11 @@ grep -q 'merged_track_timeout_s' "$CONTROLLER"
 grep -q 'cell_r17_c03' 'src/singulator_gazebo/worlds/matrix_14x4_stream_v2.sdf'
 grep -q '/singulator/cell/r17_c03/cmd_vel' \
   'src/singulator_bringup/config/bridge_rows_14_17.yaml'
+grep -q '/singulator/outfeed/cmd_vel' \
+  'src/singulator_bringup/config/bridge_aux.yaml'
+grep -q '/singulator/throat/left/cmd_vel' \
+  'src/singulator_bringup/config/bridge_throat.yaml'
+grep -q '"4.590"' "$LAUNCH"
 
 if grep -qE 'next_available_exit_s|slot_time_by_id|_assign_exit_slots' "$CONTROLLER"; then
   echo "FAIL: obsolete exit-slot scheduler symbols are still present." >&2

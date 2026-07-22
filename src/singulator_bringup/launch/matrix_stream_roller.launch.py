@@ -169,7 +169,7 @@ def generate_launch_description() -> LaunchDescription:
             "-name",
             "roller_throat",
             "-x",
-            "3.830",
+            "4.590",
             "-y",
             "0.0",
             "-z",
