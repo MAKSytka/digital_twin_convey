@@ -20,15 +20,15 @@
     </light>
     <model name="platform">
       <static>true</static>
-      <pose>-0.200000 0 -0.025 0 0 0</pose>
+      <pose>0.595000 0 -0.025 0 0 0</pose>
       <link name="platform_link">
-        <collision name="platform_collision"><geometry><box><size>7.940000 1.160000 0.05</size></box></geometry></collision>
-        <visual name="platform_visual"><geometry><box><size>7.940000 1.160000 0.05</size></box></geometry>
+        <collision name="platform_collision"><geometry><box><size>9.530000 1.160000 0.05</size></box></geometry></collision>
+        <visual name="platform_visual"><geometry><box><size>9.530000 1.160000 0.05</size></box></geometry>
           <material><ambient>0.20 0.20 0.20 1</ambient><diffuse>0.30 0.30 0.30 1</diffuse></material>
         </visual>
       </link>
     </model>
-
+    
     <model name="infeed_conveyor">
       <static>true</static>
       <pose>-3.270000 0.000000 0 0 0 0</pose>
@@ -49,7 +49,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -59,16 +59,16 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
     </model>
 
-
+    
     <model name="cell_r12_c00">
       <static>true</static>
       <pose>2.090000 -0.292500 0 0 0 0</pose>
@@ -89,7 +89,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -99,10 +99,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -129,7 +129,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -139,10 +139,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -169,7 +169,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -179,10 +179,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -209,7 +209,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -219,10 +219,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -249,7 +249,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -259,10 +259,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -289,7 +289,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -299,10 +299,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -329,7 +329,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -339,10 +339,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -369,7 +369,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -379,10 +379,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -409,7 +409,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -419,10 +419,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -449,7 +449,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -459,10 +459,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -489,7 +489,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -499,10 +499,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -529,7 +529,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -539,10 +539,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -569,7 +569,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -579,10 +579,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -609,7 +609,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -619,10 +619,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -649,7 +649,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -659,10 +659,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -689,7 +689,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -699,10 +699,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -729,7 +729,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -739,10 +739,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -769,7 +769,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -779,10 +779,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -809,7 +809,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -819,10 +819,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -849,7 +849,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -859,10 +859,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -889,7 +889,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -899,10 +899,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -929,7 +929,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -939,10 +939,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -969,7 +969,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -979,10 +979,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1009,7 +1009,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1019,10 +1019,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1049,7 +1049,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1059,10 +1059,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1089,7 +1089,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1099,10 +1099,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1129,7 +1129,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1139,10 +1139,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1169,7 +1169,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1179,10 +1179,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1209,7 +1209,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1219,10 +1219,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1249,7 +1249,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1259,10 +1259,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1289,7 +1289,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1299,10 +1299,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1329,7 +1329,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1339,10 +1339,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1369,7 +1369,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1379,10 +1379,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1409,7 +1409,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1419,10 +1419,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1449,7 +1449,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1459,10 +1459,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1489,7 +1489,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1499,10 +1499,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1529,7 +1529,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1539,10 +1539,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1569,7 +1569,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1579,10 +1579,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1609,7 +1609,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1619,10 +1619,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1649,7 +1649,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1659,10 +1659,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1689,7 +1689,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1699,10 +1699,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1729,7 +1729,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1739,10 +1739,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1769,7 +1769,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1779,10 +1779,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1809,7 +1809,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1819,10 +1819,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1849,7 +1849,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1859,10 +1859,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1889,7 +1889,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1899,10 +1899,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1929,7 +1929,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1939,10 +1939,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -1969,7 +1969,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -1979,10 +1979,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -2009,7 +2009,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -2019,10 +2019,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -2049,7 +2049,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -2059,10 +2059,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -2089,7 +2089,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -2099,10 +2099,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -2129,7 +2129,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -2139,10 +2139,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -2169,7 +2169,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -2179,10 +2179,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -2209,7 +2209,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -2219,10 +2219,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -2249,7 +2249,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -2259,10 +2259,10 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -2289,7 +2289,7 @@
           </material>
         </visual>
       </link>
-
+      
       <plugin filename="gz-sim-track-controller-system"
               name="gz::sim::systems::TrackController">
         <link>belt</link>
@@ -2299,10 +2299,50 @@
         <odometry_publish_frequency>1</odometry_publish_frequency>
         <min_velocity>-3.0</min_velocity>
         <max_velocity>3.0</max_velocity>
-        <min_acceleration>-3.0</min_acceleration>
-        <max_acceleration>3.0</max_acceleration>
-        <min_jerk>-12.0</min_jerk>
-        <max_jerk>12.0</max_jerk>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
+        <max_command_age>2.0</max_command_age>
+      </plugin>
+
+    </model>
+
+    
+    <model name="outfeed_conveyor">
+      <static>true</static>
+      <pose>4.260000 0.000000 0 0 0 0</pose>
+      <link name="belt">
+        <pose>0 0 0.040000 0 0 0</pose>
+        <collision name="belt_collision">
+          <max_contacts>8</max_contacts>
+          <geometry><box><size>1.600000 0.600000 0.080000</size></box></geometry>
+          <surface><friction><ode>
+            <mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1>
+          </ode></friction></surface>
+        </collision>
+        <visual name="belt_visual">
+          <geometry><box><size>1.600000 0.600000 0.080000</size></box></geometry>
+          <material>
+            <ambient>0.120 0.320 0.160 1</ambient>
+            <diffuse>0.120 0.320 0.160 1</diffuse>
+          </material>
+        </visual>
+      </link>
+      
+      <plugin filename="gz-sim-track-controller-system"
+              name="gz::sim::systems::TrackController">
+        <link>belt</link>
+        <track_orientation>0 0 0</track_orientation>
+        <velocity_topic>/singulator/outfeed/cmd_vel</velocity_topic>
+        <odometry_topic>/singulator/outfeed/odometry</odometry_topic>
+        <odometry_publish_frequency>1</odometry_publish_frequency>
+        <min_velocity>-3.0</min_velocity>
+        <max_velocity>3.0</max_velocity>
+        <min_acceleration>-6.0</min_acceleration>
+        <max_acceleration>6.0</max_acceleration>
+        <min_jerk>-30.0</min_jerk>
+        <max_jerk>30.0</max_jerk>
         <max_command_age>2.0</max_command_age>
       </plugin>
 
@@ -2313,8 +2353,8 @@
         <gz-gui><title>3D View</title><property type="bool" key="showTitleBar">false</property><property type="string" key="state">docked</property></gz-gui>
         <engine>ogre2</engine><scene>scene</scene>
         <ambient_light>0.6 0.6 0.6</ambient_light><background_color>0.8 0.8 0.8</background_color>
-        <!-- Broadside view: the complete infeed, matrix and roller throat remain visible. -->
-        <camera_pose>0.20 -7.50 4.20 0 0.42 1.570796</camera_pose>
+        <!-- Broadside view includes infeed, matrix, roller throat and downstream outfeed. -->
+        <camera_pose>0.60 -9.20 5.10 0 0.45 1.570796</camera_pose>
       </plugin>
       <plugin filename="CameraTracking" name="Camera tracking"/>
       <plugin filename="GzSceneManager" name="Scene Manager"><gz-gui><property key="resizable" type="bool">false</property><property key="width" type="double">5</property><property key="height" type="double">5</property><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui></plugin>

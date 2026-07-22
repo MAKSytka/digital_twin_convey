@@ -35,10 +35,18 @@ class Track:
 
 
 class NearestNeighbourTracker:
-    """Small deterministic tracker suitable for a unidirectional conveyor."""
+    """Deterministic conveyor tracker with anisotropic motion gating."""
 
-    def __init__(self, maximum_distance_m: float, maximum_misses: int) -> None:
+    def __init__(
+        self,
+        maximum_distance_m: float,
+        maximum_lateral_distance_m: float,
+        maximum_backward_distance_m: float,
+        maximum_misses: int,
+    ) -> None:
         self.maximum_distance_m = maximum_distance_m
+        self.maximum_lateral_distance_m = maximum_lateral_distance_m
+        self.maximum_backward_distance_m = maximum_backward_distance_m
         self.maximum_misses = maximum_misses
         self.next_id = 1
         self.tracks: dict[int, Track] = {}
@@ -55,9 +63,22 @@ class NearestNeighbourTracker:
         for track_id, track in self.tracks.items():
             predicted_x, predicted_y = track.prediction(stamp_s)
             for detection_index, (x, y) in enumerate(points):
-                distance = math.hypot(x - predicted_x, y - predicted_y)
-                if distance <= self.maximum_distance_m:
-                    candidates.append((distance, track_id, detection_index))
+                dx = x - predicted_x
+                dy = y - predicted_y
+                if dx < -self.maximum_backward_distance_m:
+                    continue
+                if abs(dy) > self.maximum_lateral_distance_m:
+                    continue
+                distance = math.hypot(dx, dy)
+                if distance > self.maximum_distance_m:
+                    continue
+                # Lateral swaps are more damaging than a small longitudinal error.
+                cost = (
+                    (dx / max(self.maximum_distance_m, 1.0e-6)) ** 2
+                    + 2.5
+                    * (dy / max(self.maximum_lateral_distance_m, 1.0e-6)) ** 2
+                )
+                candidates.append((cost, track_id, detection_index))
 
         used_tracks: set[int] = set()
         used_detections: set[int] = set()
@@ -80,6 +101,7 @@ class NearestNeighbourTracker:
                     last_stamp_s=stamp_s,
                 )
                 assignments[detection_index] = track_id
+                used_tracks.add(track_id)
                 continue
 
             track = self.tracks[track_id]
@@ -87,7 +109,7 @@ class NearestNeighbourTracker:
             if dt > 1.0e-4:
                 measured_vx = (x - track.x) / dt
                 measured_vy = (y - track.y) / dt
-                alpha = 0.55
+                alpha = 0.50
                 track.vx = alpha * measured_vx + (1.0 - alpha) * track.vx
                 track.vy = alpha * measured_vy + (1.0 - alpha) * track.vy
             track.x = x
@@ -96,10 +118,11 @@ class NearestNeighbourTracker:
             track.misses = 0
 
         for track_id, track in list(self.tracks.items()):
-            if track_id not in used_tracks and track_id not in assignments.values():
-                track.misses += 1
-                if track.misses > self.maximum_misses:
-                    del self.tracks[track_id]
+            if track_id in used_tracks:
+                continue
+            track.misses += 1
+            if track.misses > self.maximum_misses:
+                del self.tracks[track_id]
 
         return [assignments[index] for index in range(len(points))]
 
@@ -124,10 +147,23 @@ class VisionStreamNode(Node):
         self.declare_parameter("default_box_height_m", 0.12)
         self.declare_parameter("calibration_frames", 15)
         self.declare_parameter("processing_stride", 1)
-        self.declare_parameter("background_threshold", 25)
+
+        self.declare_parameter("background_threshold", 18)
         self.declare_parameter("use_background_subtraction", True)
-        self.declare_parameter("track_max_distance_m", 0.45)
-        self.declare_parameter("track_max_misses", 5)
+        self.declare_parameter("inner_erode_px", 2)
+        self.declare_parameter("minimum_contour_area_px", 18.0)
+        self.declare_parameter("morphology_open_px", 3)
+        self.declare_parameter("morphology_close_px", 3)
+        self.declare_parameter("dilate_iterations", 0)
+        self.declare_parameter("enable_touching_split", True)
+        self.declare_parameter("split_min_contour_area_px", 180.0)
+        self.declare_parameter("split_peak_ratio", 0.42)
+        self.declare_parameter("split_min_area_fraction", 0.12)
+
+        self.declare_parameter("track_max_distance_m", 0.55)
+        self.declare_parameter("track_max_lateral_distance_m", 0.28)
+        self.declare_parameter("track_max_backward_distance_m", 0.16)
+        self.declare_parameter("track_max_misses", 12)
         self.declare_parameter("publish_debug_image", True)
 
         self.image_topic = str(self.get_parameter("image_topic").value)
@@ -136,15 +172,9 @@ class VisionStreamNode(Node):
             self.get_parameter("debug_image_topic").value
         )
         self.frame_id = str(self.get_parameter("frame_id").value)
-        self.field_min_x_m = float(
-            self.get_parameter("field_min_x_m").value
-        )
-        self.field_max_y_m = float(
-            self.get_parameter("field_max_y_m").value
-        )
-        self.belt_top_z_m = float(
-            self.get_parameter("belt_top_z_m").value
-        )
+        self.field_min_x_m = float(self.get_parameter("field_min_x_m").value)
+        self.field_max_y_m = float(self.get_parameter("field_max_y_m").value)
+        self.belt_top_z_m = float(self.get_parameter("belt_top_z_m").value)
         self.default_box_height_m = float(
             self.get_parameter("default_box_height_m").value
         )
@@ -161,17 +191,38 @@ class VisionStreamNode(Node):
         )
 
         config = DetectorConfig(
-            field_length_m=float(
-                self.get_parameter("field_length_m").value
-            ),
-            field_width_m=float(
-                self.get_parameter("field_width_m").value
-            ),
+            field_length_m=float(self.get_parameter("field_length_m").value),
+            field_width_m=float(self.get_parameter("field_width_m").value),
             background_threshold=int(
                 self.get_parameter("background_threshold").value
             ),
             use_background_subtraction=bool(
                 self.get_parameter("use_background_subtraction").value
+            ),
+            inner_erode_px=int(self.get_parameter("inner_erode_px").value),
+            minimum_contour_area_px=float(
+                self.get_parameter("minimum_contour_area_px").value
+            ),
+            morphology_open_px=int(
+                self.get_parameter("morphology_open_px").value
+            ),
+            morphology_close_px=int(
+                self.get_parameter("morphology_close_px").value
+            ),
+            dilate_iterations=int(
+                self.get_parameter("dilate_iterations").value
+            ),
+            enable_touching_split=bool(
+                self.get_parameter("enable_touching_split").value
+            ),
+            split_min_contour_area_px=float(
+                self.get_parameter("split_min_contour_area_px").value
+            ),
+            split_peak_ratio=float(
+                self.get_parameter("split_peak_ratio").value
+            ),
+            split_min_area_fraction=float(
+                self.get_parameter("split_min_area_fraction").value
             ),
         )
         dataset_folder = str(self.get_parameter("dataset_folder").value)
@@ -180,9 +231,13 @@ class VisionStreamNode(Node):
             maximum_distance_m=float(
                 self.get_parameter("track_max_distance_m").value
             ),
-            maximum_misses=int(
-                self.get_parameter("track_max_misses").value
+            maximum_lateral_distance_m=float(
+                self.get_parameter("track_max_lateral_distance_m").value
             ),
+            maximum_backward_distance_m=float(
+                self.get_parameter("track_max_backward_distance_m").value
+            ),
+            maximum_misses=int(self.get_parameter("track_max_misses").value),
         )
 
         self.bridge = CvBridge()
@@ -219,7 +274,7 @@ class VisionStreamNode(Node):
 
         try:
             frame = self.bridge.imgmsg_to_cv2(message, desired_encoding="bgr8")
-        except Exception as error:  # cv_bridge raises several exception types
+        except Exception as error:
             self._log_error_once(f"Could not decode camera image: {error}")
             return
 
@@ -253,7 +308,6 @@ class VisionStreamNode(Node):
             corners = self.detector.calibrate(median_frame)
         except (RuntimeError, ValueError, cv2.error) as error:
             self._log_error_once(f"Camera calibration failed: {error}")
-            # Keep trying with a fresh window instead of staying permanently down.
             self.empty_frames.clear()
             return
 
@@ -318,7 +372,6 @@ class VisionStreamNode(Node):
         local_x, local_y = detection.center_local_m
         world_x = self.field_min_x_m + local_x
         world_y = self.field_max_y_m - local_y
-        # Camera image Y grows downward, therefore its angle has opposite sign.
         world_yaw = -detection.angle_image_rad
         world_yaw = ((world_yaw + math.pi / 2.0) % math.pi) - math.pi / 2.0
         return world_x, world_y, world_yaw

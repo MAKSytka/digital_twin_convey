@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the upgraded 14x4 world used by matrix_stream_roller.launch.py."""
+"""Generate the roller-throat world with a downstream observation conveyor."""
 
 from pathlib import Path
 
@@ -15,17 +15,23 @@ CELL_HEIGHT = 0.080
 MU = 0.8
 MU2 = 0.8
 MAX_SPEED = 3.0
-MAX_ACCELERATION = 3.0
-MAX_JERK = 12.0
+MAX_ACCELERATION = 6.0
+MAX_JERK = 30.0
 MAX_COMMAND_AGE = 2.0
 INFEED_LENGTH = 1.20
 THROAT_LENGTH = 0.80
+OUTFEED_OVERLAP = 0.010
+OUTFEED_LENGTH = 1.60
+OUTFEED_WIDTH = 0.60
 MATRIX_LENGTH = ROWS * CELL_X + (ROWS - 1) * GAP_X
 MATRIX_WIDTH = COLS * CELL_Y + (COLS - 1) * GAP_Y
 MATRIX_MIN_X = -MATRIX_LENGTH / 2.0
 MATRIX_MAX_X = MATRIX_LENGTH / 2.0
 INFEED_CENTER_X = MATRIX_MIN_X - GAP_X - INFEED_LENGTH / 2.0
 THROAT_CENTER_X = MATRIX_MAX_X + GAP_X + THROAT_LENGTH / 2.0
+THROAT_MAX_X = THROAT_CENTER_X + THROAT_LENGTH / 2.0
+OUTFEED_CENTER_X = THROAT_MAX_X - OUTFEED_OVERLAP + OUTFEED_LENGTH / 2.0
+OUTFEED_MAX_X = OUTFEED_CENTER_X + OUTFEED_LENGTH / 2.0
 
 
 def track_controller(velocity_topic: str, odometry_topic: str) -> str:
@@ -93,7 +99,11 @@ def matrix_cells() -> str:
         for col in range(COLS):
             y = (col - (COLS - 1) / 2.0) * PITCH_Y
             cell_id = f"r{row:02d}_c{col:02d}"
-            color = (0.05, 0.25, 0.95) if (row + col) % 2 == 0 else (0.04, 0.18, 0.75)
+            color = (
+                (0.05, 0.25, 0.95)
+                if (row + col) % 2 == 0
+                else (0.04, 0.18, 0.75)
+            )
             result.append(
                 belt_model(
                     name=f"cell_{cell_id}",
@@ -110,9 +120,11 @@ def matrix_cells() -> str:
 
 
 def generate_world() -> str:
-    complete_length = INFEED_LENGTH + GAP_X + MATRIX_LENGTH + GAP_X + THROAT_LENGTH
-    platform_length = complete_length + 0.6
-    platform_center_x = (INFEED_CENTER_X - INFEED_LENGTH / 2.0 + THROAT_CENTER_X + THROAT_LENGTH / 2.0) / 2.0
+    platform_min_x = INFEED_CENTER_X - INFEED_LENGTH / 2.0 - 0.30
+    platform_max_x = OUTFEED_MAX_X + 0.30
+    platform_length = platform_max_x - platform_min_x
+    platform_center_x = (platform_min_x + platform_max_x) / 2.0
+
     infeed = belt_model(
         name="infeed_conveyor",
         x=INFEED_CENTER_X,
@@ -123,6 +135,17 @@ def generate_world() -> str:
         odometry_topic="/singulator/infeed/odometry",
         color=(0.18, 0.18, 0.18),
     )
+    outfeed = belt_model(
+        name="outfeed_conveyor",
+        x=OUTFEED_CENTER_X,
+        y=0.0,
+        size_x=OUTFEED_LENGTH,
+        size_y=OUTFEED_WIDTH,
+        velocity_topic="/singulator/outfeed/cmd_vel",
+        odometry_topic="/singulator/outfeed/odometry",
+        color=(0.12, 0.32, 0.16),
+    )
+
     return f"""<?xml version="1.0"?>
 <sdf version="1.10">
   <world name="matrix_14x4_stream">
@@ -155,13 +178,14 @@ def generate_world() -> str:
     </model>
     {infeed}
     {matrix_cells()}
+    {outfeed}
     <gui fullscreen="0">
       <plugin filename="MinimalScene" name="3D View">
         <gz-gui><title>3D View</title><property type="bool" key="showTitleBar">false</property><property type="string" key="state">docked</property></gz-gui>
         <engine>ogre2</engine><scene>scene</scene>
         <ambient_light>0.6 0.6 0.6</ambient_light><background_color>0.8 0.8 0.8</background_color>
-        <!-- Broadside view: the complete infeed, matrix and roller throat remain visible. -->
-        <camera_pose>0.20 -7.50 4.20 0 0.42 1.570796</camera_pose>
+        <!-- Broadside view includes infeed, matrix, roller throat and downstream outfeed. -->
+        <camera_pose>0.60 -9.20 5.10 0 0.45 1.570796</camera_pose>
       </plugin>
       <plugin filename="CameraTracking" name="Camera tracking"/>
       <plugin filename="GzSceneManager" name="Scene Manager"><gz-gui><property key="resizable" type="bool">false</property><property key="width" type="double">5</property><property key="height" type="double">5</property><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui></plugin>
@@ -175,12 +199,26 @@ def generate_world() -> str:
 
 
 def main() -> None:
-    output = Path(__file__).resolve().parents[1] / "worlds" / "matrix_14x4_stream_v2.sdf"
+    output = (
+        Path(__file__).resolve().parents[1]
+        / "worlds"
+        / "matrix_14x4_stream_v2.sdf"
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(generate_world(), encoding="utf-8")
     print(f"Created upgraded world: {output}")
     print(f"Matrix friction: mu={MU}, mu2={MU2}")
     print(f"Velocity limits: {-MAX_SPEED}..{MAX_SPEED} m/s")
-    print(f"Acceleration limits: {-MAX_ACCELERATION}..{MAX_ACCELERATION} m/s^2")
+    print(
+        "Acceleration limits: "
+        f"{-MAX_ACCELERATION}..{MAX_ACCELERATION} m/s^2"
+    )
+    print(f"Jerk limits: {-MAX_JERK}..{MAX_JERK} m/s^3")
+    print(
+        "Outfeed: "
+        f"length={OUTFEED_LENGTH:.2f} m, width={OUTFEED_WIDTH:.2f} m, "
+        f"x={OUTFEED_CENTER_X:.2f} m, overlap={OUTFEED_OVERLAP:.3f} m"
+    )
 
 
 if __name__ == "__main__":

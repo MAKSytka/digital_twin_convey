@@ -1,9 +1,10 @@
 """Stateful OpenCV detector for a continuous overhead-camera stream.
 
-The contour and ORB stages are adapted from the existing single-image
-``BoxDetector.exe`` pipeline.  Stream-specific state is kept in memory:
-calibration, an empty-scene reference and loaded dataset descriptors are built
-once instead of being recomputed for every frame.
+Version 2 reduces contour merging and adds optional watershed separation for
+foreground components containing several touching parcels.  It deliberately
+uses a small closing kernel and no unconditional dilation: the old 7x7 closing
+followed by dilation often bridged the narrow black gap between neighbouring
+boxes in the Gazebo camera image.
 """
 
 from __future__ import annotations
@@ -22,16 +23,24 @@ class DetectorConfig:
     field_length_m: float = 7.70
     field_width_m: float = 0.90
     field_min_area_ratio: float = 0.05
-    box_min_area_ratio: float = 0.00015
+    box_min_area_ratio: float = 0.00008
     box_max_area_ratio: float = 0.50
     aspect_tolerance: float = 0.40
     orb_features: int = 500
     orb_match_ratio: float = 0.75
     min_good_matches: int = 8
-    inner_erode_px: int = 6
+    inner_erode_px: int = 2
     use_background_subtraction: bool = True
-    background_threshold: int = 25
-    minimum_contour_area_px: float = 30.0
+    background_threshold: int = 18
+    minimum_contour_area_px: float = 18.0
+    morphology_open_px: int = 3
+    morphology_close_px: int = 3
+    dilate_iterations: int = 0
+    enable_touching_split: bool = True
+    split_min_contour_area_px: float = 180.0
+    split_peak_ratio: float = 0.42
+    split_min_area_fraction: float = 0.12
+    split_max_parts: int = 6
 
 
 @dataclass(slots=True)
@@ -69,7 +78,6 @@ def find_coordinate_field(
     image: np.ndarray,
     minimum_area_ratio: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Find the largest field contour and return its corners and filled mask."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blurred, 30, 100)
@@ -146,13 +154,13 @@ class StreamingBoxDetector:
         self.orb = cv2.ORB_create(config.orb_features)
         self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
         self.templates = self._load_templates(dataset_folder)
+        self.last_split_components = 0
 
     @property
     def is_calibrated(self) -> bool:
         return self.homography is not None and self.field_mask is not None
 
     def calibrate(self, empty_scene_bgr: np.ndarray) -> np.ndarray:
-        """Calibrate the field and freeze an empty-scene reference image."""
         corners, mask = find_coordinate_field(
             empty_scene_bgr,
             self.config.field_min_area_ratio,
@@ -182,14 +190,21 @@ class StreamingBoxDetector:
         assert self.homography is not None
 
         candidates = self._candidate_mask(image)
-        contours, _ = cv2.findContours(
+        raw_contours, _ = cv2.findContours(
             candidates,
             cv2.RETR_EXTERNAL,
             cv2.CHAIN_APPROX_SIMPLE,
         )
+        contours: list[np.ndarray] = []
+        self.last_split_components = 0
+        for contour in raw_contours:
+            parts = self._split_touching_contour(image, contour)
+            if len(parts) > 1:
+                self.last_split_components += 1
+            contours.extend(parts)
+
         field_area = abs(cv2.contourArea(self.field_corners.astype(np.int32)))
         detections: list[Detection] = []
-
         for contour in contours:
             area = float(cv2.contourArea(contour))
             if area < self.config.minimum_contour_area_px or field_area <= 0.0:
@@ -206,7 +221,6 @@ class StreamingBoxDetector:
             (center_x, center_y), (width_px, height_px), _ = rect
             if width_px <= 0.0 or height_px <= 0.0:
                 continue
-
             aspect_ratio = max(width_px, height_px) / min(width_px, height_px)
             if not self._aspect_ratio_is_plausible(aspect_ratio):
                 continue
@@ -214,15 +228,12 @@ class StreamingBoxDetector:
             box_points = cv2.boxPoints(rect)
             field_points = points_to_field(self.homography, box_points)
             center, length_m, width_m, angle_image = self._geometry(field_points)
-
-            # Reject objects outside the product envelope after perspective mapping.
-            if not (0.02 <= length_m <= 0.65 and 0.01 <= width_m <= 0.55):
+            if not (0.015 <= length_m <= 0.70 and 0.008 <= width_m <= 0.60):
                 continue
 
             rectangle_area = max(width_px * height_px, 1.0)
             rectangularity = min(1.0, max(0.0, area / rectangle_area))
             box_type, match_score = self._classify(image, box_points)
-
             detections.append(
                 Detection(
                     center_local_m=center,
@@ -242,20 +253,18 @@ class StreamingBoxDetector:
 
     def _candidate_mask(self, image: np.ndarray) -> np.ndarray:
         assert self.field_mask is not None
-        inner_kernel_size = max(1, int(self.config.inner_erode_px))
+        erode_size = max(1, int(self.config.inner_erode_px))
         inner_mask = cv2.erode(
             self.field_mask,
-            np.ones((inner_kernel_size, inner_kernel_size), np.uint8),
+            np.ones((erode_size, erode_size), np.uint8),
         )
 
         if self.config.use_background_subtraction:
-            if self.background_gray is None:
-                raise RuntimeError("Background subtraction requested without a reference")
             if self.background_bgr is None:
-                raise RuntimeError("Background image is not available")
+                raise RuntimeError("Background subtraction requested without a reference")
             color_difference = cv2.absdiff(image, self.background_bgr)
             difference = np.max(color_difference, axis=2).astype(np.uint8)
-            difference = cv2.GaussianBlur(difference, (5, 5), 0)
+            difference = cv2.GaussianBlur(difference, (3, 3), 0)
             _, candidates = cv2.threshold(
                 difference,
                 int(self.config.background_threshold),
@@ -263,29 +272,132 @@ class StreamingBoxDetector:
                 cv2.THRESH_BINARY,
             )
         else:
-            # Original BoxDetector segmentation for real-camera images.
             hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-            colored = cv2.inRange(hsv, (0, 30, 0), (180, 255, 255))
-            white = cv2.inRange(hsv, (0, 0, 200), (180, 40, 255))
+            colored = cv2.inRange(hsv, (0, 25, 0), (180, 255, 255))
+            white = cv2.inRange(hsv, (0, 0, 190), (180, 55, 255))
             candidates = cv2.bitwise_or(colored, white)
 
         candidates = cv2.bitwise_and(candidates, inner_mask)
+        open_size = max(1, int(self.config.morphology_open_px))
+        close_size = max(1, int(self.config.morphology_close_px))
         candidates = cv2.morphologyEx(
             candidates,
             cv2.MORPH_OPEN,
-            cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)),
+            cv2.getStructuringElement(cv2.MORPH_RECT, (open_size, open_size)),
         )
         candidates = cv2.morphologyEx(
             candidates,
             cv2.MORPH_CLOSE,
-            cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7)),
+            cv2.getStructuringElement(cv2.MORPH_RECT, (close_size, close_size)),
         )
-        candidates = cv2.dilate(
-            candidates,
-            cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)),
-            iterations=1,
-        )
+        if self.config.dilate_iterations > 0:
+            candidates = cv2.dilate(
+                candidates,
+                cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)),
+                iterations=int(self.config.dilate_iterations),
+            )
         return candidates
+
+    def _split_touching_contour(
+        self,
+        image: np.ndarray,
+        contour: np.ndarray,
+    ) -> list[np.ndarray]:
+        area = float(cv2.contourArea(contour))
+        if (
+            not self.config.enable_touching_split
+            or area < self.config.split_min_contour_area_px
+        ):
+            return [contour]
+
+        x, y, width, height = cv2.boundingRect(contour)
+        if width < 5 or height < 5:
+            return [contour]
+
+        local_contour = contour.copy().astype(np.int32)
+        local_contour[:, 0, 0] -= x
+        local_contour[:, 0, 1] -= y
+        roi_mask = np.zeros((height, width), dtype=np.uint8)
+        cv2.drawContours(roi_mask, [local_contour], -1, 255, thickness=-1)
+
+        distance = cv2.distanceTransform(roi_mask, cv2.DIST_L2, 5)
+        maximum = float(distance.max())
+        if maximum <= 1.0:
+            return [contour]
+
+        seed_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        sure_foreground: np.ndarray | None = None
+
+        # First try to break a narrow bridge by controlled erosion.  A genuine
+        # single rectangle stays connected, while two touching boxes normally
+        # separate after a few pixels of erosion.
+        for iterations in range(1, 9):
+            eroded = cv2.erode(
+                roi_mask,
+                seed_kernel,
+                iterations=iterations,
+            )
+            count, labels = cv2.connectedComponents(eroded)
+            components = count - 1
+            if not 2 <= components <= self.config.split_max_parts:
+                continue
+            component_areas = [
+                int(np.count_nonzero(labels == label))
+                for label in range(1, count)
+            ]
+            if min(component_areas, default=0) < 8:
+                continue
+            sure_foreground = eroded
+            break
+
+        if sure_foreground is None:
+            local_maximum = distance >= cv2.dilate(distance, seed_kernel) - 1.0e-6
+            strong = distance >= self.config.split_peak_ratio * maximum
+            sure_foreground = np.uint8(local_maximum & strong) * 255
+            sure_foreground = cv2.dilate(
+                sure_foreground,
+                seed_kernel,
+                iterations=1,
+            )
+
+        component_count, markers = cv2.connectedComponents(sure_foreground)
+        number_of_peaks = component_count - 1
+        if number_of_peaks < 2 or number_of_peaks > self.config.split_max_parts:
+            return [contour]
+
+        markers = markers.astype(np.int32) + 1
+        markers[roi_mask == 0] = 0
+        roi_image = image[y : y + height, x : x + width].copy()
+        cv2.watershed(roi_image, markers)
+
+        parts: list[np.ndarray] = []
+        minimum_part_area = max(
+            self.config.minimum_contour_area_px,
+            area * self.config.split_min_area_fraction,
+        )
+        for label in range(2, component_count + 1):
+            region = np.uint8(markers == label) * 255
+            region_contours, _ = cv2.findContours(
+                region,
+                cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE,
+            )
+            if not region_contours:
+                continue
+            part = max(region_contours, key=cv2.contourArea)
+            if cv2.contourArea(part) < minimum_part_area:
+                continue
+            part = part.astype(np.int32)
+            part[:, 0, 0] += x
+            part[:, 0, 1] += y
+            parts.append(part)
+
+        if not 2 <= len(parts) <= self.config.split_max_parts:
+            return [contour]
+        covered_area = sum(float(cv2.contourArea(part)) for part in parts)
+        if covered_area < 0.55 * area:
+            return [contour]
+        return parts
 
     def draw_debug(
         self,
@@ -324,6 +436,16 @@ class StreamingBoxDetector:
                 1,
                 cv2.LINE_AA,
             )
+        cv2.putText(
+            result,
+            f"detections={len(detections)} split_components={self.last_split_components}",
+            (10, 22),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (20, 20, 255),
+            2,
+            cv2.LINE_AA,
+        )
         return result
 
     def _load_templates(self, dataset_folder: str) -> list[dict[str, object]]:
@@ -381,7 +503,7 @@ class StreamingBoxDetector:
             if template.get("aspect_ratio") is not None
         ]
         if not known:
-            return 1.0 <= ratio <= 12.0
+            return 1.0 <= ratio <= 14.0
         tolerance = self.config.aspect_tolerance
         return any(abs(ratio - expected) / expected <= tolerance for expected in known)
 

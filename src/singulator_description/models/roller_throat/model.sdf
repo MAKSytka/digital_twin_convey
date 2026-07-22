@@ -3,268 +3,576 @@
   <model name="roller_throat">
     <static>true</static>
     <link name="base">
-      <collision name="base_collision"><pose>0 0 0.035 0 0 0</pose><geometry><box><size>0.80 0.76 0.07</size></box></geometry></collision>
-      <visual name="base_visual"><pose>0 0 0.035 0 0 0</pose><geometry><box><size>0.80 0.76 0.07</size></box></geometry><material><ambient>0.16 0.16 0.16 1</ambient><diffuse>0.22 0.22 0.22 1</diffuse></material></visual>
-      <!-- Flush bridge from matrix belt top (Z=0.080 m) to the first roller. -->
+      <collision name="base_collision"><pose>0 0 0.035 0 0 0</pose><geometry><box><size>0.86 0.76 0.07</size></box></geometry></collision>
+      <visual name="base_visual"><pose>0 0 0.035 0 0 0</pose><geometry><box><size>0.86 0.76 0.07</size></box></geometry><material><ambient>0.16 0.16 0.16 1</ambient><diffuse>0.22 0.22 0.22 1</diffuse></material></visual>
+
+      <!-- Plates are 1 mm below the moving surfaces and only catch an edge during transfer. -->
       <collision name="entry_transfer_collision">
-        <pose>-0.410 0 0.076 0 0 0</pose>
-        <geometry><box><size>0.020 0.760 0.008</size></box></geometry>
-        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+        <pose>-0.410000 0 0.076000 0 0 0</pose>
+        <geometry><box><size>0.040000 0.760000 0.006000</size></box></geometry>
+        <surface><friction><ode><mu>0.05</mu><mu2>0.05</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="entry_transfer_visual">
-        <pose>-0.410 0 0.076 0 0 0</pose>
-        <geometry><box><size>0.020 0.760 0.008</size></box></geometry>
+        <pose>-0.410000 0 0.076000 0 0 0</pose>
+        <geometry><box><size>0.040000 0.760000 0.006000</size></box></geometry>
         <material><ambient>0.45 0.45 0.48 1</ambient><diffuse>0.55 0.55 0.58 1</diffuse></material>
       </visual>
-      <collision name="left_guide_collision"><pose>0 -0.3525 0.125 0 0 0.099668652</pose><geometry><box><size>0.843990 0.025 0.18</size></box></geometry></collision>
-      <visual name="left_guide_visual"><pose>0 -0.3525 0.125 0 0 0.099668652</pose><geometry><box><size>0.843990 0.025 0.18</size></box></geometry><material><ambient>0.55 0.55 0.58 1</ambient><diffuse>0.65 0.65 0.68 1</diffuse></material></visual>
-      <collision name="right_guide_collision"><pose>0 0.3525 0.125 0 0 -0.099668652</pose><geometry><box><size>0.843990 0.025 0.18</size></box></geometry></collision>
-      <visual name="right_guide_visual"><pose>0 0.3525 0.125 0 0 -0.099668652</pose><geometry><box><size>0.843990 0.025 0.18</size></box></geometry><material><ambient>0.55 0.55 0.58 1</ambient><diffuse>0.65 0.65 0.68 1</diffuse></material></visual>
+
+      <collision name="exit_transfer_collision">
+        <pose>0.410000 0 0.076000 0 0 0</pose>
+        <geometry><box><size>0.040000 0.600000 0.006000</size></box></geometry>
+        <surface><friction><ode><mu>0.05</mu><mu2>0.05</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="exit_transfer_visual">
+        <pose>0.410000 0 0.076000 0 0 0</pose>
+        <geometry><box><size>0.040000 0.600000 0.006000</size></box></geometry>
+        <material><ambient>0.45 0.45 0.48 1</ambient><diffuse>0.55 0.55 0.58 1</diffuse></material>
+      </visual>
+
+      <!-- A recessed low-friction tray prevents thin products falling between supports. -->
+      <collision name="undertray_collision">
+        <pose>0 0 0.071000 0 0 0</pose>
+        <geometry><box><size>0.84 0.62 0.008000</size></box></geometry>
+        <surface><friction><ode><mu>0.03</mu><mu2>0.03</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+
+      <collision name="left_guide_collision"><pose>0 -0.352500 0.125 0 0 0.099668652</pose><geometry><box><size>0.843990 0.025 0.18</size></box></geometry></collision>
+      <visual name="left_guide_visual"><pose>0 -0.352500 0.125 0 0 0.099668652</pose><geometry><box><size>0.843990 0.025 0.18</size></box></geometry><material><ambient>0.55 0.55 0.58 1</ambient><diffuse>0.65 0.65 0.68 1</diffuse></material></visual>
+      <collision name="right_guide_collision"><pose>0 0.352500 0.125 0 0 -0.099668652</pose><geometry><box><size>0.843990 0.025 0.18</size></box></geometry></collision>
+      <visual name="right_guide_visual"><pose>0 0.352500 0.125 0 0 -0.099668652</pose><geometry><box><size>0.843990 0.025 0.18</size></box></geometry><material><ambient>0.55 0.55 0.58 1</ambient><diffuse>0.65 0.65 0.68 1</diffuse></material></visual>
     </link>
+
     <link name="left_rollers">
+
       <collision name="roller_00_collision">
-        <pose>-0.360000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.400000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_00_visual">
-        <pose>-0.360000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.400000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_01_collision">
-        <pose>-0.280000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.360000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_01_visual">
-        <pose>-0.280000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.360000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_02_collision">
-        <pose>-0.200000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.320000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_02_visual">
-        <pose>-0.200000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.320000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_03_collision">
-        <pose>-0.120000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.280000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_03_visual">
-        <pose>-0.120000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.280000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_04_collision">
-        <pose>-0.040000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.240000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_04_visual">
-        <pose>-0.040000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.240000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_05_collision">
-        <pose>0.040000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.200000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_05_visual">
-        <pose>0.040000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.200000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_06_collision">
-        <pose>0.120000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.160000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_06_visual">
-        <pose>0.120000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.160000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_07_collision">
-        <pose>0.200000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.120000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_07_visual">
-        <pose>0.200000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.120000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_08_collision">
-        <pose>0.280000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.080000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_08_visual">
-        <pose>0.280000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.080000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_09_collision">
-        <pose>0.360000 -0.170000 0.072 0 0 1.745329252</pose>
+        <pose>-0.040000 -0.170000 0.072000 0 0 1.675516082</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_09_visual">
-        <pose>0.360000 -0.170000 0.070 0 1.570796327 1.745329252</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.040000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_10_collision">
+        <pose>0.000000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_10_visual">
+        <pose>0.000000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_11_collision">
+        <pose>0.040000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_11_visual">
+        <pose>0.040000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_12_collision">
+        <pose>0.080000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_12_visual">
+        <pose>0.080000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_13_collision">
+        <pose>0.120000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_13_visual">
+        <pose>0.120000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_14_collision">
+        <pose>0.160000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_14_visual">
+        <pose>0.160000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_15_collision">
+        <pose>0.200000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_15_visual">
+        <pose>0.200000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_16_collision">
+        <pose>0.240000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_16_visual">
+        <pose>0.240000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_17_collision">
+        <pose>0.280000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_17_visual">
+        <pose>0.280000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_18_collision">
+        <pose>0.320000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_18_visual">
+        <pose>0.320000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_19_collision">
+        <pose>0.360000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_19_visual">
+        <pose>0.360000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_20_collision">
+        <pose>0.400000 -0.170000 0.072000 0 0 1.675516082</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_20_visual">
+        <pose>0.400000 -0.170000 0.068000 0 1.570796327 1.675516082</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
     </link>
+
     <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
       <link>left_rollers</link>
-      <track_orientation>0 0 0.174532925</track_orientation>
+      <track_orientation>0 0 0.104719755</track_orientation>
       <velocity_topic>/singulator/throat/left/cmd_vel</velocity_topic>
       <odometry_topic>/singulator/throat/left/odometry</odometry_topic>
       <odometry_publish_frequency>5</odometry_publish_frequency>
       <min_velocity>-3.0</min_velocity><max_velocity>3.0</max_velocity>
-      <min_acceleration>-3.0</min_acceleration><max_acceleration>3.0</max_acceleration>
-      <min_jerk>-12.0</min_jerk><max_jerk>12.0</max_jerk>
+      <min_acceleration>-6.0</min_acceleration><max_acceleration>6.0</max_acceleration>
+      <min_jerk>-30.0</min_jerk><max_jerk>30.0</max_jerk>
       <max_command_age>2.0</max_command_age>
     </plugin>
+
     <link name="right_rollers">
+
       <collision name="roller_00_collision">
-        <pose>-0.360000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.400000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_00_visual">
-        <pose>-0.360000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.400000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_01_collision">
-        <pose>-0.280000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.360000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_01_visual">
-        <pose>-0.280000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.360000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_02_collision">
-        <pose>-0.200000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.320000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_02_visual">
-        <pose>-0.200000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.320000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_03_collision">
-        <pose>-0.120000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.280000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_03_visual">
-        <pose>-0.120000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.280000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_04_collision">
-        <pose>-0.040000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.240000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_04_visual">
-        <pose>-0.040000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.240000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_05_collision">
-        <pose>0.040000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.200000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_05_visual">
-        <pose>0.040000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.200000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_06_collision">
-        <pose>0.120000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.160000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_06_visual">
-        <pose>0.120000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.160000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_07_collision">
-        <pose>0.200000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.120000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_07_visual">
-        <pose>0.200000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.120000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_08_collision">
-        <pose>0.280000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.080000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_08_visual">
-        <pose>0.280000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.080000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
+
       <collision name="roller_09_collision">
-        <pose>0.360000 0.170000 0.072 0 0 1.396263402</pose>
+        <pose>-0.040000 0.170000 0.072000 0 0 1.466076572</pose>
         <max_contacts>8</max_contacts>
-        <geometry><box><size>0.420000 0.026000 0.016000</size></box></geometry>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
         <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
       </collision>
       <visual name="roller_09_visual">
-        <pose>0.360000 0.170000 0.070 0 1.570796327 1.396263402</pose>
-        <geometry><cylinder><radius>0.010000</radius><length>0.420000</length></cylinder></geometry>
+        <pose>-0.040000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_10_collision">
+        <pose>0.000000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_10_visual">
+        <pose>0.000000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_11_collision">
+        <pose>0.040000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_11_visual">
+        <pose>0.040000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_12_collision">
+        <pose>0.080000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_12_visual">
+        <pose>0.080000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_13_collision">
+        <pose>0.120000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_13_visual">
+        <pose>0.120000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_14_collision">
+        <pose>0.160000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_14_visual">
+        <pose>0.160000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_15_collision">
+        <pose>0.200000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_15_visual">
+        <pose>0.200000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_16_collision">
+        <pose>0.240000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_16_visual">
+        <pose>0.240000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_17_collision">
+        <pose>0.280000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_17_visual">
+        <pose>0.280000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_18_collision">
+        <pose>0.320000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_18_visual">
+        <pose>0.320000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_19_collision">
+        <pose>0.360000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_19_visual">
+        <pose>0.360000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
+        <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
+      </visual>
+
+      <collision name="roller_20_collision">
+        <pose>0.400000 0.170000 0.072000 0 0 1.466076572</pose>
+        <max_contacts>8</max_contacts>
+        <geometry><box><size>0.420000 0.022000 0.016000</size></box></geometry>
+        <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+      </collision>
+      <visual name="roller_20_visual">
+        <pose>0.400000 0.170000 0.068000 0 1.570796327 1.466076572</pose>
+        <geometry><cylinder><radius>0.012000</radius><length>0.420000</length></cylinder></geometry>
         <material><ambient>0.72 0.72 0.74 1</ambient><diffuse>0.72 0.72 0.74 1</diffuse><specular>0.35 0.35 0.35 1</specular></material>
       </visual>
     </link>
+
     <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
       <link>right_rollers</link>
-      <track_orientation>0 0 -0.174532925</track_orientation>
+      <track_orientation>0 0 -0.104719755</track_orientation>
       <velocity_topic>/singulator/throat/right/cmd_vel</velocity_topic>
       <odometry_topic>/singulator/throat/right/odometry</odometry_topic>
       <odometry_publish_frequency>5</odometry_publish_frequency>
       <min_velocity>-3.0</min_velocity><max_velocity>3.0</max_velocity>
-      <min_acceleration>-3.0</min_acceleration><max_acceleration>3.0</max_acceleration>
-      <min_jerk>-12.0</min_jerk><max_jerk>12.0</max_jerk>
+      <min_acceleration>-6.0</min_acceleration><max_acceleration>6.0</max_acceleration>
+      <min_jerk>-30.0</min_jerk><max_jerk>30.0</max_jerk>
       <max_command_age>2.0</max_command_age>
     </plugin>
   </model>
