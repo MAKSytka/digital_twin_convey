@@ -118,6 +118,8 @@ def generate_launch_description() -> LaunchDescription:
                 "dense_pair_yaw_gap_m": 0.10,
                 "yaw_control_exit_margin_m": 0.65,
                 "allocation_urgency_gain": 1.50,
+                "allocation_idle_regularization": 0.03,
+                "allocation_iterations": 12,
                 "uncontrollable_similarity": 0.97,
                 "minimum_confidence": 0.12,
                 "observation_timeout_s": 0.70,

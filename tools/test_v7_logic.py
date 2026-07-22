@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "src" / "singulator_control"))
 
 from singulator_control.global_queue_logic import (  # noqa: E402
     GapState,
+    allocate_cell_speeds,
     build_pairwise_speed_profile,
 )
 
@@ -42,6 +43,13 @@ def assert_bounded(speeds: dict[int, float]) -> None:
     assert speeds
     assert min(speeds.values()) >= 1.00 - 1.0e-9
     assert max(speeds.values()) <= 3.00 + 1.0e-9
+
+
+def effective_speed(
+    speeds: list[float], contacts: list[tuple[int, float]]
+) -> float:
+    total = sum(overlap for _, overlap in contacts)
+    return sum(speeds[index] * overlap for index, overlap in contacts) / total
 
 
 
@@ -111,11 +119,32 @@ def main() -> None:
     _, simulated_clearances = simulate_transverse_wave()
     assert min(simulated_clearances) >= 0.17, simulated_clearances
 
+    contacts = {
+        1: [(0, 1.0), (1, 1.0)],
+        2: [(1, 1.0), (2, 1.0)],
+    }
+    allocation = allocate_cell_speeds(
+        contacts,
+        {1: 3.0, 2: 1.0},
+        {1: 1.0, 2: 1.0},
+        cell_count=3,
+        idle_speed=2.2,
+        minimum_speed=1.0,
+        maximum_speed=3.0,
+        urgency_gain=1.5,
+        idle_regularization=0.03,
+        iterations=12,
+    )
+    assert all(1.0 <= speed <= 3.0 for speed in allocation), allocation
+    assert effective_speed(allocation, contacts[1]) > 2.49, allocation
+    assert effective_speed(allocation, contacts[2]) < 1.51, allocation
+
     print("PASS: V7 pairwise profile is bounded and order-preserving.")
     print("transverse:", [round(value, 3) for value in transverse_speeds])
     print("separated:", separated.speed_by_uid)
     print("partial:", [round(value, 3) for value in partial])
     print("simulated clearances:", [round(value, 3) for value in simulated_clearances])
+    print("cell-aware allocation:", [round(value, 3) for value in allocation])
 
 
 if __name__ == "__main__":
