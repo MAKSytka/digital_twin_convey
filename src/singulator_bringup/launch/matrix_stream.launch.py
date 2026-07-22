@@ -32,6 +32,7 @@ def generate_launch_description() -> LaunchDescription:
     start_singulation_controller = LaunchConfiguration(
         "start_singulation_controller"
     )
+    matrix_rows = LaunchConfiguration("matrix_rows")
     infeed_speed = LaunchConfiguration("infeed_speed_mps")
     outfeed_speed = LaunchConfiguration("outfeed_speed_mps")
     demo_speed = LaunchConfiguration("demo_speed_mps")
@@ -107,9 +108,9 @@ def generate_launch_description() -> LaunchDescription:
             {
                 "image_topic": "/singulator/camera/image_raw",
                 "boxes_topic": "/singulator/boxes",
-                "field_length_m": 7.70,
+                "field_length_m": 9.00,
                 "field_width_m": 0.90,
-                "field_min_x_m": -3.95,
+                "field_min_x_m": -4.50,
                 "field_max_y_m": 0.45,
                 "calibration_frames": 15,
                 "background_threshold": 18,
@@ -142,7 +143,13 @@ def generate_launch_description() -> LaunchDescription:
         executable="matrix_command_fanout",
         name="matrix_command_fanout",
         output="screen",
-        parameters=[{"rows": 14, "cols": 4, "use_sim_time": True}],
+        parameters=[
+            {
+                "rows": ParameterValue(matrix_rows, value_type=int),
+                "cols": 4,
+                "use_sim_time": True,
+            }
+        ],
     )
 
     singulation_controller = Node(
@@ -264,6 +271,7 @@ def generate_launch_description() -> LaunchDescription:
                 "start_singulation_controller",
                 default_value="false",
             ),
+            DeclareLaunchArgument("matrix_rows", default_value="14"),
             DeclareLaunchArgument("infeed_speed_mps", default_value="2.0"),
             DeclareLaunchArgument("outfeed_speed_mps", default_value="2.0"),
             DeclareLaunchArgument("demo_speed_mps", default_value="2.0"),

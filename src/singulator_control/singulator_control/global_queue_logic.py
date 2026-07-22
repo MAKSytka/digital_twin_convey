@@ -96,6 +96,7 @@ def build_pairwise_speed_profile(
     relative_velocity_gain: float,
     maximum_relative_speed: float,
     inversion_margin: float,
+    minimum_delta_by_pair: Sequence[float] | None = None,
 ) -> PairwiseProfile:
     """Create product speeds from adjacent queue gaps.
 
@@ -104,6 +105,11 @@ def build_pairwise_speed_profile(
     clearance is below its target.  The pair requests are accumulated and then
     fitted into the available speed range.
     """
+
+    if minimum_delta_by_pair is not None and len(minimum_delta_by_pair) != max(
+        0, len(ordered) - 1
+    ):
+        raise ValueError("minimum_delta_by_pair must match adjacent pair count")
 
     if not ordered:
         return PairwiseProfile({}, {}, (), (), 0)
@@ -138,6 +144,11 @@ def build_pairwise_speed_profile(
             gap_gain * deficit
             + relative_velocity_gain * closing_speed
         )
+        if minimum_delta_by_pair is not None:
+            requested_delta = max(
+                requested_delta,
+                minimum_delta_by_pair[len(pair_deltas)],
+            )
 
         # The follower has physically moved in front of its immutable leader.
         # Use the full differential range until the inversion is removed.
@@ -203,3 +214,88 @@ def cosine_similarity(first: Sequence[float], second: Sequence[float]) -> float:
     if first_norm <= 1.0e-12 or second_norm <= 1.0e-12:
         return 0.0
     return numerator / (first_norm * second_norm)
+
+
+def allocate_cell_speeds(
+    product_contacts: dict[int, Sequence[tuple[int, float]]],
+    target_speed_by_uid: dict[int, float],
+    urgency_by_uid: dict[int, float],
+    *,
+    cell_count: int,
+    idle_speed: float,
+    minimum_speed: float,
+    maximum_speed: float,
+    urgency_gain: float,
+    idle_regularization: float,
+    iterations: int,
+) -> list[float]:
+    """Fit cell speeds to effective product-speed requests.
+
+    A product is accelerated by the overlap-weighted mean of every cell under
+    it.  Per-cell averaging therefore leaves avoidable allocation error when
+    products partially share cells.  This bounded coordinate-descent solve
+    minimises that *effective* product-speed error directly, while a small
+    idle regulariser keeps cells without a strong request stable.
+    """
+
+    if cell_count <= 0:
+        return []
+    if iterations <= 0:
+        return [clamp(idle_speed, minimum_speed, maximum_speed)] * cell_count
+
+    normalised: dict[int, list[tuple[int, float]]] = {}
+    weights: dict[int, float] = {}
+    for uid, contacts in product_contacts.items():
+        total_overlap = sum(max(0.0, overlap) for _, overlap in contacts)
+        if total_overlap <= 1.0e-12 or uid not in target_speed_by_uid:
+            continue
+        normalised[uid] = [
+            (index, max(0.0, overlap) / total_overlap)
+            for index, overlap in contacts
+            if 0 <= index < cell_count and overlap > 0.0
+        ]
+        weights[uid] = 1.0 + urgency_gain * clamp(
+            urgency_by_uid.get(uid, 0.0), 0.0, 3.0
+        )
+
+    speeds = [clamp(idle_speed, minimum_speed, maximum_speed)] * cell_count
+    for _ in range(iterations):
+        effective = {
+            uid: sum(speeds[index] * overlap for index, overlap in contacts)
+            for uid, contacts in normalised.items()
+        }
+        for cell in range(cell_count):
+            numerator = idle_regularization * idle_speed
+            denominator = idle_regularization
+            for uid, contacts in normalised.items():
+                coefficient = next(
+                    (overlap for index, overlap in contacts if index == cell),
+                    0.0,
+                )
+                if coefficient <= 0.0:
+                    continue
+                weight = weights[uid]
+                residual_without_cell = (
+                    effective[uid] - coefficient * speeds[cell]
+                )
+                numerator += weight * coefficient * (
+                    target_speed_by_uid[uid] - residual_without_cell
+                )
+                denominator += weight * coefficient * coefficient
+            if denominator <= 1.0e-12:
+                continue
+            updated = clamp(
+                numerator / denominator,
+                minimum_speed,
+                maximum_speed,
+            )
+            if updated == speeds[cell]:
+                continue
+            delta = updated - speeds[cell]
+            speeds[cell] = updated
+            for uid, contacts in normalised.items():
+                for index, coefficient in contacts:
+                    if index == cell:
+                        effective[uid] += coefficient * delta
+                        break
+    return speeds
