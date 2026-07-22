@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, TimerAction
+from launch.actions import IncludeLaunchDescription, SetLaunchConfiguration, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
@@ -66,14 +66,6 @@ def generate_launch_description() -> LaunchDescription:
                 )
             }
         ],
-    )
-
-    extension_fanout = Node(
-        package="singulator_sim",
-        executable="matrix_command_fanout",
-        name="matrix_command_fanout_18x4",
-        output="screen",
-        parameters=[{"rows": 18, "cols": 4, "use_sim_time": True}],
     )
 
     throat_controller = Node(
@@ -177,7 +169,9 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
-    entities = []
+    # Override the base fan-out before its actions execute.  This gives the
+    # 18x4 roller scenario one authoritative publisher for all 72 belts.
+    entities = [SetLaunchConfiguration("matrix_rows", "18")]
     gazebo_replaced = False
     for entity in base_launch.entities:
         if isinstance(entity, IncludeLaunchDescription) and not gazebo_replaced:
@@ -193,7 +187,6 @@ def generate_launch_description() -> LaunchDescription:
         [
             throat_bridge,
             extension_bridge,
-            extension_fanout,
             throat_controller,
             advanced_controller,
             TimerAction(period=1.5, actions=[throat_spawner]),

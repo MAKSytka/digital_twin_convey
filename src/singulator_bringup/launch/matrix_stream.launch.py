@@ -32,6 +32,7 @@ def generate_launch_description() -> LaunchDescription:
     start_singulation_controller = LaunchConfiguration(
         "start_singulation_controller"
     )
+    matrix_rows = LaunchConfiguration("matrix_rows")
     infeed_speed = LaunchConfiguration("infeed_speed_mps")
     outfeed_speed = LaunchConfiguration("outfeed_speed_mps")
     demo_speed = LaunchConfiguration("demo_speed_mps")
@@ -142,7 +143,13 @@ def generate_launch_description() -> LaunchDescription:
         executable="matrix_command_fanout",
         name="matrix_command_fanout",
         output="screen",
-        parameters=[{"rows": 14, "cols": 4, "use_sim_time": True}],
+        parameters=[
+            {
+                "rows": ParameterValue(matrix_rows, value_type=int),
+                "cols": 4,
+                "use_sim_time": True,
+            }
+        ],
     )
 
     singulation_controller = Node(
@@ -264,6 +271,7 @@ def generate_launch_description() -> LaunchDescription:
                 "start_singulation_controller",
                 default_value="false",
             ),
+            DeclareLaunchArgument("matrix_rows", default_value="14"),
             DeclareLaunchArgument("infeed_speed_mps", default_value="2.0"),
             DeclareLaunchArgument("outfeed_speed_mps", default_value="2.0"),
             DeclareLaunchArgument("demo_speed_mps", default_value="2.0"),

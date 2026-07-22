@@ -23,6 +23,9 @@ grep -q '/singulator/outfeed/cmd_vel' \
 grep -q '/singulator/throat/left/cmd_vel' \
   'src/singulator_bringup/config/bridge_throat.yaml'
 grep -q '"4.590"' "$LAUNCH"
+grep -q 'SetLaunchConfiguration("matrix_rows", "18")' "$LAUNCH"
+grep -q 'ParameterValue(matrix_rows, value_type=int)' \
+  'src/singulator_bringup/launch/matrix_stream.launch.py'
 
 if grep -qE 'next_available_exit_s|slot_time_by_id|_assign_exit_slots' "$CONTROLLER"; then
   echo "FAIL: obsolete exit-slot scheduler symbols are still present." >&2
