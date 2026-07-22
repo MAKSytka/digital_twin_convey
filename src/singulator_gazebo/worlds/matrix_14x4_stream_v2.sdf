@@ -391,7 +391,7 @@
 
     <model name="cell_r02_c00">
       <static>true</static>
-      <pose>-2.470000 -0.292500 0 0 0 0</pose>
+      <pose>-3.230000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -431,7 +431,7 @@
 
     <model name="cell_r02_c01">
       <static>true</static>
-      <pose>-2.470000 -0.097500 0 0 0 0</pose>
+      <pose>-3.230000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -471,7 +471,7 @@
 
     <model name="cell_r02_c02">
       <static>true</static>
-      <pose>-2.470000 0.097500 0 0 0 0</pose>
+      <pose>-3.230000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -511,7 +511,7 @@
 
     <model name="cell_r02_c03">
       <static>true</static>
-      <pose>-2.470000 0.292500 0 0 0 0</pose>
+      <pose>-3.230000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -551,7 +551,7 @@
 
     <model name="cell_r03_c00">
       <static>true</static>
-      <pose>-2.090000 -0.292500 0 0 0 0</pose>
+      <pose>-2.850000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -591,7 +591,7 @@
 
     <model name="cell_r03_c01">
       <static>true</static>
-      <pose>-2.090000 -0.097500 0 0 0 0</pose>
+      <pose>-2.850000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -631,7 +631,7 @@
 
     <model name="cell_r03_c02">
       <static>true</static>
-      <pose>-2.090000 0.097500 0 0 0 0</pose>
+      <pose>-2.850000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -671,7 +671,7 @@
 
     <model name="cell_r03_c03">
       <static>true</static>
-      <pose>-2.090000 0.292500 0 0 0 0</pose>
+      <pose>-2.850000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -711,7 +711,7 @@
 
     <model name="cell_r04_c00">
       <static>true</static>
-      <pose>-1.710000 -0.292500 0 0 0 0</pose>
+      <pose>-2.470000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -751,7 +751,7 @@
 
     <model name="cell_r04_c01">
       <static>true</static>
-      <pose>-1.710000 -0.097500 0 0 0 0</pose>
+      <pose>-2.470000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -791,7 +791,7 @@
 
     <model name="cell_r04_c02">
       <static>true</static>
-      <pose>-1.710000 0.097500 0 0 0 0</pose>
+      <pose>-2.470000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -831,7 +831,7 @@
 
     <model name="cell_r04_c03">
       <static>true</static>
-      <pose>-1.710000 0.292500 0 0 0 0</pose>
+      <pose>-2.470000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -871,7 +871,7 @@
 
     <model name="cell_r05_c00">
       <static>true</static>
-      <pose>-1.330000 -0.292500 0 0 0 0</pose>
+      <pose>-2.090000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -911,7 +911,7 @@
 
     <model name="cell_r05_c01">
       <static>true</static>
-      <pose>-1.330000 -0.097500 0 0 0 0</pose>
+      <pose>-2.090000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -951,7 +951,7 @@
 
     <model name="cell_r05_c02">
       <static>true</static>
-      <pose>-1.330000 0.097500 0 0 0 0</pose>
+      <pose>-2.090000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -991,7 +991,7 @@
 
     <model name="cell_r05_c03">
       <static>true</static>
-      <pose>-1.330000 0.292500 0 0 0 0</pose>
+      <pose>-2.090000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1031,7 +1031,7 @@
 
     <model name="cell_r06_c00">
       <static>true</static>
-      <pose>-0.950000 -0.292500 0 0 0 0</pose>
+      <pose>-1.710000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1071,7 +1071,7 @@
 
     <model name="cell_r06_c01">
       <static>true</static>
-      <pose>-0.950000 -0.097500 0 0 0 0</pose>
+      <pose>-1.710000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1111,7 +1111,7 @@
 
     <model name="cell_r06_c02">
       <static>true</static>
-      <pose>-0.950000 0.097500 0 0 0 0</pose>
+      <pose>-1.710000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1151,7 +1151,7 @@
 
     <model name="cell_r06_c03">
       <static>true</static>
-      <pose>-0.950000 0.292500 0 0 0 0</pose>
+      <pose>-1.710000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1191,7 +1191,7 @@
 
     <model name="cell_r07_c00">
       <static>true</static>
-      <pose>-0.570000 -0.292500 0 0 0 0</pose>
+      <pose>-1.330000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1231,7 +1231,7 @@
 
     <model name="cell_r07_c01">
       <static>true</static>
-      <pose>-0.570000 -0.097500 0 0 0 0</pose>
+      <pose>-1.330000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1271,7 +1271,7 @@
 
     <model name="cell_r07_c02">
       <static>true</static>
-      <pose>-0.570000 0.097500 0 0 0 0</pose>
+      <pose>-1.330000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1311,7 +1311,7 @@
 
     <model name="cell_r07_c03">
       <static>true</static>
-      <pose>-0.570000 0.292500 0 0 0 0</pose>
+      <pose>-1.330000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1351,7 +1351,7 @@
 
     <model name="cell_r08_c00">
       <static>true</static>
-      <pose>-0.190000 -0.292500 0 0 0 0</pose>
+      <pose>-0.950000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1391,7 +1391,7 @@
 
     <model name="cell_r08_c01">
       <static>true</static>
-      <pose>-0.190000 -0.097500 0 0 0 0</pose>
+      <pose>-0.950000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1431,7 +1431,7 @@
 
     <model name="cell_r08_c02">
       <static>true</static>
-      <pose>-0.190000 0.097500 0 0 0 0</pose>
+      <pose>-0.950000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1471,7 +1471,7 @@
 
     <model name="cell_r08_c03">
       <static>true</static>
-      <pose>-0.190000 0.292500 0 0 0 0</pose>
+      <pose>-0.950000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1511,7 +1511,7 @@
 
     <model name="cell_r09_c00">
       <static>true</static>
-      <pose>0.190000 -0.292500 0 0 0 0</pose>
+      <pose>-0.570000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1551,7 +1551,7 @@
 
     <model name="cell_r09_c01">
       <static>true</static>
-      <pose>0.190000 -0.097500 0 0 0 0</pose>
+      <pose>-0.570000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1591,7 +1591,7 @@
 
     <model name="cell_r09_c02">
       <static>true</static>
-      <pose>0.190000 0.097500 0 0 0 0</pose>
+      <pose>-0.570000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1631,7 +1631,7 @@
 
     <model name="cell_r09_c03">
       <static>true</static>
-      <pose>0.190000 0.292500 0 0 0 0</pose>
+      <pose>-0.570000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1671,7 +1671,7 @@
 
     <model name="cell_r10_c00">
       <static>true</static>
-      <pose>0.570000 -0.292500 0 0 0 0</pose>
+      <pose>-0.190000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1711,7 +1711,7 @@
 
     <model name="cell_r10_c01">
       <static>true</static>
-      <pose>0.570000 -0.097500 0 0 0 0</pose>
+      <pose>-0.190000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1751,7 +1751,7 @@
 
     <model name="cell_r10_c02">
       <static>true</static>
-      <pose>0.570000 0.097500 0 0 0 0</pose>
+      <pose>-0.190000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1791,7 +1791,7 @@
 
     <model name="cell_r10_c03">
       <static>true</static>
-      <pose>0.570000 0.292500 0 0 0 0</pose>
+      <pose>-0.190000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1831,7 +1831,7 @@
 
     <model name="cell_r11_c00">
       <static>true</static>
-      <pose>0.950000 -0.292500 0 0 0 0</pose>
+      <pose>0.190000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1871,7 +1871,7 @@
 
     <model name="cell_r11_c01">
       <static>true</static>
-      <pose>0.950000 -0.097500 0 0 0 0</pose>
+      <pose>0.190000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1911,7 +1911,7 @@
 
     <model name="cell_r11_c02">
       <static>true</static>
-      <pose>0.950000 0.097500 0 0 0 0</pose>
+      <pose>0.190000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1951,7 +1951,7 @@
 
     <model name="cell_r11_c03">
       <static>true</static>
-      <pose>0.950000 0.292500 0 0 0 0</pose>
+      <pose>0.190000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -1991,7 +1991,7 @@
 
     <model name="cell_r12_c00">
       <static>true</static>
-      <pose>1.330000 -0.292500 0 0 0 0</pose>
+      <pose>0.570000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -2031,7 +2031,7 @@
 
     <model name="cell_r12_c01">
       <static>true</static>
-      <pose>1.330000 -0.097500 0 0 0 0</pose>
+      <pose>0.570000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -2071,7 +2071,7 @@
 
     <model name="cell_r12_c02">
       <static>true</static>
-      <pose>1.330000 0.097500 0 0 0 0</pose>
+      <pose>0.570000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -2111,7 +2111,7 @@
 
     <model name="cell_r12_c03">
       <static>true</static>
-      <pose>1.330000 0.292500 0 0 0 0</pose>
+      <pose>0.570000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -2151,7 +2151,7 @@
 
     <model name="cell_r13_c00">
       <static>true</static>
-      <pose>1.710000 -0.292500 0 0 0 0</pose>
+      <pose>0.950000 -0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -2191,7 +2191,7 @@
 
     <model name="cell_r13_c01">
       <static>true</static>
-      <pose>1.710000 -0.097500 0 0 0 0</pose>
+      <pose>0.950000 -0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -2231,7 +2231,7 @@
 
     <model name="cell_r13_c02">
       <static>true</static>
-      <pose>1.710000 0.097500 0 0 0 0</pose>
+      <pose>0.950000 0.097500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
@@ -2271,7 +2271,7 @@
 
     <model name="cell_r13_c03">
       <static>true</static>
-      <pose>1.710000 0.292500 0 0 0 0</pose>
+      <pose>0.950000 0.292500 0 0 0 0</pose>
       <link name="belt">
         <pose>0 0 0.040000 0 0 0</pose>
         <collision name="belt_collision">
