@@ -23,6 +23,7 @@ from typing import Iterable
 
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import Float64
 
 from singulator_interfaces.msg import (
     BoxObservation,
@@ -32,6 +33,7 @@ from singulator_interfaces.msg import (
 
 from .global_queue_logic import (
     GapState,
+    allocate_cell_speeds,
     build_pairwise_speed_profile,
     clamp,
     cosine_similarity,
@@ -184,6 +186,7 @@ class SingulationController(Node):
         self.declare_parameter("cell_width_m", 0.175)
         self.declare_parameter("gap_x_m", 0.020)
         self.declare_parameter("gap_y_m", 0.020)
+        self.declare_parameter("separator_length_m", 0.360)
 
         self.declare_parameter("minimum_speed_mps", 1.00)
         self.declare_parameter("maximum_speed_mps", 3.00)
@@ -198,6 +201,10 @@ class SingulationController(Node):
         self.declare_parameter("maximum_relative_speed_mps", 2.00)
         self.declare_parameter("order_inversion_margin_m", 0.03)
         self.declare_parameter("exit_gap_check_margin_m", 0.80)
+        self.declare_parameter("deadline_separation_distance_m", 1.80)
+        self.declare_parameter("deadline_gap_margin_m", 0.04)
+        self.declare_parameter("deadline_recovery_gain", 1.35)
+        self.declare_parameter("deadline_min_time_s", 0.10)
 
         self.declare_parameter("entry_gate_offset_m", 0.30)
         self.declare_parameter("entry_capture_window_s", 0.18)
@@ -227,6 +234,8 @@ class SingulationController(Node):
         self.declare_parameter("yaw_control_exit_margin_m", 0.65)
 
         self.declare_parameter("allocation_urgency_gain", 1.50)
+        self.declare_parameter("allocation_idle_regularization", 0.03)
+        self.declare_parameter("allocation_iterations", 12)
         self.declare_parameter("uncontrollable_similarity", 0.97)
         self.declare_parameter("minimum_confidence", 0.12)
         self.declare_parameter("observation_timeout_s", 0.70)
@@ -237,6 +246,9 @@ class SingulationController(Node):
         self.cols = int(self.get_parameter("cols").value)
         self.cell_length = float(self.get_parameter("cell_length_m").value)
         self.cell_width = float(self.get_parameter("cell_width_m").value)
+        self.separator_length = float(
+            self.get_parameter("separator_length_m").value
+        )
         self.gap_x = float(self.get_parameter("gap_x_m").value)
         self.gap_y = float(self.get_parameter("gap_y_m").value)
         self.pitch_x = self.cell_length + self.gap_x
@@ -251,6 +263,9 @@ class SingulationController(Node):
         )
         self.matrix_min_x = -self.matrix_length / 2.0
         self.matrix_max_x = self.matrix_length / 2.0
+        self.separator_center_x = (
+            self.matrix_max_x + self.gap_x + self.separator_length / 2.0
+        )
 
         self.minimum_speed = float(
             self.get_parameter("minimum_speed_mps").value
@@ -282,6 +297,18 @@ class SingulationController(Node):
         )
         self.exit_gap_check_margin = float(
             self.get_parameter("exit_gap_check_margin_m").value
+        )
+        self.deadline_separation_distance = float(
+            self.get_parameter("deadline_separation_distance_m").value
+        )
+        self.deadline_gap_margin = float(
+            self.get_parameter("deadline_gap_margin_m").value
+        )
+        self.deadline_recovery_gain = float(
+            self.get_parameter("deadline_recovery_gain").value
+        )
+        self.deadline_min_time = float(
+            self.get_parameter("deadline_min_time_s").value
         )
 
         self.entry_gate_offset = float(
@@ -361,6 +388,12 @@ class SingulationController(Node):
         self.allocation_urgency_gain = float(
             self.get_parameter("allocation_urgency_gain").value
         )
+        self.allocation_idle_regularization = float(
+            self.get_parameter("allocation_idle_regularization").value
+        )
+        self.allocation_iterations = int(
+            self.get_parameter("allocation_iterations").value
+        )
         self.uncontrollable_similarity = float(
             self.get_parameter("uncontrollable_similarity").value
         )
@@ -390,6 +423,8 @@ class SingulationController(Node):
 
         self.last_observation_stamp_s: float | None = None
         self.last_command = [self.idle_speed] * (self.rows * self.cols)
+        self.last_separator_command = [self.idle_speed] * self.cols
+        self.desired_separator_command = [self.idle_speed] * self.cols
         self.last_publish_s: float | None = None
         self.last_diagnostic_s = -math.inf
 
@@ -401,6 +436,7 @@ class SingulationController(Node):
         self.last_recovered_orphans = 0
         self.last_order_inversions = 0
         self.last_unresolved_at_exit = 0
+        self.last_deadline_boost_pairs = 0
         self.last_min_adjacent_gap = math.inf
         self.last_shared_cells = 0
         self.last_uncontrollable_pairs = 0
@@ -419,6 +455,14 @@ class SingulationController(Node):
             command_topic,
             10,
         )
+        self.separator_publishers = [
+            self.create_publisher(
+                Float64,
+                f"/singulator/separator/c{col:02d}/cmd_vel",
+                10,
+            )
+            for col in range(self.cols)
+        ]
         self.timer = self.create_timer(
             1.0 / max(1.0, self.publish_rate),
             self._on_control_timer,
@@ -435,6 +479,8 @@ class SingulationController(Node):
     def _validate_parameters(self) -> None:
         if self.rows <= 0 or self.cols <= 0:
             raise ValueError("rows and cols must be positive")
+        if self.separator_length <= 0.0:
+            raise ValueError("separator_length_m must be positive")
         if not (
             0.0 < self.minimum_speed
             <= self.idle_speed
@@ -455,6 +501,14 @@ class SingulationController(Node):
             raise ValueError("maximum_acceleration_mps2 must be positive")
         if self.target_gap <= 0.0 or self.inter_wave_target_gap <= 0.0:
             raise ValueError("target gaps must be positive")
+        if self.deadline_separation_distance <= 0.0:
+            raise ValueError("deadline_separation_distance_m must be positive")
+        if self.deadline_gap_margin < 0.0:
+            raise ValueError("deadline_gap_margin_m must be >= 0")
+        if self.deadline_recovery_gain <= 0.0:
+            raise ValueError("deadline_recovery_gain must be positive")
+        if self.deadline_min_time <= 0.0:
+            raise ValueError("deadline_min_time_s must be positive")
         if self.entry_capture_window <= 0.0:
             raise ValueError("entry_capture_window_s must be positive")
         if self.entry_wave_max_size <= 0:
@@ -467,6 +521,10 @@ class SingulationController(Node):
             )
         if self.publish_rate <= 0.0:
             raise ValueError("publish_rate_hz must be positive")
+        if self.allocation_idle_regularization < 0.0:
+            raise ValueError("allocation_idle_regularization must be >= 0")
+        if self.allocation_iterations <= 0:
+            raise ValueError("allocation_iterations must be positive")
 
     def _on_observations(self, message: BoxObservationArray) -> None:
         stamp_s = self._stamp_to_seconds(message)
@@ -922,10 +980,14 @@ class SingulationController(Node):
             desired = self._build_cell_speeds(now_s)
         else:
             desired = [self.idle_speed] * (self.rows * self.cols)
+            self.desired_separator_command = [self.idle_speed] * self.cols
 
         limited = self._limit_command_rate(desired, dt)
+        separator_limited = self._limit_separator_command_rate(dt)
         self.last_command = limited
+        self.last_separator_command = separator_limited
         self._publish_command(limited)
+        self._publish_separator_command(separator_limited)
         self._publish_diagnostics(now_s, observation_is_fresh)
 
     def _active_items(self, now_s: float) -> list[LogicalBox]:
@@ -962,6 +1024,7 @@ class SingulationController(Node):
             item.is_ghost(now_s, 0.12) for item in active
         )
         if not active:
+            self.desired_separator_command = [self.idle_speed] * self.cols
             return [self.idle_speed] * (self.rows * self.cols)
 
         active_by_uid = {item.uid: item for item in active}
@@ -1008,6 +1071,47 @@ class SingulationController(Node):
                 )
             )
 
+        # Near the throat a proportional controller may detect a small deficit
+        # too late.  Add the minimum relative speed that can create a safe
+        # clearance before the leading edge reaches the matrix exit.
+        deadline_deltas: list[float] = []
+        deadline_boost_pairs = 0
+        for index, (leader, follower) in enumerate(zip(ordered, ordered[1:])):
+            clearance = (
+                states[index].x
+                - states[index].half_length
+                - states[index + 1].x
+                - states[index + 1].half_length
+            )
+            remaining_distance = self.matrix_max_x - max(
+                control_x[leader.uid], control_x[follower.uid]
+            )
+            deadline_delta = 0.0
+            if remaining_distance < self.deadline_separation_distance:
+                time_to_exit = max(
+                    self.deadline_min_time,
+                    max(0.0, remaining_distance)
+                    / max(self.transport_speed, 1.0e-6),
+                )
+                exit_deficit = max(
+                    0.0,
+                    states[index].target_gap_to_follower
+                    + self.deadline_gap_margin
+                    - clearance,
+                )
+                deadline_delta = (
+                    self.deadline_recovery_gain * exit_deficit / time_to_exit
+                )
+                nominal_delta = (
+                    self.gap_gain
+                    * max(0.0, states[index].target_gap_to_follower - clearance)
+                    + self.relative_velocity_gain
+                    * max(0.0, states[index + 1].vx - states[index].vx)
+                )
+                if deadline_delta > nominal_delta + 1.0e-6:
+                    deadline_boost_pairs += 1
+            deadline_deltas.append(deadline_delta)
+
         profile = build_pairwise_speed_profile(
             states,
             transport_speed=self.transport_speed,
@@ -1017,7 +1121,9 @@ class SingulationController(Node):
             relative_velocity_gain=self.relative_velocity_gain,
             maximum_relative_speed=self.maximum_relative_speed,
             inversion_margin=self.order_inversion_margin,
+            minimum_delta_by_pair=deadline_deltas,
         )
+        self.last_deadline_boost_pairs = deadline_boost_pairs
         self.last_order_inversions = profile.inversion_count
         self.last_min_adjacent_gap = min(
             profile.clearance_by_pair,
@@ -1088,29 +1194,43 @@ class SingulationController(Node):
                 )
                 contacts[uid].append((index, overlap))
 
-        result = [self.idle_speed] * (self.rows * self.cols)
-        shared_cells = 0
-        for index, cell_proposals in enumerate(proposals):
-            if not cell_proposals:
+        # Solve against the effective (overlap-weighted) speed of each box,
+        # instead of independently averaging every shared cell.  This lets a
+        # partially shared contact patch still create a useful speed gradient.
+        target_speed_for_allocation: dict[int, float] = {}
+        for uid, item_contacts in contacts.items():
+            total_overlap = sum(overlap for _, overlap in item_contacts)
+            if total_overlap <= 1.0e-9:
                 continue
+            proposal_by_cell = {
+                index: proposal.speed
+                for index, cell_proposals in enumerate(proposals)
+                for proposal in cell_proposals
+                if proposal.uid == uid
+            }
+            target_speed_for_allocation[uid] = sum(
+                proposal_by_cell.get(index, target_speed.get(uid, self.idle_speed))
+                * overlap
+                for index, overlap in item_contacts
+            ) / total_overlap
+
+        result = allocate_cell_speeds(
+            contacts,
+            target_speed_for_allocation,
+            urgency,
+            cell_count=self.rows * self.cols,
+            idle_speed=self.idle_speed,
+            minimum_speed=self.minimum_speed,
+            maximum_speed=self.maximum_speed,
+            urgency_gain=self.allocation_urgency_gain,
+            idle_regularization=self.allocation_idle_regularization,
+            iterations=self.allocation_iterations,
+        )
+        shared_cells = 0
+        for cell_proposals in proposals:
             unique_uids = {proposal.uid for proposal in cell_proposals}
             if len(unique_uids) > 1:
                 shared_cells += 1
-            weighted_sum = 0.0
-            total_weight = 0.0
-            for proposal in cell_proposals:
-                control_weight = proposal.overlap * (
-                    1.0
-                    + self.allocation_urgency_gain
-                    * clamp(proposal.urgency, 0.0, 3.0)
-                )
-                weighted_sum += control_weight * proposal.speed
-                total_weight += control_weight
-            result[index] = clamp(
-                weighted_sum / max(total_weight, 1.0e-9),
-                self.minimum_speed,
-                self.maximum_speed,
-            )
         self.last_shared_cells = shared_cells
 
         allocation_errors: list[float] = []
@@ -1129,7 +1249,13 @@ class SingulationController(Node):
             item.last_command_speed = effective_speed
             contact_vectors[item.uid] = vector
             allocation_errors.append(
-                abs(effective_speed - target_speed.get(item.uid, self.idle_speed))
+                abs(
+                    effective_speed
+                    - target_speed_for_allocation.get(
+                        item.uid,
+                        self.idle_speed,
+                    )
+                )
             )
         self.last_allocation_error = max(allocation_errors, default=0.0)
 
@@ -1147,7 +1273,64 @@ class SingulationController(Node):
                 uncontrollable += 1
         self.last_uncontrollable_pairs = uncontrollable
 
+        self.desired_separator_command = self._build_separator_speeds(
+            active,
+            control_x,
+            control_y,
+            target_speed,
+            urgency,
+        )
         return result
+
+    def _build_separator_speeds(
+        self,
+        active: list[LogicalBox],
+        control_x: dict[int, float],
+        control_y: dict[int, float],
+        target_speed: dict[int, float],
+        urgency: dict[int, float],
+    ) -> list[float]:
+        """Allocate the independent final row using the same product targets."""
+
+        contacts: dict[int, list[tuple[int, float]]] = {}
+        half_separator = self.separator_length / 2.0
+        for item in active:
+            overlap_x = min(
+                control_x[item.uid] + item.projected_half_length,
+                self.separator_center_x + half_separator,
+            ) - max(
+                control_x[item.uid] - item.projected_half_length,
+                self.separator_center_x - half_separator,
+            )
+            if overlap_x <= 0.0:
+                continue
+            for col in range(self.cols):
+                centre_y = (col - (self.cols - 1) / 2.0) * self.pitch_y
+                overlap_y = min(
+                    control_y[item.uid] + item.projected_half_width,
+                    centre_y + self.cell_width / 2.0,
+                ) - max(
+                    control_y[item.uid] - item.projected_half_width,
+                    centre_y - self.cell_width / 2.0,
+                )
+                if overlap_y > 0.0:
+                    contacts.setdefault(item.uid, []).append(
+                        (col, overlap_x * overlap_y)
+                    )
+        if not contacts:
+            return [self.idle_speed] * self.cols
+        return allocate_cell_speeds(
+            contacts,
+            target_speed,
+            urgency,
+            cell_count=self.cols,
+            idle_speed=self.idle_speed,
+            minimum_speed=self.minimum_speed,
+            maximum_speed=self.maximum_speed,
+            urgency_gain=self.allocation_urgency_gain,
+            idle_regularization=self.allocation_idle_regularization,
+            iterations=self.allocation_iterations,
+        )
 
     def _overlapped_cells(
         self,
@@ -1238,6 +1421,20 @@ class SingulationController(Node):
             )
         return result
 
+    def _limit_separator_command_rate(self, dt: float) -> list[float]:
+        maximum_step = self.maximum_acceleration * dt
+        return [
+            previous + clamp(
+                target - previous,
+                -maximum_step,
+                maximum_step,
+            )
+            for previous, target in zip(
+                self.last_separator_command,
+                self.desired_separator_command,
+            )
+        ]
+
     def _publish_command(self, speeds: list[float]) -> None:
         message = MatrixCommand()
         message.header.stamp = self.get_clock().now().to_msg()
@@ -1247,12 +1444,19 @@ class SingulationController(Node):
         message.target_speed_mps = [float(value) for value in speeds]
         self.command_publisher.publish(message)
 
+    def _publish_separator_command(self, speeds: list[float]) -> None:
+        for publisher, speed in zip(self.separator_publishers, speeds):
+            message = Float64()
+            message.data = float(speed)
+            publisher.publish(message)
+
     def _reset_cycle_diagnostics(self) -> None:
         self.last_active_boxes = 0
         self.last_queue_size = len(self.global_order)
         self.last_ghost_tracks = 0
         self.last_order_inversions = 0
         self.last_unresolved_at_exit = 0
+        self.last_deadline_boost_pairs = 0
         self.last_min_adjacent_gap = math.inf
         self.last_shared_cells = 0
         self.last_uncontrollable_pairs = 0
@@ -1285,6 +1489,7 @@ class SingulationController(Node):
             f"orphans={self.last_recovered_orphans}, "
             f"inversions={self.last_order_inversions}, "
             f"unresolved_exit={self.last_unresolved_at_exit}, "
+            f"deadline_boost={self.last_deadline_boost_pairs}, "
             f"min_gap={min_gap}, "
             f"shared_cells={self.last_shared_cells}, "
             f"uncontrollable={self.last_uncontrollable_pairs}, "
