@@ -151,9 +151,9 @@ inter_wave_target_gap_m        = 0.28
 gap_gain                       = 3.00
 relative_velocity_gain         = 0.50
 maximum_relative_speed_mps     = 2.00
-deadline_separation_distance_m = 1.80
-deadline_gap_margin_m          = 0.04
-deadline_recovery_gain         = 1.35
+deadline_separation_distance_m = 3.20
+deadline_gap_margin_m          = 0.06
+deadline_recovery_gain         = 1.60
 deadline_min_time_s            = 0.10
 
 entry_capture_window_s         = 0.18

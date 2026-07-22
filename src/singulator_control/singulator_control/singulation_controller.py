@@ -1067,10 +1067,19 @@ class SingulationController(Node):
             )
             deadline_delta = 0.0
             if remaining_distance < self.deadline_separation_distance:
+                # Use the fastest plausible product speed, not nominal
+                # transport speed.  Otherwise an already accelerated leader
+                # reaches the throat before a nominal-time recovery can form
+                # the requested clearance.
+                exit_speed = max(
+                    self.transport_speed,
+                    leader.prediction_speed(self.maximum_speed),
+                    follower.prediction_speed(self.maximum_speed),
+                )
                 time_to_exit = max(
                     self.deadline_min_time,
                     max(0.0, remaining_distance)
-                    / max(self.transport_speed, 1.0e-6),
+                    / max(exit_speed, 1.0e-6),
                 )
                 exit_deficit = max(
                     0.0,
