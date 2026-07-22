@@ -1,16 +1,18 @@
-"""Closed-loop baseline controller for the 14x4 conveyor singulator.
+"""V7 immutable-global-queue controller for the 14x4 singulator.
 
-The node consumes camera observations and publishes one longitudinal velocity
-for every matrix cell.  It creates a single longitudinal queue by combining:
+V7 removes cluster re-creation and absolute exit-slot scheduling.  Products are
+captured once at the matrix entry, appended to one immutable global queue, and
+controlled only through the measured clearances between adjacent queue items.
 
-* pairwise gap control between ordered boxes;
-* differential left/right cell speeds for yaw correction;
-* overlap-based mapping from each box footprint to matrix cells;
-* temporal speed limiting and conservative conflict resolution.
+The controller also maintains logical product identities above the raw vision
+track IDs.  When one large detection covers several predicted products, the
+observation is treated as a merged contour: the original logical products coast
+as separate ghost tracks and retain their queue order until they are visible
+again.
 
-This is intentionally a deterministic, inspectable baseline rather than a
-black-box optimiser.  It is suitable for simulation tuning and for collecting
-data before a later MPC/optimisation controller is introduced.
+Shared conveyor cells use an urgency-weighted average of all contacting product
+requests.  No cell is assigned to one arbitrary owner, which removes the command
+chatter seen in V6.  All commanded speeds remain positive and bounded.
 """
 
 from __future__ import annotations
@@ -28,46 +30,31 @@ from singulator_interfaces.msg import (
     MatrixCommand,
 )
 
+from .global_queue_logic import (
+    GapState,
+    build_pairwise_speed_profile,
+    clamp,
+    cosine_similarity,
+)
 
-@dataclass(slots=True)
-class TrackedBox:
-    track_id: int
-    sequence: int
+
+def normalise_half_turn(angle: float) -> float:
+    return ((angle + math.pi / 2.0) % math.pi) - math.pi / 2.0
+
+
+def angle_error(angle: float, reference: float) -> float:
+    return normalise_half_turn(angle - reference)
+
+
+@dataclass(frozen=True, slots=True)
+class ObservedBox:
+    raw_track_id: int
     x: float
     y: float
     length: float
     width: float
     yaw: float
     confidence: float
-    stamp_s: float
-    vx: float = 0.0
-    yaw_rate: float = 0.0
-    lag_reference_x: float | None = None
-    lag_reference_stamp_s: float | None = None
-    longitudinal_lag_m: float = 0.0
-
-    def update(self, observation: BoxObservation, stamp_s: float) -> None:
-        dt = stamp_s - self.stamp_s
-        if dt > 1.0e-4:
-            measured_vx = (float(observation.center.x) - self.x) / dt
-            measured_yaw_rate = angle_error(
-                float(observation.yaw_rad),
-                self.yaw,
-            ) / dt
-            alpha = 0.45
-            self.vx = alpha * measured_vx + (1.0 - alpha) * self.vx
-            self.yaw_rate = (
-                alpha * measured_yaw_rate
-                + (1.0 - alpha) * self.yaw_rate
-            )
-
-        self.x = float(observation.center.x)
-        self.y = float(observation.center.y)
-        self.length = max(0.02, float(observation.length_m))
-        self.width = max(0.01, float(observation.width_m))
-        self.yaw = normalise_half_turn(float(observation.yaw_rad))
-        self.confidence = float(observation.confidence)
-        self.stamp_s = stamp_s
 
     @property
     def projected_half_length(self) -> float:
@@ -83,84 +70,173 @@ class TrackedBox:
             + abs(self.width * math.cos(self.yaw))
         )
 
+    @property
+    def footprint_area(self) -> float:
+        return max(1.0e-6, self.length * self.width)
+
+
+@dataclass(slots=True)
+class LogicalBox:
+    uid: int
+    sequence: int
+    raw_track_id: int
+    x: float
+    y: float
+    length: float
+    width: float
+    yaw: float
+    confidence: float
+    first_seen_s: float
+    stamp_s: float
+    vx: float = 0.0
+    vy: float = 0.0
+    yaw_rate: float = 0.0
+    last_command_speed: float = 2.20
+    occluded_until_s: float = -math.inf
+    last_merge_evidence_s: float = -math.inf
+    wave_id: int | None = None
+    queued: bool = False
+    observation_count: int = 1
+
+    def update(self, observation: ObservedBox, stamp_s: float) -> None:
+        dt = stamp_s - self.stamp_s
+        if dt > 1.0e-4:
+            measured_vx = (observation.x - self.x) / dt
+            measured_vy = (observation.y - self.y) / dt
+            measured_yaw_rate = angle_error(observation.yaw, self.yaw) / dt
+            alpha = 0.45
+            self.vx = alpha * measured_vx + (1.0 - alpha) * self.vx
+            self.vy = alpha * measured_vy + (1.0 - alpha) * self.vy
+            self.yaw_rate = (
+                alpha * measured_yaw_rate
+                + (1.0 - alpha) * self.yaw_rate
+            )
+
+        self.raw_track_id = observation.raw_track_id
+        self.x = observation.x
+        self.y = observation.y
+        self.length = max(0.02, observation.length)
+        self.width = max(0.01, observation.width)
+        self.yaw = normalise_half_turn(observation.yaw)
+        self.confidence = observation.confidence
+        self.stamp_s = stamp_s
+        self.observation_count += 1
+
+    @property
+    def projected_half_length(self) -> float:
+        return 0.5 * (
+            abs(self.length * math.cos(self.yaw))
+            + abs(self.width * math.sin(self.yaw))
+        )
+
+    @property
+    def projected_half_width(self) -> float:
+        return 0.5 * (
+            abs(self.length * math.sin(self.yaw))
+            + abs(self.width * math.cos(self.yaw))
+        )
+
+    @property
+    def footprint_area(self) -> float:
+        return max(1.0e-6, self.length * self.width)
+
+    def prediction_speed(self, maximum_speed: float) -> float:
+        measured = self.vx if self.vx > 0.05 else self.last_command_speed
+        blended = 0.60 * measured + 0.40 * self.last_command_speed
+        return clamp(blended, 0.0, maximum_speed)
+
+    def predicted_x(
+        self,
+        now_s: float,
+        maximum_speed: float,
+        maximum_horizon_s: float,
+    ) -> float:
+        age = clamp(now_s - self.stamp_s, 0.0, maximum_horizon_s)
+        return self.x + self.prediction_speed(maximum_speed) * age
+
+    def predicted_y(self, now_s: float, maximum_horizon_s: float) -> float:
+        age = clamp(now_s - self.stamp_s, 0.0, maximum_horizon_s)
+        return self.y + clamp(self.vy, -0.8, 0.8) * age
+
+    def is_ghost(self, now_s: float, frame_grace_s: float) -> bool:
+        return now_s - self.stamp_s > frame_grace_s
+
 
 @dataclass(slots=True)
 class CellProposal:
+    uid: int
     speed: float
-    weight: float
-    track_id: int
-    track_x: float
-    queue_rank: int
-
-
-def clamp(value: float, low: float, high: float) -> float:
-    return max(low, min(high, value))
-
-
-def normalise_half_turn(angle: float) -> float:
-    """Normalise rectangle yaw to [-pi/2, pi/2)."""
-    return ((angle + math.pi / 2.0) % math.pi) - math.pi / 2.0
-
-
-def angle_error(angle: float, reference: float) -> float:
-    return normalise_half_turn(angle - reference)
+    overlap: float
+    urgency: float
 
 
 class SingulationController(Node):
-    """Vision-feedback controller that forms a longitudinal single-file queue."""
+    """Direct adjacent-gap controller with immutable global product order."""
 
     def __init__(self) -> None:
         super().__init__("singulation_controller")
 
         self.declare_parameter("boxes_topic", "/singulator/boxes")
-        self.declare_parameter(
-            "command_topic",
-            "/singulator/matrix/command",
-        )
+        self.declare_parameter("command_topic", "/singulator/matrix/command")
         self.declare_parameter("rows", 14)
         self.declare_parameter("cols", 4)
         self.declare_parameter("cell_length_m", 0.360)
         self.declare_parameter("cell_width_m", 0.175)
         self.declare_parameter("gap_x_m", 0.020)
         self.declare_parameter("gap_y_m", 0.020)
-        self.declare_parameter("base_speed_mps", 2.00)
-        self.declare_parameter("minimum_speed_mps", 0.35)
+
+        self.declare_parameter("minimum_speed_mps", 1.00)
         self.declare_parameter("maximum_speed_mps", 3.00)
-        self.declare_parameter("leader_speed_mps", 2.80)
+        self.declare_parameter("idle_speed_mps", 2.20)
+        self.declare_parameter("transport_speed_mps", 2.50)
+        self.declare_parameter("maximum_acceleration_mps2", 6.0)
+
         self.declare_parameter("target_gap_m", 0.18)
-        self.declare_parameter("hard_gap_m", 0.035)
-        self.declare_parameter("gap_gain", 2.20)
-        self.declare_parameter("relative_velocity_gain", 0.45)
-        self.declare_parameter("leader_boost_gain", 1.20)
-        self.declare_parameter("nominal_transport_speed_mps", 2.00)
-        self.declare_parameter("maximum_longitudinal_lag_m", 0.30)
-        self.declare_parameter("lag_guard_horizon_s", 0.20)
-        self.declare_parameter("lag_recovery_gain", 2.00)
-        self.declare_parameter("prediction_horizon_s", 0.18)
-        self.declare_parameter("longitudinal_control_margin_m", 0.16)
-        self.declare_parameter("yaw_gain", 1.35)
-        self.declare_parameter("yaw_rate_gain", 0.10)
-        self.declare_parameter("maximum_yaw_delta_mps", 0.90)
-        self.declare_parameter("enable_lateral_steering", False)
-        self.declare_parameter("lateral_to_yaw_gain", 0.70)
-        self.declare_parameter("maximum_target_yaw_rad", 0.30)
-        self.declare_parameter("minimum_confidence", 0.20)
-        self.declare_parameter("observation_timeout_s", 0.65)
-        self.declare_parameter("publish_rate_hz", 20.0)
-        self.declare_parameter("maximum_acceleration_mps2", 3.0)
+        self.declare_parameter("inter_wave_target_gap_m", 0.28)
+        self.declare_parameter("gap_gain", 3.00)
+        self.declare_parameter("relative_velocity_gain", 0.50)
+        self.declare_parameter("maximum_relative_speed_mps", 2.00)
+        self.declare_parameter("order_inversion_margin_m", 0.03)
+        self.declare_parameter("exit_gap_check_margin_m", 0.80)
+
+        self.declare_parameter("entry_gate_offset_m", 0.30)
+        self.declare_parameter("entry_capture_window_s", 0.18)
+        self.declare_parameter("entry_wave_dx_m", 0.36)
+        self.declare_parameter("entry_wave_max_size", 6)
+        self.declare_parameter("entry_capture_back_margin_m", 1.35)
+        self.declare_parameter("entry_capture_front_margin_m", 0.18)
+
+        self.declare_parameter("normal_track_timeout_s", 0.60)
+        self.declare_parameter("merged_track_timeout_s", 2.80)
+        self.declare_parameter("logical_item_expiration_s", 3.50)
+        self.declare_parameter("prediction_max_horizon_s", 3.00)
+        self.declare_parameter("reid_max_distance_m", 0.70)
+        self.declare_parameter("reid_max_lateral_distance_m", 0.30)
+        self.declare_parameter("reid_max_backward_distance_m", 0.22)
+        self.declare_parameter("merge_area_ratio", 1.35)
+        self.declare_parameter("merge_padding_x_m", 0.08)
+        self.declare_parameter("merge_padding_y_m", 0.05)
+        self.declare_parameter("exit_remove_margin_m", 0.65)
+
+        self.declare_parameter("prediction_horizon_s", 0.12)
+        self.declare_parameter("longitudinal_control_margin_m", 0.10)
+        self.declare_parameter("yaw_gain", 0.65)
+        self.declare_parameter("yaw_rate_gain", 0.05)
+        self.declare_parameter("maximum_yaw_delta_mps", 0.25)
+        self.declare_parameter("dense_pair_yaw_gap_m", 0.10)
+        self.declare_parameter("yaw_control_exit_margin_m", 0.65)
+
+        self.declare_parameter("allocation_urgency_gain", 1.50)
+        self.declare_parameter("uncontrollable_similarity", 0.97)
+        self.declare_parameter("minimum_confidence", 0.12)
+        self.declare_parameter("observation_timeout_s", 0.70)
+        self.declare_parameter("publish_rate_hz", 30.0)
         self.declare_parameter("diagnostic_period_s", 1.0)
 
         self.rows = int(self.get_parameter("rows").value)
         self.cols = int(self.get_parameter("cols").value)
-        if self.rows <= 0 or self.cols <= 0:
-            raise ValueError("rows and cols must be positive")
-
-        self.cell_length = float(
-            self.get_parameter("cell_length_m").value
-        )
-        self.cell_width = float(
-            self.get_parameter("cell_width_m").value
-        )
+        self.cell_length = float(self.get_parameter("cell_length_m").value)
+        self.cell_width = float(self.get_parameter("cell_width_m").value)
         self.gap_x = float(self.get_parameter("gap_x_m").value)
         self.gap_y = float(self.get_parameter("gap_y_m").value)
         self.pitch_x = self.cell_length + self.gap_x
@@ -176,39 +252,92 @@ class SingulationController(Node):
         self.matrix_min_x = -self.matrix_length / 2.0
         self.matrix_max_x = self.matrix_length / 2.0
 
-        self.base_speed = float(
-            self.get_parameter("base_speed_mps").value
-        )
         self.minimum_speed = float(
             self.get_parameter("minimum_speed_mps").value
         )
         self.maximum_speed = float(
             self.get_parameter("maximum_speed_mps").value
         )
-        self.leader_speed = float(
-            self.get_parameter("leader_speed_mps").value
+        self.idle_speed = float(self.get_parameter("idle_speed_mps").value)
+        self.transport_speed = float(
+            self.get_parameter("transport_speed_mps").value
         )
+        self.maximum_acceleration = float(
+            self.get_parameter("maximum_acceleration_mps2").value
+        )
+
         self.target_gap = float(self.get_parameter("target_gap_m").value)
-        self.hard_gap = float(self.get_parameter("hard_gap_m").value)
+        self.inter_wave_target_gap = float(
+            self.get_parameter("inter_wave_target_gap_m").value
+        )
         self.gap_gain = float(self.get_parameter("gap_gain").value)
         self.relative_velocity_gain = float(
             self.get_parameter("relative_velocity_gain").value
         )
-        self.leader_boost_gain = float(
-            self.get_parameter("leader_boost_gain").value
+        self.maximum_relative_speed = float(
+            self.get_parameter("maximum_relative_speed_mps").value
         )
-        self.nominal_transport_speed = float(
-            self.get_parameter("nominal_transport_speed_mps").value
+        self.order_inversion_margin = float(
+            self.get_parameter("order_inversion_margin_m").value
         )
-        self.maximum_longitudinal_lag = float(
-            self.get_parameter("maximum_longitudinal_lag_m").value
+        self.exit_gap_check_margin = float(
+            self.get_parameter("exit_gap_check_margin_m").value
         )
-        self.lag_guard_horizon = float(
-            self.get_parameter("lag_guard_horizon_s").value
+
+        self.entry_gate_offset = float(
+            self.get_parameter("entry_gate_offset_m").value
         )
-        self.lag_recovery_gain = float(
-            self.get_parameter("lag_recovery_gain").value
+        self.entry_capture_window = float(
+            self.get_parameter("entry_capture_window_s").value
         )
+        self.entry_wave_dx = float(
+            self.get_parameter("entry_wave_dx_m").value
+        )
+        self.entry_wave_max_size = int(
+            self.get_parameter("entry_wave_max_size").value
+        )
+        self.entry_capture_back_margin = float(
+            self.get_parameter("entry_capture_back_margin_m").value
+        )
+        self.entry_capture_front_margin = float(
+            self.get_parameter("entry_capture_front_margin_m").value
+        )
+        self.entry_gate_x = self.matrix_min_x - self.entry_gate_offset
+
+        self.normal_track_timeout = float(
+            self.get_parameter("normal_track_timeout_s").value
+        )
+        self.merged_track_timeout = float(
+            self.get_parameter("merged_track_timeout_s").value
+        )
+        self.logical_item_expiration = float(
+            self.get_parameter("logical_item_expiration_s").value
+        )
+        self.prediction_max_horizon = float(
+            self.get_parameter("prediction_max_horizon_s").value
+        )
+        self.reid_max_distance = float(
+            self.get_parameter("reid_max_distance_m").value
+        )
+        self.reid_max_lateral_distance = float(
+            self.get_parameter("reid_max_lateral_distance_m").value
+        )
+        self.reid_max_backward_distance = float(
+            self.get_parameter("reid_max_backward_distance_m").value
+        )
+        self.merge_area_ratio = float(
+            self.get_parameter("merge_area_ratio").value
+        )
+        self.merge_padding_x = float(
+            self.get_parameter("merge_padding_x_m").value
+        )
+        self.merge_padding_y = float(
+            self.get_parameter("merge_padding_y_m").value
+        )
+        self.exit_remove_margin = float(
+            self.get_parameter("exit_remove_margin_m").value
+        )
+
         self.prediction_horizon = float(
             self.get_parameter("prediction_horizon_s").value
         )
@@ -222,14 +351,18 @@ class SingulationController(Node):
         self.maximum_yaw_delta = float(
             self.get_parameter("maximum_yaw_delta_mps").value
         )
-        self.enable_lateral_steering = bool(
-            self.get_parameter("enable_lateral_steering").value
+        self.dense_pair_yaw_gap = float(
+            self.get_parameter("dense_pair_yaw_gap_m").value
         )
-        self.lateral_to_yaw_gain = float(
-            self.get_parameter("lateral_to_yaw_gain").value
+        self.yaw_control_exit_margin = float(
+            self.get_parameter("yaw_control_exit_margin_m").value
         )
-        self.maximum_target_yaw = float(
-            self.get_parameter("maximum_target_yaw_rad").value
+
+        self.allocation_urgency_gain = float(
+            self.get_parameter("allocation_urgency_gain").value
+        )
+        self.uncontrollable_similarity = float(
+            self.get_parameter("uncontrollable_similarity").value
         )
         self.minimum_confidence = float(
             self.get_parameter("minimum_confidence").value
@@ -240,46 +373,41 @@ class SingulationController(Node):
         self.publish_rate = float(
             self.get_parameter("publish_rate_hz").value
         )
-        self.maximum_acceleration = float(
-            self.get_parameter("maximum_acceleration_mps2").value
-        )
         self.diagnostic_period = float(
             self.get_parameter("diagnostic_period_s").value
         )
 
-        if self.minimum_speed <= 0.0:
-            raise ValueError(
-                "minimum_speed_mps must be positive; reverse motion is disabled"
-            )
-        if self.nominal_transport_speed <= 0.0:
-            raise ValueError("nominal_transport_speed_mps must be positive")
-        if self.maximum_longitudinal_lag <= 0.0:
-            raise ValueError("maximum_longitudinal_lag_m must be positive")
-        if self.lag_guard_horizon <= 0.0:
-            raise ValueError("lag_guard_horizon_s must be positive")
-        if not (
-            self.minimum_speed
-            <= self.base_speed
-            <= self.maximum_speed
-        ):
-            raise ValueError(
-                "Expected minimum_speed <= base_speed <= maximum_speed"
-            )
+        self._validate_parameters()
 
-        self.tracks: dict[int, TrackedBox] = {}
+        self.items: dict[int, LogicalBox] = {}
+        self.track_to_uid: dict[int, int] = {}
+        self.global_order: list[int] = []
+        self.next_uid = 1
         self.next_sequence = 1
+        self.next_wave_id = 1
+        self.pending_wave_uids: list[int] = []
+        self.pending_wave_opened_s: float | None = None
+
         self.last_observation_stamp_s: float | None = None
-        self.last_command = [self.base_speed] * (self.rows * self.cols)
+        self.last_command = [self.idle_speed] * (self.rows * self.cols)
         self.last_publish_s: float | None = None
         self.last_diagnostic_s = -math.inf
-        self.last_min_gap = math.inf
-        self.last_conflict_cells = 0
+
         self.last_active_boxes = 0
-        self.last_max_lag = 0.0
+        self.last_queue_size = 0
+        self.last_ghost_tracks = 0
+        self.last_merged_observations = 0
+        self.last_reidentified_tracks = 0
+        self.last_recovered_orphans = 0
+        self.last_order_inversions = 0
+        self.last_unresolved_at_exit = 0
+        self.last_min_adjacent_gap = math.inf
+        self.last_shared_cells = 0
+        self.last_uncontrollable_pairs = 0
+        self.last_allocation_error = 0.0
 
         boxes_topic = str(self.get_parameter("boxes_topic").value)
         command_topic = str(self.get_parameter("command_topic").value)
-
         self.observation_subscription = self.create_subscription(
             BoxObservationArray,
             boxes_topic,
@@ -297,12 +425,48 @@ class SingulationController(Node):
         )
 
         self.get_logger().info(
-            "Closed-loop singulation controller started: "
-            f"{self.rows}x{self.cols}, base={self.base_speed:.2f} m/s, "
-            f"gap={self.target_gap:.2f} m, "
-            f"forward_only>={self.minimum_speed:.2f} m/s, "
-            f"lag_limit={self.maximum_longitudinal_lag:.2f} m"
+            "V7 immutable global queue started: "
+            f"speed=[{self.minimum_speed:.2f}, {self.maximum_speed:.2f}] m/s, "
+            f"transport={self.transport_speed:.2f} m/s, "
+            f"entry_gate={self.entry_gate_x:.2f} m, "
+            "slot_scheduler=false, shared_cell_owner=false"
         )
+
+    def _validate_parameters(self) -> None:
+        if self.rows <= 0 or self.cols <= 0:
+            raise ValueError("rows and cols must be positive")
+        if not (
+            0.0 < self.minimum_speed
+            <= self.idle_speed
+            <= self.maximum_speed
+        ):
+            raise ValueError(
+                "Expected 0 < minimum_speed <= idle_speed <= maximum_speed"
+            )
+        if not (
+            self.minimum_speed
+            <= self.transport_speed
+            <= self.maximum_speed
+        ):
+            raise ValueError("transport_speed_mps must be inside speed limits")
+        if self.maximum_relative_speed <= 0.0:
+            raise ValueError("maximum_relative_speed_mps must be positive")
+        if self.maximum_acceleration <= 0.0:
+            raise ValueError("maximum_acceleration_mps2 must be positive")
+        if self.target_gap <= 0.0 or self.inter_wave_target_gap <= 0.0:
+            raise ValueError("target gaps must be positive")
+        if self.entry_capture_window <= 0.0:
+            raise ValueError("entry_capture_window_s must be positive")
+        if self.entry_wave_max_size <= 0:
+            raise ValueError("entry_wave_max_size must be positive")
+        if self.normal_track_timeout <= 0.0:
+            raise ValueError("normal_track_timeout_s must be positive")
+        if self.merged_track_timeout < self.normal_track_timeout:
+            raise ValueError(
+                "merged_track_timeout_s must be >= normal_track_timeout_s"
+            )
+        if self.publish_rate <= 0.0:
+            raise ValueError("publish_rate_hz must be positive")
 
     def _on_observations(self, message: BoxObservationArray) -> None:
         stamp_s = self._stamp_to_seconds(message)
@@ -310,34 +474,434 @@ class SingulationController(Node):
             stamp_s = self._now_seconds()
         self.last_observation_stamp_s = stamp_s
 
-        observed_ids: set[int] = set()
-        for observation in message.boxes:
-            if float(observation.confidence) < self.minimum_confidence:
-                continue
-            track_id = int(observation.id)
-            observed_ids.add(track_id)
-            track = self.tracks.get(track_id)
-            if track is None:
-                self.tracks[track_id] = TrackedBox(
-                    track_id=track_id,
-                    sequence=self.next_sequence,
-                    x=float(observation.center.x),
-                    y=float(observation.center.y),
-                    length=max(0.02, float(observation.length_m)),
-                    width=max(0.01, float(observation.width_m)),
-                    yaw=normalise_half_turn(float(observation.yaw_rad)),
-                    confidence=float(observation.confidence),
-                    stamp_s=stamp_s,
-                )
-                self.next_sequence += 1
-            else:
-                track.update(observation, stamp_s)
+        observations = [
+            ObservedBox(
+                raw_track_id=int(observation.id),
+                x=float(observation.center.x),
+                y=float(observation.center.y),
+                length=max(0.02, float(observation.length_m)),
+                width=max(0.01, float(observation.width_m)),
+                yaw=normalise_half_turn(float(observation.yaw_rad)),
+                confidence=float(observation.confidence),
+            )
+            for observation in message.boxes
+            if float(observation.confidence) >= self.minimum_confidence
+        ]
 
-        # A track is retained briefly through one or two missed camera frames.
-        expiration = max(1.0, 2.5 * self.observation_timeout)
-        for track_id, track in list(self.tracks.items()):
-            if stamp_s - track.stamp_s > expiration:
-                del self.tracks[track_id]
+        self._reconcile_observations(observations, stamp_s)
+        self._update_entry_queue(stamp_s)
+        self._cleanup_items(stamp_s)
+
+    def _reconcile_observations(
+        self,
+        observations: list[ObservedBox],
+        stamp_s: float,
+    ) -> None:
+        """Bind raw vision detections to persistent logical products."""
+
+        merge_indices, merge_members = self._detect_merged_observations(
+            observations,
+            stamp_s,
+        )
+        self.last_merged_observations = len(merge_indices)
+
+        for members in merge_members.values():
+            for uid in members:
+                item = self.items.get(uid)
+                if item is None:
+                    continue
+                item.occluded_until_s = max(
+                    item.occluded_until_s,
+                    stamp_s + self.merged_track_timeout,
+                )
+                item.last_merge_evidence_s = stamp_s
+
+        normal_indices = [
+            index for index in range(len(observations))
+            if index not in merge_indices
+        ]
+        assigned_observations: set[int] = set()
+        assigned_uids: set[int] = set()
+        assignments: dict[int, int] = {}
+        reidentified = 0
+
+        # First retain a raw ID binding when it remains geometrically plausible.
+        for index in normal_indices:
+            observation = observations[index]
+            uid = self.track_to_uid.get(observation.raw_track_id)
+            item = self.items.get(uid) if uid is not None else None
+            if item is None or uid in assigned_uids:
+                continue
+            if not self._observation_matches_item(
+                observation,
+                item,
+                stamp_s,
+                relaxed=False,
+            ):
+                continue
+            assignments[index] = uid
+            assigned_observations.add(index)
+            assigned_uids.add(uid)
+
+        # Then re-identify changed raw IDs by motion, lateral position and size.
+        candidates: list[tuple[float, int, int]] = []
+        for index in normal_indices:
+            if index in assigned_observations:
+                continue
+            observation = observations[index]
+            for uid, item in self.items.items():
+                if uid in assigned_uids:
+                    continue
+                cost = self._reidentification_cost(
+                    observation,
+                    item,
+                    stamp_s,
+                )
+                if cost is not None:
+                    candidates.append((cost, index, uid))
+
+        for _, index, uid in sorted(candidates):
+            if index in assigned_observations or uid in assigned_uids:
+                continue
+            assignments[index] = uid
+            assigned_observations.add(index)
+            assigned_uids.add(uid)
+            if observations[index].raw_track_id != self.items[uid].raw_track_id:
+                reidentified += 1
+
+        for index, uid in assignments.items():
+            observation = observations[index]
+            item = self.items[uid]
+            old_raw_id = item.raw_track_id
+            if self.track_to_uid.get(old_raw_id) == uid:
+                self.track_to_uid.pop(old_raw_id, None)
+            item.update(observation, stamp_s)
+            item.occluded_until_s = max(item.occluded_until_s, stamp_s)
+            self.track_to_uid[observation.raw_track_id] = uid
+
+        for index in normal_indices:
+            if index in assigned_observations:
+                continue
+            observation = observations[index]
+            uid = self.next_uid
+            self.next_uid += 1
+            item = LogicalBox(
+                uid=uid,
+                sequence=self.next_sequence,
+                raw_track_id=observation.raw_track_id,
+                x=observation.x,
+                y=observation.y,
+                length=observation.length,
+                width=observation.width,
+                yaw=observation.yaw,
+                confidence=observation.confidence,
+                first_seen_s=stamp_s,
+                stamp_s=stamp_s,
+                last_command_speed=self.idle_speed,
+            )
+            self.next_sequence += 1
+            self.items[uid] = item
+            self.track_to_uid[observation.raw_track_id] = uid
+
+        self.last_reidentified_tracks = reidentified
+
+    def _detect_merged_observations(
+        self,
+        observations: list[ObservedBox],
+        stamp_s: float,
+    ) -> tuple[set[int], dict[int, list[int]]]:
+        merge_indices: set[int] = set()
+        merge_members: dict[int, list[int]] = {}
+
+        recent_items = [
+            item for item in self.items.values()
+            if stamp_s - item.stamp_s <= self.logical_item_expiration
+        ]
+        for index, observation in enumerate(observations):
+            covered: list[LogicalBox] = []
+            for item in recent_items:
+                predicted_x = item.predicted_x(
+                    stamp_s,
+                    self.maximum_speed,
+                    self.prediction_max_horizon,
+                )
+                predicted_y = item.predicted_y(
+                    stamp_s,
+                    self.prediction_max_horizon,
+                )
+                if (
+                    abs(predicted_x - observation.x)
+                    <= observation.projected_half_length
+                    + self.merge_padding_x
+                    and abs(predicted_y - observation.y)
+                    <= observation.projected_half_width
+                    + self.merge_padding_y
+                ):
+                    covered.append(item)
+
+            if len(covered) < 2:
+                continue
+            largest_member = max(item.footprint_area for item in covered)
+            if (
+                observation.footprint_area
+                < self.merge_area_ratio * largest_member
+            ):
+                continue
+
+            # At least two logical products lie inside one enlarged contour.
+            merge_indices.add(index)
+            merge_members[index] = [item.uid for item in covered]
+
+        return merge_indices, merge_members
+
+    def _observation_matches_item(
+        self,
+        observation: ObservedBox,
+        item: LogicalBox,
+        stamp_s: float,
+        *,
+        relaxed: bool,
+    ) -> bool:
+        predicted_x = item.predicted_x(
+            stamp_s,
+            self.maximum_speed,
+            self.prediction_max_horizon,
+        )
+        predicted_y = item.predicted_y(
+            stamp_s,
+            self.prediction_max_horizon,
+        )
+        dx = observation.x - predicted_x
+        dy = observation.y - predicted_y
+        scale = 1.25 if relaxed else 1.0
+        if dx < -scale * self.reid_max_backward_distance:
+            return False
+        if abs(dy) > scale * self.reid_max_lateral_distance:
+            return False
+        return math.hypot(dx, dy) <= scale * self.reid_max_distance
+
+    def _reidentification_cost(
+        self,
+        observation: ObservedBox,
+        item: LogicalBox,
+        stamp_s: float,
+    ) -> float | None:
+        if not self._observation_matches_item(
+            observation,
+            item,
+            stamp_s,
+            relaxed=True,
+        ):
+            return None
+
+        predicted_x = item.predicted_x(
+            stamp_s,
+            self.maximum_speed,
+            self.prediction_max_horizon,
+        )
+        predicted_y = item.predicted_y(
+            stamp_s,
+            self.prediction_max_horizon,
+        )
+        dx = observation.x - predicted_x
+        dy = observation.y - predicted_y
+        position_cost = (
+            (dx / max(self.reid_max_distance, 1.0e-6)) ** 2
+            + 2.5
+            * (
+                dy / max(self.reid_max_lateral_distance, 1.0e-6)
+            ) ** 2
+        )
+        length_error = abs(
+            math.log(observation.length / max(item.length, 1.0e-6))
+        )
+        width_error = abs(
+            math.log(observation.width / max(item.width, 1.0e-6))
+        )
+        return position_cost + 0.20 * (length_error + width_error)
+
+    def _update_entry_queue(self, now_s: float) -> None:
+        self.global_order = [
+            uid for uid in self.global_order if uid in self.items
+        ]
+        self.pending_wave_uids = [
+            uid
+            for uid in self.pending_wave_uids
+            if uid in self.items and not self.items[uid].queued
+        ]
+        if not self.pending_wave_uids:
+            self.pending_wave_opened_s = None
+
+        def near_entry(item: LogicalBox) -> bool:
+            x = item.predicted_x(
+                now_s,
+                self.maximum_speed,
+                self.prediction_max_horizon,
+            )
+            return (
+                self.matrix_min_x - self.entry_capture_back_margin
+                <= x
+                <= self.entry_gate_x + self.entry_capture_front_margin
+            )
+
+        unqueued = [
+            item
+            for item in self.items.values()
+            if not item.queued and item.uid not in self.pending_wave_uids
+        ]
+        entry_candidates = sorted(
+            (item for item in unqueued if near_entry(item)),
+            key=lambda item: (item.first_seen_s, item.sequence),
+        )
+
+        if not self.pending_wave_uids and entry_candidates:
+            first = entry_candidates.pop(0)
+            self.pending_wave_uids = [first.uid]
+            self.pending_wave_opened_s = first.first_seen_s
+
+        if self.pending_wave_uids:
+            assert self.pending_wave_opened_s is not None
+            pending_items = [self.items[uid] for uid in self.pending_wave_uids]
+            pending_x = [
+                item.predicted_x(
+                    now_s,
+                    self.maximum_speed,
+                    self.prediction_max_horizon,
+                )
+                for item in pending_items
+            ]
+            for item in list(entry_candidates):
+                if len(self.pending_wave_uids) >= self.entry_wave_max_size:
+                    break
+                item_x = item.predicted_x(
+                    now_s,
+                    self.maximum_speed,
+                    self.prediction_max_horizon,
+                )
+                combined = pending_x + [item_x]
+                within_time = (
+                    item.first_seen_s - self.pending_wave_opened_s
+                    <= self.entry_capture_window
+                )
+                within_x = max(combined) - min(combined) <= self.entry_wave_dx
+                if within_time and within_x:
+                    self.pending_wave_uids.append(item.uid)
+                    pending_x.append(item_x)
+                    entry_candidates.remove(item)
+
+            pending_items = [self.items[uid] for uid in self.pending_wave_uids]
+            front_x = max(
+                item.predicted_x(
+                    now_s,
+                    self.maximum_speed,
+                    self.prediction_max_horizon,
+                )
+                for item in pending_items
+            )
+            capture_expired = (
+                now_s - self.pending_wave_opened_s
+                >= self.entry_capture_window
+            )
+            crossed_gate = front_x >= self.entry_gate_x
+            full = len(pending_items) >= self.entry_wave_max_size
+            if capture_expired or crossed_gate or full:
+                self._finalise_pending_wave(now_s)
+
+        # A genuinely new track appearing beyond the gate is most likely a raw
+        # ID change that escaped re-identification.  Insert it without changing
+        # the relative order of any already queued products.
+        recovered = 0
+        for item in sorted(
+            (item for item in self.items.values() if not item.queued),
+            key=lambda candidate: candidate.sequence,
+        ):
+            if item.uid in self.pending_wave_uids:
+                continue
+            x = item.predicted_x(
+                now_s,
+                self.maximum_speed,
+                self.prediction_max_horizon,
+            )
+            if x <= self.entry_gate_x + self.entry_capture_front_margin:
+                continue
+            self._insert_recovered_item(item, now_s)
+            recovered += 1
+        self.last_recovered_orphans = recovered
+
+    def _finalise_pending_wave(self, now_s: float) -> None:
+        del now_s
+        if not self.pending_wave_uids:
+            return
+        members = [
+            self.items[uid]
+            for uid in self.pending_wave_uids
+            if uid in self.items and not self.items[uid].queued
+        ]
+        members.sort(key=lambda item: (-item.y, item.sequence))
+        wave_id = self.next_wave_id
+        self.next_wave_id += 1
+        for item in members:
+            item.wave_id = wave_id
+            item.queued = True
+            self.global_order.append(item.uid)
+        self.pending_wave_uids = []
+        self.pending_wave_opened_s = None
+
+    def _insert_recovered_item(
+        self,
+        item: LogicalBox,
+        now_s: float,
+    ) -> None:
+        item.wave_id = self.next_wave_id
+        self.next_wave_id += 1
+        item.queued = True
+        item_x = item.predicted_x(
+            now_s,
+            self.maximum_speed,
+            self.prediction_max_horizon,
+        )
+
+        insert_at = len(self.global_order)
+        for index, uid in enumerate(self.global_order):
+            other = self.items.get(uid)
+            if other is None:
+                continue
+            other_x = other.predicted_x(
+                now_s,
+                self.maximum_speed,
+                self.prediction_max_horizon,
+            )
+            if item_x > other_x:
+                insert_at = index
+                break
+        self.global_order.insert(insert_at, item.uid)
+
+    def _cleanup_items(self, now_s: float) -> None:
+        remove_uids: list[int] = []
+        for uid, item in self.items.items():
+            predicted_x = item.predicted_x(
+                now_s,
+                self.maximum_speed,
+                self.prediction_max_horizon,
+            )
+            exited = predicted_x > self.matrix_max_x + self.exit_remove_margin
+            stale = (
+                now_s - item.stamp_s > self.logical_item_expiration
+                and now_s > item.occluded_until_s
+            )
+            if exited or stale:
+                remove_uids.append(uid)
+
+        for uid in remove_uids:
+            item = self.items.pop(uid, None)
+            if item is None:
+                continue
+            if self.track_to_uid.get(item.raw_track_id) == uid:
+                self.track_to_uid.pop(item.raw_track_id, None)
+            self.global_order = [value for value in self.global_order if value != uid]
+            self.pending_wave_uids = [
+                value for value in self.pending_wave_uids if value != uid
+            ]
 
     def _on_control_timer(self) -> None:
         now_s = self._now_seconds()
@@ -353,252 +917,250 @@ class SingulationController(Node):
             <= self.observation_timeout
         )
 
+        self._reset_cycle_diagnostics()
         if observation_is_fresh:
-            active = self._active_tracks(now_s)
-            desired = self._build_cell_speeds(active)
+            desired = self._build_cell_speeds(now_s)
         else:
-            active = []
-            desired = [self.base_speed] * (self.rows * self.cols)
-            self.last_min_gap = math.inf
-            self.last_conflict_cells = 0
-            self.last_max_lag = 0.0
+            desired = [self.idle_speed] * (self.rows * self.cols)
 
         limited = self._limit_command_rate(desired, dt)
         self.last_command = limited
-        self.last_active_boxes = len(active)
         self._publish_command(limited)
         self._publish_diagnostics(now_s, observation_is_fresh)
 
-    def _active_tracks(self, now_s: float) -> list[TrackedBox]:
-        margin = 0.45
-        return [
-            track
-            for track in self.tracks.values()
-            if now_s - track.stamp_s <= self.observation_timeout
-            and self.matrix_min_x - margin
-            <= track.x
-            <= self.matrix_max_x + margin
-            and abs(track.y)
-            <= self.matrix_width / 2.0 + 0.15
-        ]
-
-    def _build_cell_speeds(
-        self,
-        active_tracks: list[TrackedBox],
-    ) -> list[float]:
-        if not active_tracks:
-            self.last_min_gap = math.inf
-            self.last_conflict_cells = 0
-            self.last_max_lag = 0.0
-            return [self.base_speed] * (self.rows * self.cols)
-
-        # Current longitudinal position is the primary ordering signal.  The
-        # persistent sequence is only a deterministic tie-breaker for a wave of
-        # side-by-side boxes.  This avoids keeping a wrong order after one box
-        # has already moved ahead of another.
-        queue = sorted(
-            active_tracks,
-            key=lambda item: (-item.x, item.sequence),
-        )
-        speed_floors = {
-            track.track_id: self._lag_limited_speed_floor(track)
-            for track in queue
-        }
-        self.last_max_lag = max(
-            (track.longitudinal_lag_m for track in queue),
-            default=0.0,
-        )
-
-        box_speeds: dict[int, float] = {}
-        box_speeds[queue[0].track_id] = clamp(
-            max(self.leader_speed, speed_floors[queue[0].track_id]),
-            self.minimum_speed,
-            self.maximum_speed,
-        )
-
-        minimum_clearance = math.inf
-        predecessor = queue[0]
-        for follower in queue[1:]:
-            centre_distance = predecessor.x - follower.x
-            body_distance = (
-                predecessor.projected_half_length
-                + follower.projected_half_length
-            )
-            clearance = centre_distance - body_distance
-            minimum_clearance = min(minimum_clearance, clearance)
-
-            closing_speed = max(0.0, follower.vx - predecessor.vx)
-            braking_distance = (
-                closing_speed * closing_speed
-                / max(2.0 * self.maximum_acceleration, 1.0e-6)
-            )
-            dynamic_target_gap = self.target_gap + braking_distance
-            spacing_error = clearance - dynamic_target_gap
-            predecessor_speed = box_speeds[predecessor.track_id]
-            desired_speed = (
-                predecessor_speed
-                + self.gap_gain * spacing_error
-                - self.relative_velocity_gain * closing_speed
-            )
-
-            if clearance < self.hard_gap:
-                # Forward-only emergency separation: accelerate the front box
-                # and slow the rear box, but never reverse it.  The rear speed is
-                # additionally bounded by its remaining longitudinal lag budget.
-                boost = self.leader_boost_gain * (
-                    self.hard_gap - clearance
-                )
-                box_speeds[predecessor.track_id] = clamp(
-                    max(
-                        predecessor_speed,
-                        self.leader_speed + boost,
-                        speed_floors[predecessor.track_id],
-                    ),
-                    self.minimum_speed,
-                    self.maximum_speed,
-                )
-                desired_speed = self.minimum_speed
-
-            box_speeds[follower.track_id] = clamp(
-                max(desired_speed, speed_floors[follower.track_id]),
-                self.minimum_speed,
+    def _active_items(self, now_s: float) -> list[LogicalBox]:
+        margin = 0.50
+        result: list[LogicalBox] = []
+        for item in self.items.values():
+            age = now_s - item.stamp_s
+            active_by_observation = age <= self.normal_track_timeout
+            active_by_merge = now_s <= item.occluded_until_s
+            if not (active_by_observation or active_by_merge):
+                continue
+            x = item.predicted_x(
+                now_s,
                 self.maximum_speed,
+                self.prediction_max_horizon,
             )
-            predecessor = follower
+            y = item.predicted_y(now_s, self.prediction_max_horizon)
+            if not (
+                self.matrix_min_x - margin
+                <= x
+                <= self.matrix_max_x + margin
+            ):
+                continue
+            if abs(y) > self.matrix_width / 2.0 + 0.15:
+                continue
+            result.append(item)
+        return result
 
-        self.last_min_gap = minimum_clearance
+    def _build_cell_speeds(self, now_s: float) -> list[float]:
+        active = self._active_items(now_s)
+        self.last_active_boxes = len(active)
+        self.last_queue_size = len(self.global_order)
+        self.last_ghost_tracks = sum(
+            item.is_ghost(now_s, 0.12) for item in active
+        )
+        if not active:
+            return [self.idle_speed] * (self.rows * self.cols)
+
+        active_by_uid = {item.uid: item for item in active}
+        ordered = [
+            active_by_uid[uid]
+            for uid in self.global_order
+            if uid in active_by_uid
+        ]
+        unqueued = [item for item in active if not item.queued]
+
+        control_x: dict[int, float] = {}
+        control_y: dict[int, float] = {}
+        for item in active:
+            predicted_x = item.predicted_x(
+                now_s,
+                self.maximum_speed,
+                self.prediction_max_horizon,
+            )
+            predicted_y = item.predicted_y(
+                now_s,
+                self.prediction_max_horizon,
+            )
+            control_x[item.uid] = (
+                predicted_x
+                + item.prediction_speed(self.maximum_speed)
+                * self.prediction_horizon
+            )
+            control_y[item.uid] = predicted_y
+
+        states: list[GapState] = []
+        for index, item in enumerate(ordered):
+            target_gap = self.target_gap
+            if index + 1 < len(ordered):
+                follower = ordered[index + 1]
+                if item.wave_id != follower.wave_id:
+                    target_gap = self.inter_wave_target_gap
+            states.append(
+                GapState(
+                    uid=item.uid,
+                    x=control_x[item.uid],
+                    half_length=item.projected_half_length,
+                    vx=item.vx,
+                    target_gap_to_follower=target_gap,
+                )
+            )
+
+        profile = build_pairwise_speed_profile(
+            states,
+            transport_speed=self.transport_speed,
+            minimum_speed=self.minimum_speed,
+            maximum_speed=self.maximum_speed,
+            gap_gain=self.gap_gain,
+            relative_velocity_gain=self.relative_velocity_gain,
+            maximum_relative_speed=self.maximum_relative_speed,
+            inversion_margin=self.order_inversion_margin,
+        )
+        self.last_order_inversions = profile.inversion_count
+        self.last_min_adjacent_gap = min(
+            profile.clearance_by_pair,
+            default=math.inf,
+        )
+
+        target_speed = dict(profile.speed_by_uid)
+        urgency = dict(profile.urgency_by_uid)
+        for item in unqueued:
+            target_speed[item.uid] = self.idle_speed
+            urgency[item.uid] = 0.05
+
+        dense_uids: set[int] = set()
+        unresolved_at_exit = 0
+        for index, clearance in enumerate(profile.clearance_by_pair):
+            leader = ordered[index]
+            follower = ordered[index + 1]
+            target = states[index].target_gap_to_follower
+            if clearance < self.dense_pair_yaw_gap:
+                dense_uids.add(leader.uid)
+                dense_uids.add(follower.uid)
+            near_exit = (
+                max(control_x[leader.uid], control_x[follower.uid])
+                >= self.matrix_max_x - self.exit_gap_check_margin
+            )
+            if near_exit and clearance < 0.85 * target:
+                unresolved_at_exit += 1
+        self.last_unresolved_at_exit = unresolved_at_exit
 
         proposals: list[list[CellProposal]] = [
             [] for _ in range(self.rows * self.cols)
         ]
-        for queue_rank, track in enumerate(queue):
-            base_box_speed = box_speeds[track.track_id]
-            predicted_x = track.x + clamp(
-                track.vx,
-                0.0,
-                self.maximum_speed,
-            ) * self.prediction_horizon
-            for row, col, weight in self._overlapped_cells(
-                track,
-                predicted_x,
+        contacts: dict[int, list[tuple[int, float]]] = {}
+        for item in active:
+            uid = item.uid
+            contacts[uid] = []
+            ghost = item.is_ghost(now_s, 0.12)
+            for row, col, overlap in self._overlapped_cells(
+                item,
+                control_x[uid],
+                control_y[uid],
             ):
-                speed = max(
-                    speed_floors[track.track_id],
-                    base_box_speed + self._yaw_correction(
-                        track,
+                speed = target_speed.get(uid, self.idle_speed)
+                if (
+                    uid not in dense_uids
+                    and not ghost
+                    and control_x[uid]
+                    < self.matrix_max_x - self.yaw_control_exit_margin
+                ):
+                    speed += self._yaw_correction(
+                        item,
                         col,
-                    ),
+                        control_y[uid],
+                    )
+                speed = clamp(
+                    speed,
+                    self.minimum_speed,
+                    self.maximum_speed,
                 )
-                proposals[row * self.cols + col].append(
+                index = row * self.cols + col
+                proposals[index].append(
                     CellProposal(
-                        speed=clamp(
-                            speed,
-                            self.minimum_speed,
-                            self.maximum_speed,
-                        ),
-                        weight=weight,
-                        track_id=track.track_id,
-                        track_x=predicted_x,
-                        queue_rank=queue_rank,
+                        uid=uid,
+                        speed=speed,
+                        overlap=overlap,
+                        urgency=urgency.get(uid, 0.0),
                     )
                 )
+                contacts[uid].append((index, overlap))
 
-        result = [self.base_speed] * (self.rows * self.cols)
-        conflict_cells = 0
+        result = [self.idle_speed] * (self.rows * self.cols)
+        shared_cells = 0
         for index, cell_proposals in enumerate(proposals):
             if not cell_proposals:
                 continue
-            unique_tracks = {item.track_id for item in cell_proposals}
-            if len(unique_tracks) > 1:
-                conflict_cells += 1
-                row = index // self.cols
-                cell_centre_x = (
-                    row - (self.rows - 1) / 2.0
-                ) * self.pitch_x
-                # A shared actuator is assigned to the nearest predicted box.
-                # The small queue-rank term gives the front box priority only
-                # when distances are practically equal.  Adjacent rows can
-                # therefore accelerate the leader and brake the follower rather
-                # than applying one minimum speed to both.
-                owner = min(
-                    cell_proposals,
-                    key=lambda item: (
-                        abs(item.track_x - cell_centre_x),
-                        item.queue_rank,
-                    ),
+            unique_uids = {proposal.uid for proposal in cell_proposals}
+            if len(unique_uids) > 1:
+                shared_cells += 1
+            weighted_sum = 0.0
+            total_weight = 0.0
+            for proposal in cell_proposals:
+                control_weight = proposal.overlap * (
+                    1.0
+                    + self.allocation_urgency_gain
+                    * clamp(proposal.urgency, 0.0, 3.0)
                 )
-                result[index] = owner.speed
-                continue
-            total_weight = sum(item.weight for item in cell_proposals)
-            result[index] = sum(
-                item.speed * item.weight for item in cell_proposals
-            ) / max(total_weight, 1.0e-9)
-
-        self.last_conflict_cells = conflict_cells
-        return result
-
-    def _lag_limited_speed_floor(self, track: TrackedBox) -> float:
-        """Return a positive speed floor that respects the lag budget.
-
-        The reference trajectory is a virtual conveyor moving at
-        ``nominal_transport_speed_mps`` from the moment the box first becomes
-        controllable on the matrix.  The measured longitudinal lag is
-        ``x_reference - x_measured``.  The command floor is chosen so that, over
-        the guard horizon, additional lag cannot exceed the remaining budget.
-        Once the budget is exhausted the floor rises above nominal speed and the
-        box is gently recovered instead of being held or reversed.
-        """
-        if track.lag_reference_x is None:
-            track.lag_reference_x = track.x
-            track.lag_reference_stamp_s = track.stamp_s
-            track.longitudinal_lag_m = 0.0
-
-        assert track.lag_reference_stamp_s is not None
-        elapsed = max(0.0, track.stamp_s - track.lag_reference_stamp_s)
-        expected_x = (
-            track.lag_reference_x
-            + self.nominal_transport_speed * elapsed
-        )
-        lag = max(0.0, expected_x - track.x)
-        track.longitudinal_lag_m = lag
-
-        remaining_lag = max(
-            0.0,
-            self.maximum_longitudinal_lag - lag,
-        )
-        budget_floor = (
-            self.nominal_transport_speed
-            - remaining_lag / self.lag_guard_horizon
-        )
-
-        if lag > self.maximum_longitudinal_lag:
-            budget_floor = max(
-                budget_floor,
-                self.nominal_transport_speed
-                + self.lag_recovery_gain
-                * (lag - self.maximum_longitudinal_lag),
+                weighted_sum += control_weight * proposal.speed
+                total_weight += control_weight
+            result[index] = clamp(
+                weighted_sum / max(total_weight, 1.0e-9),
+                self.minimum_speed,
+                self.maximum_speed,
             )
+        self.last_shared_cells = shared_cells
 
-        return clamp(
-            max(self.minimum_speed, budget_floor),
-            self.minimum_speed,
-            self.maximum_speed,
-        )
+        allocation_errors: list[float] = []
+        contact_vectors: dict[int, list[float]] = {}
+        for item in active:
+            vector = [0.0] * (self.rows * self.cols)
+            total_overlap = sum(weight for _, weight in contacts[item.uid])
+            effective_speed = self.idle_speed
+            if total_overlap > 1.0e-9:
+                effective_speed = sum(
+                    result[index] * weight
+                    for index, weight in contacts[item.uid]
+                ) / total_overlap
+                for index, weight in contacts[item.uid]:
+                    vector[index] = weight / total_overlap
+            item.last_command_speed = effective_speed
+            contact_vectors[item.uid] = vector
+            allocation_errors.append(
+                abs(effective_speed - target_speed.get(item.uid, self.idle_speed))
+            )
+        self.last_allocation_error = max(allocation_errors, default=0.0)
+
+        uncontrollable = 0
+        for index, clearance in enumerate(profile.clearance_by_pair):
+            if clearance >= states[index].target_gap_to_follower:
+                continue
+            leader_uid = ordered[index].uid
+            follower_uid = ordered[index + 1].uid
+            similarity = cosine_similarity(
+                contact_vectors.get(leader_uid, []),
+                contact_vectors.get(follower_uid, []),
+            )
+            if similarity >= self.uncontrollable_similarity:
+                uncontrollable += 1
+        self.last_uncontrollable_pairs = uncontrollable
+
+        return result
 
     def _overlapped_cells(
         self,
-        track: TrackedBox,
+        item: LogicalBox,
         predicted_x: float,
+        predicted_y: float,
     ) -> Iterable[tuple[int, int, float]]:
-        half_x = (
-            track.projected_half_length
-            + self.longitudinal_control_margin
-        )
-        half_y = track.projected_half_width
+        half_x = item.projected_half_length + self.longitudinal_control_margin
+        half_y = item.projected_half_width
         box_min_x = predicted_x - half_x
         box_max_x = predicted_x + half_x
-        box_min_y = track.y - half_y
-        box_max_y = track.y + half_y
+        box_min_y = predicted_y - half_y
+        box_max_y = predicted_y + half_y
 
         for row in range(self.rows):
             centre_x = (
@@ -627,30 +1189,25 @@ class SingulationController(Node):
                     continue
                 yield row, col, overlap_x * overlap_y
 
-    def _yaw_correction(self, track: TrackedBox, col: int) -> float:
-        target_yaw = 0.0
-        if self.enable_lateral_steering:
-            target_yaw = clamp(
-                -self.lateral_to_yaw_gain * track.y,
-                -self.maximum_target_yaw,
-                self.maximum_target_yaw,
-            )
-
-        yaw_error = angle_error(track.yaw, target_yaw)
+    def _yaw_correction(
+        self,
+        item: LogicalBox,
+        col: int,
+        predicted_y: float,
+    ) -> float:
+        yaw_error = angle_error(item.yaw, 0.0)
         centre_y = (
             col - (self.cols - 1) / 2.0
         ) * self.pitch_y
-        lever_scale = max(
-            track.projected_half_width,
-            self.pitch_y,
+        lever_scale = max(item.projected_half_width, self.pitch_y)
+        side = clamp(
+            (centre_y - predicted_y) / lever_scale,
+            -1.0,
+            1.0,
         )
-        side = clamp((centre_y - track.y) / lever_scale, -1.0, 1.0)
-
-        # For positive yaw, the +Y side is accelerated.  Its +X traction
-        # produces a negative Z torque and rotates the box clockwise to zero.
         correction = (
             self.yaw_gain * yaw_error
-            + self.yaw_rate_gain * track.yaw_rate
+            + self.yaw_rate_gain * item.yaw_rate
         ) * side
         return clamp(
             correction,
@@ -687,8 +1244,19 @@ class SingulationController(Node):
         message.header.frame_id = "singulator_matrix"
         message.rows = self.rows
         message.cols = self.cols
-        message.target_speed_mps = [float(item) for item in speeds]
+        message.target_speed_mps = [float(value) for value in speeds]
         self.command_publisher.publish(message)
+
+    def _reset_cycle_diagnostics(self) -> None:
+        self.last_active_boxes = 0
+        self.last_queue_size = len(self.global_order)
+        self.last_ghost_tracks = 0
+        self.last_order_inversions = 0
+        self.last_unresolved_at_exit = 0
+        self.last_min_adjacent_gap = math.inf
+        self.last_shared_cells = 0
+        self.last_uncontrollable_pairs = 0
+        self.last_allocation_error = 0.0
 
     def _publish_diagnostics(
         self,
@@ -698,18 +1266,29 @@ class SingulationController(Node):
         if now_s - self.last_diagnostic_s < self.diagnostic_period:
             return
         self.last_diagnostic_s = now_s
-        min_gap_text = (
+        min_gap = (
             "n/a"
-            if not math.isfinite(self.last_min_gap)
-            else f"{self.last_min_gap:.3f} m"
+            if not math.isfinite(self.last_min_adjacent_gap)
+            else f"{self.last_min_adjacent_gap:.3f} m"
+        )
+        queue_preview = ",".join(
+            str(uid) for uid in self.global_order[:12]
         )
         self.get_logger().info(
-            "control: "
+            "control_v7: "
             f"vision={'fresh' if observation_is_fresh else 'stale'}, "
             f"boxes={self.last_active_boxes}, "
-            f"min_gap={min_gap_text}, "
-            f"conflict_cells={self.last_conflict_cells}, "
-            f"max_lag={self.last_max_lag:.3f} m, "
+            f"queue={self.last_queue_size}[{queue_preview}], "
+            f"ghosts={self.last_ghost_tracks}, "
+            f"merged={self.last_merged_observations}, "
+            f"reidentified={self.last_reidentified_tracks}, "
+            f"orphans={self.last_recovered_orphans}, "
+            f"inversions={self.last_order_inversions}, "
+            f"unresolved_exit={self.last_unresolved_at_exit}, "
+            f"min_gap={min_gap}, "
+            f"shared_cells={self.last_shared_cells}, "
+            f"uncontrollable={self.last_uncontrollable_pairs}, "
+            f"allocation_error={self.last_allocation_error:.3f} m/s, "
             f"speed=[{min(self.last_command):.2f}, "
             f"{max(self.last_command):.2f}] m/s"
         )

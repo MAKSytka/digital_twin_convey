@@ -21,6 +21,6 @@ exec ros2 launch singulator_bringup matrix_stream_roller.launch.py \
   start_singulation_controller:=false \
   start_cleanup:=true \
   infeed_speed_mps:="${INFEED_SPEED_MPS:-2.00}" \
-  outfeed_speed_mps:=0.0 \
+  outfeed_speed_mps:="${OUTFEED_SPEED_MPS:-2.50}" \
   target_rate_boxes_per_sec:="${TARGET_RATE_BOXES_PER_SEC:-2.0}" \
   seed:="${SEED:-42}"
