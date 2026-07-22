@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-ROWS = 14
+ROWS = 18
 COLS = 4
 CELL_X = 0.360
 CELL_Y = 0.175
@@ -93,8 +93,7 @@ def belt_model(
 
 def matrix_cells() -> str:
     result: list[str] = []
-    row_order = [12, 13] + list(range(0, 12))
-    for row in row_order:
+    for row in range(ROWS):
         x = (row - (ROWS - 1) / 2.0) * PITCH_X
         for col in range(COLS):
             y = (col - (COLS - 1) / 2.0) * PITCH_Y
@@ -205,7 +204,11 @@ def main() -> None:
         / "matrix_14x4_stream_v2.sdf"
     )
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(generate_world(), encoding="utf-8")
+    output.write_text(
+        "\n".join(line.rstrip() for line in generate_world().splitlines())
+        + "\n",
+        encoding="utf-8",
+    )
     print(f"Created upgraded world: {output}")
     print(f"Matrix friction: mu={MU}, mu2={MU2}")
     print(f"Velocity limits: {-MAX_SPEED}..{MAX_SPEED} m/s")
