@@ -107,9 +107,9 @@ def generate_launch_description() -> LaunchDescription:
             {
                 "image_topic": "/singulator/camera/image_raw",
                 "boxes_topic": "/singulator/boxes",
-                "field_length_m": 7.70,
+                "field_length_m": 9.00,
                 "field_width_m": 0.90,
-                "field_min_x_m": -3.95,
+                "field_min_x_m": -4.50,
                 "field_max_y_m": 0.45,
                 "calibration_frames": 15,
                 "background_threshold": 18,
