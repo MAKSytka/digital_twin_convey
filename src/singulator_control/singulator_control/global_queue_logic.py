@@ -203,3 +203,88 @@ def cosine_similarity(first: Sequence[float], second: Sequence[float]) -> float:
     if first_norm <= 1.0e-12 or second_norm <= 1.0e-12:
         return 0.0
     return numerator / (first_norm * second_norm)
+
+
+def allocate_cell_speeds(
+    product_contacts: dict[int, Sequence[tuple[int, float]]],
+    target_speed_by_uid: dict[int, float],
+    urgency_by_uid: dict[int, float],
+    *,
+    cell_count: int,
+    idle_speed: float,
+    minimum_speed: float,
+    maximum_speed: float,
+    urgency_gain: float,
+    idle_regularization: float,
+    iterations: int,
+) -> list[float]:
+    """Fit cell speeds to effective product-speed requests.
+
+    A product is accelerated by the overlap-weighted mean of every cell under
+    it.  Per-cell averaging therefore leaves avoidable allocation error when
+    products partially share cells.  This bounded coordinate-descent solve
+    minimises that *effective* product-speed error directly, while a small
+    idle regulariser keeps cells without a strong request stable.
+    """
+
+    if cell_count <= 0:
+        return []
+    if iterations <= 0:
+        return [clamp(idle_speed, minimum_speed, maximum_speed)] * cell_count
+
+    normalised: dict[int, list[tuple[int, float]]] = {}
+    weights: dict[int, float] = {}
+    for uid, contacts in product_contacts.items():
+        total_overlap = sum(max(0.0, overlap) for _, overlap in contacts)
+        if total_overlap <= 1.0e-12 or uid not in target_speed_by_uid:
+            continue
+        normalised[uid] = [
+            (index, max(0.0, overlap) / total_overlap)
+            for index, overlap in contacts
+            if 0 <= index < cell_count and overlap > 0.0
+        ]
+        weights[uid] = 1.0 + urgency_gain * clamp(
+            urgency_by_uid.get(uid, 0.0), 0.0, 3.0
+        )
+
+    speeds = [clamp(idle_speed, minimum_speed, maximum_speed)] * cell_count
+    for _ in range(iterations):
+        effective = {
+            uid: sum(speeds[index] * overlap for index, overlap in contacts)
+            for uid, contacts in normalised.items()
+        }
+        for cell in range(cell_count):
+            numerator = idle_regularization * idle_speed
+            denominator = idle_regularization
+            for uid, contacts in normalised.items():
+                coefficient = next(
+                    (overlap for index, overlap in contacts if index == cell),
+                    0.0,
+                )
+                if coefficient <= 0.0:
+                    continue
+                weight = weights[uid]
+                residual_without_cell = (
+                    effective[uid] - coefficient * speeds[cell]
+                )
+                numerator += weight * coefficient * (
+                    target_speed_by_uid[uid] - residual_without_cell
+                )
+                denominator += weight * coefficient * coefficient
+            if denominator <= 1.0e-12:
+                continue
+            updated = clamp(
+                numerator / denominator,
+                minimum_speed,
+                maximum_speed,
+            )
+            if updated == speeds[cell]:
+                continue
+            delta = updated - speeds[cell]
+            speeds[cell] = updated
+            for uid, contacts in normalised.items():
+                for index, coefficient in contacts:
+                    if index == cell:
+                        effective[uid] += coefficient * delta
+                        break
+    return speeds

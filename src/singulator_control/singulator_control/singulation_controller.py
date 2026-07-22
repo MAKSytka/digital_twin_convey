@@ -32,6 +32,7 @@ from singulator_interfaces.msg import (
 
 from .global_queue_logic import (
     GapState,
+    allocate_cell_speeds,
     build_pairwise_speed_profile,
     clamp,
     cosine_similarity,
@@ -227,6 +228,8 @@ class SingulationController(Node):
         self.declare_parameter("yaw_control_exit_margin_m", 0.65)
 
         self.declare_parameter("allocation_urgency_gain", 1.50)
+        self.declare_parameter("allocation_idle_regularization", 0.03)
+        self.declare_parameter("allocation_iterations", 12)
         self.declare_parameter("uncontrollable_similarity", 0.97)
         self.declare_parameter("minimum_confidence", 0.12)
         self.declare_parameter("observation_timeout_s", 0.70)
@@ -361,6 +364,12 @@ class SingulationController(Node):
         self.allocation_urgency_gain = float(
             self.get_parameter("allocation_urgency_gain").value
         )
+        self.allocation_idle_regularization = float(
+            self.get_parameter("allocation_idle_regularization").value
+        )
+        self.allocation_iterations = int(
+            self.get_parameter("allocation_iterations").value
+        )
         self.uncontrollable_similarity = float(
             self.get_parameter("uncontrollable_similarity").value
         )
@@ -467,6 +476,10 @@ class SingulationController(Node):
             )
         if self.publish_rate <= 0.0:
             raise ValueError("publish_rate_hz must be positive")
+        if self.allocation_idle_regularization < 0.0:
+            raise ValueError("allocation_idle_regularization must be >= 0")
+        if self.allocation_iterations <= 0:
+            raise ValueError("allocation_iterations must be positive")
 
     def _on_observations(self, message: BoxObservationArray) -> None:
         stamp_s = self._stamp_to_seconds(message)
@@ -1088,29 +1101,43 @@ class SingulationController(Node):
                 )
                 contacts[uid].append((index, overlap))
 
-        result = [self.idle_speed] * (self.rows * self.cols)
-        shared_cells = 0
-        for index, cell_proposals in enumerate(proposals):
-            if not cell_proposals:
+        # Solve against the effective (overlap-weighted) speed of each box,
+        # instead of independently averaging every shared cell.  This lets a
+        # partially shared contact patch still create a useful speed gradient.
+        target_speed_for_allocation: dict[int, float] = {}
+        for uid, item_contacts in contacts.items():
+            total_overlap = sum(overlap for _, overlap in item_contacts)
+            if total_overlap <= 1.0e-9:
                 continue
+            proposal_by_cell = {
+                index: proposal.speed
+                for index, cell_proposals in enumerate(proposals)
+                for proposal in cell_proposals
+                if proposal.uid == uid
+            }
+            target_speed_for_allocation[uid] = sum(
+                proposal_by_cell.get(index, target_speed.get(uid, self.idle_speed))
+                * overlap
+                for index, overlap in item_contacts
+            ) / total_overlap
+
+        result = allocate_cell_speeds(
+            contacts,
+            target_speed_for_allocation,
+            urgency,
+            cell_count=self.rows * self.cols,
+            idle_speed=self.idle_speed,
+            minimum_speed=self.minimum_speed,
+            maximum_speed=self.maximum_speed,
+            urgency_gain=self.allocation_urgency_gain,
+            idle_regularization=self.allocation_idle_regularization,
+            iterations=self.allocation_iterations,
+        )
+        shared_cells = 0
+        for cell_proposals in proposals:
             unique_uids = {proposal.uid for proposal in cell_proposals}
             if len(unique_uids) > 1:
                 shared_cells += 1
-            weighted_sum = 0.0
-            total_weight = 0.0
-            for proposal in cell_proposals:
-                control_weight = proposal.overlap * (
-                    1.0
-                    + self.allocation_urgency_gain
-                    * clamp(proposal.urgency, 0.0, 3.0)
-                )
-                weighted_sum += control_weight * proposal.speed
-                total_weight += control_weight
-            result[index] = clamp(
-                weighted_sum / max(total_weight, 1.0e-9),
-                self.minimum_speed,
-                self.maximum_speed,
-            )
         self.last_shared_cells = shared_cells
 
         allocation_errors: list[float] = []
@@ -1129,7 +1156,13 @@ class SingulationController(Node):
             item.last_command_speed = effective_speed
             contact_vectors[item.uid] = vector
             allocation_errors.append(
-                abs(effective_speed - target_speed.get(item.uid, self.idle_speed))
+                abs(
+                    effective_speed
+                    - target_speed_for_allocation.get(
+                        item.uid,
+                        self.idle_speed,
+                    )
+                )
             )
         self.last_allocation_error = max(allocation_errors, default=0.0)
 
