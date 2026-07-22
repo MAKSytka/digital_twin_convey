@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, TimerAction
+from launch.actions import IncludeLaunchDescription, SetLaunchConfiguration, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
@@ -54,6 +54,20 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
+    extension_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="singulator_extension_bridge",
+        output="screen",
+        parameters=[
+            {
+                "config_file": str(
+                    bringup_share / "config" / "bridge_rows_14_17.yaml"
+                )
+            }
+        ],
+    )
+
     throat_controller = Node(
         package="singulator_control",
         executable="roller_throat_controller",
@@ -75,12 +89,13 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[
             {
-                "rows": 14,
+                "rows": 18,
                 "cols": 4,
                 "cell_length_m": 0.360,
                 "cell_width_m": 0.175,
                 "gap_x_m": 0.020,
                 "gap_y_m": 0.020,
+                "matrix_center_x_m": 0.760,
                 "minimum_speed_mps": 1.00,
                 "maximum_speed_mps": 3.00,
                 "idle_speed_mps": 2.20,
@@ -93,6 +108,10 @@ def generate_launch_description() -> LaunchDescription:
                 "maximum_relative_speed_mps": 2.00,
                 "order_inversion_margin_m": 0.03,
                 "exit_gap_check_margin_m": 0.80,
+                "deadline_separation_distance_m": 3.20,
+                "deadline_gap_margin_m": 0.06,
+                "deadline_recovery_gain": 1.60,
+                "deadline_min_time_s": 0.10,
                 "entry_gate_offset_m": 0.30,
                 "entry_capture_window_s": 0.18,
                 "entry_wave_dx_m": 0.36,
@@ -111,13 +130,15 @@ def generate_launch_description() -> LaunchDescription:
                 "merge_padding_y_m": 0.05,
                 "exit_remove_margin_m": 0.65,
                 "prediction_horizon_s": 0.12,
-                "longitudinal_control_margin_m": 0.10,
+                "longitudinal_control_margin_m": 0.18,
                 "yaw_gain": 0.65,
                 "yaw_rate_gain": 0.05,
                 "maximum_yaw_delta_mps": 0.25,
                 "dense_pair_yaw_gap_m": 0.10,
                 "yaw_control_exit_margin_m": 0.65,
                 "allocation_urgency_gain": 1.50,
+                "allocation_idle_regularization": 0.03,
+                "allocation_iterations": 12,
                 "uncontrollable_similarity": 0.97,
                 "minimum_confidence": 0.12,
                 "observation_timeout_s": 0.70,
@@ -140,7 +161,7 @@ def generate_launch_description() -> LaunchDescription:
             "-name",
             "roller_throat",
             "-x",
-            "3.070",
+            "4.590",
             "-y",
             "0.0",
             "-z",
@@ -148,7 +169,9 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
-    entities = []
+    # Override the base fan-out before its actions execute.  This gives the
+    # 18x4 roller scenario one authoritative publisher for all 72 belts.
+    entities = [SetLaunchConfiguration("matrix_rows", "18")]
     gazebo_replaced = False
     for entity in base_launch.entities:
         if isinstance(entity, IncludeLaunchDescription) and not gazebo_replaced:
@@ -163,6 +186,7 @@ def generate_launch_description() -> LaunchDescription:
     entities.extend(
         [
             throat_bridge,
+            extension_bridge,
             throat_controller,
             advanced_controller,
             TimerAction(period=1.5, actions=[throat_spawner]),
