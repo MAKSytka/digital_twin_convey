@@ -23,7 +23,6 @@ from typing import Iterable
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float64
 
 from singulator_interfaces.msg import (
     BoxObservation,
@@ -186,7 +185,6 @@ class SingulationController(Node):
         self.declare_parameter("cell_width_m", 0.175)
         self.declare_parameter("gap_x_m", 0.020)
         self.declare_parameter("gap_y_m", 0.020)
-        self.declare_parameter("separator_length_m", 0.360)
 
         self.declare_parameter("minimum_speed_mps", 1.00)
         self.declare_parameter("maximum_speed_mps", 3.00)
@@ -246,9 +244,6 @@ class SingulationController(Node):
         self.cols = int(self.get_parameter("cols").value)
         self.cell_length = float(self.get_parameter("cell_length_m").value)
         self.cell_width = float(self.get_parameter("cell_width_m").value)
-        self.separator_length = float(
-            self.get_parameter("separator_length_m").value
-        )
         self.gap_x = float(self.get_parameter("gap_x_m").value)
         self.gap_y = float(self.get_parameter("gap_y_m").value)
         self.pitch_x = self.cell_length + self.gap_x
@@ -263,9 +258,6 @@ class SingulationController(Node):
         )
         self.matrix_min_x = -self.matrix_length / 2.0
         self.matrix_max_x = self.matrix_length / 2.0
-        self.separator_center_x = (
-            self.matrix_max_x + self.gap_x + self.separator_length / 2.0
-        )
 
         self.minimum_speed = float(
             self.get_parameter("minimum_speed_mps").value
@@ -423,8 +415,6 @@ class SingulationController(Node):
 
         self.last_observation_stamp_s: float | None = None
         self.last_command = [self.idle_speed] * (self.rows * self.cols)
-        self.last_separator_command = [self.idle_speed] * self.cols
-        self.desired_separator_command = [self.idle_speed] * self.cols
         self.last_publish_s: float | None = None
         self.last_diagnostic_s = -math.inf
 
@@ -455,14 +445,6 @@ class SingulationController(Node):
             command_topic,
             10,
         )
-        self.separator_publishers = [
-            self.create_publisher(
-                Float64,
-                f"/singulator/separator/c{col:02d}/cmd_vel",
-                10,
-            )
-            for col in range(self.cols)
-        ]
         self.timer = self.create_timer(
             1.0 / max(1.0, self.publish_rate),
             self._on_control_timer,
@@ -479,8 +461,6 @@ class SingulationController(Node):
     def _validate_parameters(self) -> None:
         if self.rows <= 0 or self.cols <= 0:
             raise ValueError("rows and cols must be positive")
-        if self.separator_length <= 0.0:
-            raise ValueError("separator_length_m must be positive")
         if not (
             0.0 < self.minimum_speed
             <= self.idle_speed
@@ -980,14 +960,10 @@ class SingulationController(Node):
             desired = self._build_cell_speeds(now_s)
         else:
             desired = [self.idle_speed] * (self.rows * self.cols)
-            self.desired_separator_command = [self.idle_speed] * self.cols
 
         limited = self._limit_command_rate(desired, dt)
-        separator_limited = self._limit_separator_command_rate(dt)
         self.last_command = limited
-        self.last_separator_command = separator_limited
         self._publish_command(limited)
-        self._publish_separator_command(separator_limited)
         self._publish_diagnostics(now_s, observation_is_fresh)
 
     def _active_items(self, now_s: float) -> list[LogicalBox]:
@@ -1024,7 +1000,6 @@ class SingulationController(Node):
             item.is_ghost(now_s, 0.12) for item in active
         )
         if not active:
-            self.desired_separator_command = [self.idle_speed] * self.cols
             return [self.idle_speed] * (self.rows * self.cols)
 
         active_by_uid = {item.uid: item for item in active}
@@ -1273,64 +1248,7 @@ class SingulationController(Node):
                 uncontrollable += 1
         self.last_uncontrollable_pairs = uncontrollable
 
-        self.desired_separator_command = self._build_separator_speeds(
-            active,
-            control_x,
-            control_y,
-            target_speed,
-            urgency,
-        )
         return result
-
-    def _build_separator_speeds(
-        self,
-        active: list[LogicalBox],
-        control_x: dict[int, float],
-        control_y: dict[int, float],
-        target_speed: dict[int, float],
-        urgency: dict[int, float],
-    ) -> list[float]:
-        """Allocate the independent final row using the same product targets."""
-
-        contacts: dict[int, list[tuple[int, float]]] = {}
-        half_separator = self.separator_length / 2.0
-        for item in active:
-            overlap_x = min(
-                control_x[item.uid] + item.projected_half_length,
-                self.separator_center_x + half_separator,
-            ) - max(
-                control_x[item.uid] - item.projected_half_length,
-                self.separator_center_x - half_separator,
-            )
-            if overlap_x <= 0.0:
-                continue
-            for col in range(self.cols):
-                centre_y = (col - (self.cols - 1) / 2.0) * self.pitch_y
-                overlap_y = min(
-                    control_y[item.uid] + item.projected_half_width,
-                    centre_y + self.cell_width / 2.0,
-                ) - max(
-                    control_y[item.uid] - item.projected_half_width,
-                    centre_y - self.cell_width / 2.0,
-                )
-                if overlap_y > 0.0:
-                    contacts.setdefault(item.uid, []).append(
-                        (col, overlap_x * overlap_y)
-                    )
-        if not contacts:
-            return [self.idle_speed] * self.cols
-        return allocate_cell_speeds(
-            contacts,
-            target_speed,
-            urgency,
-            cell_count=self.cols,
-            idle_speed=self.idle_speed,
-            minimum_speed=self.minimum_speed,
-            maximum_speed=self.maximum_speed,
-            urgency_gain=self.allocation_urgency_gain,
-            idle_regularization=self.allocation_idle_regularization,
-            iterations=self.allocation_iterations,
-        )
 
     def _overlapped_cells(
         self,
@@ -1421,20 +1339,6 @@ class SingulationController(Node):
             )
         return result
 
-    def _limit_separator_command_rate(self, dt: float) -> list[float]:
-        maximum_step = self.maximum_acceleration * dt
-        return [
-            previous + clamp(
-                target - previous,
-                -maximum_step,
-                maximum_step,
-            )
-            for previous, target in zip(
-                self.last_separator_command,
-                self.desired_separator_command,
-            )
-        ]
-
     def _publish_command(self, speeds: list[float]) -> None:
         message = MatrixCommand()
         message.header.stamp = self.get_clock().now().to_msg()
@@ -1443,12 +1347,6 @@ class SingulationController(Node):
         message.cols = self.cols
         message.target_speed_mps = [float(value) for value in speeds]
         self.command_publisher.publish(message)
-
-    def _publish_separator_command(self, speeds: list[float]) -> None:
-        for publisher, speed in zip(self.separator_publishers, speeds):
-            message = Float64()
-            message.data = float(speed)
-            publisher.publish(message)
 
     def _reset_cycle_diagnostics(self) -> None:
         self.last_active_boxes = 0
