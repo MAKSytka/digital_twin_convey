@@ -5,10 +5,12 @@
 Главная модель содержит:
 
 - матрицу `14 × 4` — 56 независимо управляемых конвейерных ячеек;
-- входной и выходной конвейеры;
+- входной конвейер и роликовое горлышко `760 → 600 мм`;
 - генератор волн из 1–4 коробок;
 - удаление коробок после выхода;
-- ROS-интерфейс для внешнего алгоритма управления матрицей.
+- потоковое машинное зрение;
+- замкнутый forward-only алгоритм управления матрицей;
+- ROS-интерфейсы для зрения, управления и диагностики.
 
 ## Поддерживаемая среда
 
@@ -31,12 +33,98 @@
 | Шаг центров по Y | 195 мм |
 | Общий габарит матрицы | 5,30 × 0,76 м |
 | Продольное трение `mu` | 0,8 |
-| Поперечное трение `mu2` | 0,2 |
-| Диапазон команды скорости | −2…2 м/с |
+| Поперечное трение `mu2` | 0,8 |
+| Диапазон привода матрицы | −3…3 м/с |
+| Рабочий диапазон алгоритма | 0,35…3 м/с |
+| Ограничение ускорения | 3 м/с² |
 
 Направление движения — вдоль глобальной оси `+X`. Строка `r00` находится у входа, строка `r13` — у выхода. Колонки нумеруются от отрицательных координат `Y` к положительным.
 
 ## Быстрый запуск
+
+<!-- cluster-docs:quick-start:start -->
+### Основной рабочий сценарий
+
+После первой установки зависимостей и сборки:
+
+```bash
+cd ~/singulator_digital_twin
+./scripts/setup_dependencies.sh
+./scripts/build.sh
+source install/setup.bash
+./scripts/run_roller_demo.sh
+```
+
+При последующих запусках достаточно:
+
+```bash
+cd ~/singulator_digital_twin
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+./scripts/run_roller_demo.sh
+```
+
+Параметризованный запуск:
+
+```bash
+INFEED_SPEED_MPS=2.0 \
+TARGET_RATE_BOXES_PER_SEC=2.0 \
+SEED=42 \
+./scripts/run_roller_demo.sh
+```
+
+Остановка всех процессов рабочего сценария:
+
+```bash
+./scripts/stop_roller_demo.sh
+```
+
+### Интерфейс машинного зрения
+
+Проверка ROS-топиков:
+
+```bash
+./scripts/check_vision.sh
+ros2 topic hz /singulator/camera/image_raw
+ros2 topic hz /singulator/boxes
+ros2 topic echo /singulator/boxes --once
+```
+
+Графический интерфейс отладки зрения:
+
+```bash
+ros2 run rqt_image_view rqt_image_view \
+  /singulator/perception/debug_image
+```
+
+Основной контракт:
+
+```text
+/singulator/camera/image_raw       sensor_msgs/msg/Image
+/singulator/boxes                  singulator_interfaces/msg/BoxObservationArray
+/singulator/perception/debug_image sensor_msgs/msg/Image
+```
+
+### Смена позиции камеры Gazebo
+
+Перенос GUI-камеры к выходу матрицы и роликовому горлышку:
+
+```bash
+./scripts/view_throat.sh
+```
+
+Ручной эквивалент:
+
+```bash
+gz service \
+  -s /gui/move_to \
+  --reqtype gz.msgs.StringMsg \
+  --reptype gz.msgs.Boolean \
+  -r 'data: "roller_throat"' \
+  --timeout 5000
+```
+<!-- cluster-docs:quick-start:end -->
+
 
 ### 1. Установка зависимостей
 
@@ -189,6 +277,7 @@ std_msgs/msg/Float64
 - [Сценарии появления коробок](docs/SPAWN_SCENARIOS.md)
 - [Интеграция алгоритма второго программиста](docs/ALGORITHM_INTEGRATION.md)
 - [Интеграция машинного зрения](docs/VISION_INTERFACE.md)
+- [Проект кластерного алгоритма сингуляризации](docs/CLUSTER_SINGULATION.md)
 - [Диагностика проблем](docs/TROUBLESHOOTING.md)
 - [Чек-лист передачи проекта](docs/HANDOFF_CHECKLIST.md)
 - [Подготовка GitHub и материалов хакатона](docs/GITHUB_AND_SUBMISSION.md)
@@ -231,6 +320,14 @@ python3 tools/validate_project.py
 - автоматические метрики качества сингуляризации.
 
 Сейчас `MatrixState.actual_speed_mps` копирует заданные скорости и не является реальным измерением одометрии. Топики Gazebo `.../odometry` в основном launch-файле не мостятся в ROS, чтобы не создавать лишнюю нагрузку.
+
+<!-- cluster-docs:limitation:start -->
+### Ограничение текущего контроллера
+
+В сложных поперечных волнах около 40% товаров могут достигать выхода без достаточного продольного зазора. Следующая версия контроллера должна использовать устойчивые кластеры по координате `X`, фиксировать порядок товаров внутри кластера по убыванию `Y` и назначать каждому рангу отдельную целевую продольную позицию.
+
+Подробный проект: [`docs/CLUSTER_SINGULATION.md`](docs/CLUSTER_SINGULATION.md).
+<!-- cluster-docs:limitation:end -->
 
 ## Публикация на GitHub
 
