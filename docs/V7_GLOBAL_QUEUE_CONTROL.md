@@ -86,6 +86,12 @@ v_leader - v_follower =
 `maximum_relative_speed_mps`; если общая опора физически не позволяет создать
 разность скоростей, пара остаётся `uncontrollable`.
 
+Контактная зона контроллера имеет только **forward look-ahead**: она заранее
+командует следующую ленту перед коробкой, но не относит коробку к ленте, которую
+она уже покинула. Это особенно важно на последних четырёх рядах: ложный
+backward-overlap делал векторы контакта плотной пары слишком похожими и
+усреднял разделяющие команды.
+
 ## 3. Логическая идентичность поверх raw-ID зрения
 
 Контроллер хранит собственный `uid`. Raw-ID машинного зрения является только
@@ -155,6 +161,7 @@ deadline_separation_distance_m = 3.20
 deadline_gap_margin_m          = 0.06
 deadline_recovery_gain         = 1.60
 deadline_min_time_s            = 0.10
+longitudinal_control_margin_m  = 0.18
 
 entry_capture_window_s         = 0.18
 entry_wave_dx_m                = 0.36

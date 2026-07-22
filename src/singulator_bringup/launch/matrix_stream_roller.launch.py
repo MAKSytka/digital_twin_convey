@@ -130,7 +130,7 @@ def generate_launch_description() -> LaunchDescription:
                 "merge_padding_y_m": 0.05,
                 "exit_remove_margin_m": 0.65,
                 "prediction_horizon_s": 0.12,
-                "longitudinal_control_margin_m": 0.10,
+                "longitudinal_control_margin_m": 0.18,
                 "yaw_gain": 0.65,
                 "yaw_rate_gain": 0.05,
                 "maximum_yaw_delta_mps": 0.25,

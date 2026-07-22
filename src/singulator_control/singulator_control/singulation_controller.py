@@ -1269,10 +1269,14 @@ class SingulationController(Node):
         predicted_x: float,
         predicted_y: float,
     ) -> Iterable[tuple[int, int, float]]:
-        half_x = item.projected_half_length + self.longitudinal_control_margin
+        # The margin is an actuator look-ahead, not physical footprint.  It
+        # must extend only downstream: expanding both ends falsely assigns a
+        # product to belts it has already left, makes adjacent contact vectors
+        # artificially identical and dilutes their speed difference.
+        half_x = item.projected_half_length
         half_y = item.projected_half_width
         box_min_x = predicted_x - half_x
-        box_max_x = predicted_x + half_x
+        box_max_x = predicted_x + half_x + self.longitudinal_control_margin
         box_min_y = predicted_y - half_y
         box_max_y = predicted_y + half_y
 
