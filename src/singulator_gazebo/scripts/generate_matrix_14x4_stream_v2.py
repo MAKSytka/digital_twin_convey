@@ -20,7 +20,6 @@ MAX_JERK = 30.0
 MAX_COMMAND_AGE = 2.0
 INFEED_LENGTH = 1.20
 THROAT_LENGTH = 0.80
-SEPARATOR_LENGTH = 0.36
 OUTFEED_OVERLAP = 0.010
 OUTFEED_LENGTH = 1.60
 OUTFEED_WIDTH = 0.60
@@ -29,10 +28,7 @@ MATRIX_WIDTH = COLS * CELL_Y + (COLS - 1) * GAP_Y
 MATRIX_MIN_X = -MATRIX_LENGTH / 2.0
 MATRIX_MAX_X = MATRIX_LENGTH / 2.0
 INFEED_CENTER_X = MATRIX_MIN_X - GAP_X - INFEED_LENGTH / 2.0
-SEPARATOR_CENTER_X = MATRIX_MAX_X + GAP_X + SEPARATOR_LENGTH / 2.0
-THROAT_CENTER_X = (
-    MATRIX_MAX_X + GAP_X + SEPARATOR_LENGTH + GAP_X + THROAT_LENGTH / 2.0
-)
+THROAT_CENTER_X = MATRIX_MAX_X + GAP_X + THROAT_LENGTH / 2.0
 THROAT_MAX_X = THROAT_CENTER_X + THROAT_LENGTH / 2.0
 OUTFEED_CENTER_X = THROAT_MAX_X - OUTFEED_OVERLAP + OUTFEED_LENGTH / 2.0
 OUTFEED_MAX_X = OUTFEED_CENTER_X + OUTFEED_LENGTH / 2.0
@@ -123,26 +119,6 @@ def matrix_cells() -> str:
     return "\n".join(result)
 
 
-def separator_cells() -> str:
-    """One independently driven final row before the roller throat."""
-    result: list[str] = []
-    for col in range(COLS):
-        y = (col - (COLS - 1) / 2.0) * PITCH_Y
-        result.append(
-            belt_model(
-                name=f"separator_c{col:02d}",
-                x=SEPARATOR_CENTER_X,
-                y=y,
-                size_x=SEPARATOR_LENGTH,
-                size_y=CELL_Y,
-                velocity_topic=f"/singulator/separator/c{col:02d}/cmd_vel",
-                odometry_topic=f"/singulator/separator/c{col:02d}/odometry",
-                color=(0.85, 0.48, 0.04),
-            )
-        )
-    return "\n".join(result)
-
-
 def generate_world() -> str:
     platform_min_x = INFEED_CENTER_X - INFEED_LENGTH / 2.0 - 0.30
     platform_max_x = OUTFEED_MAX_X + 0.30
@@ -202,7 +178,6 @@ def generate_world() -> str:
     </model>
     {infeed}
     {matrix_cells()}
-    {separator_cells()}
     {outfeed}
     <gui fullscreen="0">
       <plugin filename="MinimalScene" name="3D View">
@@ -230,14 +205,9 @@ def main() -> None:
         / "matrix_14x4_stream_v2.sdf"
     )
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        "\n".join(line.rstrip() for line in generate_world().splitlines())
-        + "\n",
-        encoding="utf-8",
-    )
+    output.write_text(generate_world(), encoding="utf-8")
     print(f"Created upgraded world: {output}")
     print(f"Matrix friction: mu={MU}, mu2={MU2}")
-    print(f"Separator row: x={SEPARATOR_CENTER_X:.2f}, length={SEPARATOR_LENGTH:.2f}")
     print(f"Velocity limits: {-MAX_SPEED}..{MAX_SPEED} m/s")
     print(
         "Acceleration limits: "

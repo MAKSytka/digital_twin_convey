@@ -7,8 +7,6 @@ cd "$PROJECT_ROOT"
 CONTROLLER="src/singulator_control/singulator_control/singulation_controller.py"
 LOGIC="src/singulator_control/singulator_control/global_queue_logic.py"
 LAUNCH="src/singulator_bringup/launch/matrix_stream_roller.launch.py"
-SEPARATOR_WORLD="src/singulator_gazebo/worlds/matrix_14x4_stream_v2.sdf"
-SEPARATOR_BRIDGE="src/singulator_bringup/config/bridge_separator.yaml"
 
 python3 -m py_compile "$CONTROLLER" "$LOGIC" "$LAUNCH"
 python3 tools/test_v7_logic.py
@@ -17,9 +15,6 @@ grep -q 'control_v7:' "$CONTROLLER"
 grep -q 'global_order' "$CONTROLLER"
 grep -q 'build_pairwise_speed_profile' "$CONTROLLER"
 grep -q 'merged_track_timeout_s' "$CONTROLLER"
-grep -q 'deadline_separation_distance_m' "$CONTROLLER"
-grep -q 'separator_c00' "$SEPARATOR_WORLD"
-grep -q '/singulator/separator/c03/cmd_vel' "$SEPARATOR_BRIDGE"
 
 if grep -qE 'next_available_exit_s|slot_time_by_id|_assign_exit_slots' "$CONTROLLER"; then
   echo "FAIL: obsolete exit-slot scheduler symbols are still present." >&2
