@@ -103,6 +103,7 @@ def generate_launch_description() -> LaunchDescription:
                 "cell_width_m": 0.175,
                 "gap_x_m": 0.020,
                 "gap_y_m": 0.020,
+                "matrix_center_x_m": 0.760,
                 "minimum_speed_mps": 1.00,
                 "maximum_speed_mps": 3.00,
                 "idle_speed_mps": 2.20,

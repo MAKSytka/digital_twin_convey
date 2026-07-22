@@ -185,6 +185,7 @@ class SingulationController(Node):
         self.declare_parameter("cell_width_m", 0.175)
         self.declare_parameter("gap_x_m", 0.020)
         self.declare_parameter("gap_y_m", 0.020)
+        self.declare_parameter("matrix_center_x_m", 0.0)
 
         self.declare_parameter("minimum_speed_mps", 1.00)
         self.declare_parameter("maximum_speed_mps", 3.00)
@@ -246,6 +247,9 @@ class SingulationController(Node):
         self.cell_width = float(self.get_parameter("cell_width_m").value)
         self.gap_x = float(self.get_parameter("gap_x_m").value)
         self.gap_y = float(self.get_parameter("gap_y_m").value)
+        self.matrix_center_x = float(
+            self.get_parameter("matrix_center_x_m").value
+        )
         self.pitch_x = self.cell_length + self.gap_x
         self.pitch_y = self.cell_width + self.gap_y
         self.matrix_length = (
@@ -256,8 +260,8 @@ class SingulationController(Node):
             self.cols * self.cell_width
             + (self.cols - 1) * self.gap_y
         )
-        self.matrix_min_x = -self.matrix_length / 2.0
-        self.matrix_max_x = self.matrix_length / 2.0
+        self.matrix_min_x = self.matrix_center_x - self.matrix_length / 2.0
+        self.matrix_max_x = self.matrix_center_x + self.matrix_length / 2.0
 
         self.minimum_speed = float(
             self.get_parameter("minimum_speed_mps").value
@@ -1264,7 +1268,7 @@ class SingulationController(Node):
         box_max_y = predicted_y + half_y
 
         for row in range(self.rows):
-            centre_x = (
+            centre_x = self.matrix_center_x + (
                 row - (self.rows - 1) / 2.0
             ) * self.pitch_x
             cell_min_x = centre_x - self.cell_length / 2.0
