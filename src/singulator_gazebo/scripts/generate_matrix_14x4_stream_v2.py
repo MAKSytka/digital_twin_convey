@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-ROWS = 14
+ROWS = 18
 COLS = 4
 CELL_X = 0.360
 CELL_Y = 0.175
@@ -25,8 +25,9 @@ OUTFEED_LENGTH = 1.60
 OUTFEED_WIDTH = 0.60
 MATRIX_LENGTH = ROWS * CELL_X + (ROWS - 1) * GAP_X
 MATRIX_WIDTH = COLS * CELL_Y + (COLS - 1) * GAP_Y
-MATRIX_MIN_X = -MATRIX_LENGTH / 2.0
-MATRIX_MAX_X = MATRIX_LENGTH / 2.0
+# Keep existing r00…r13 in place and append the four extension rows at outlet.
+MATRIX_MIN_X = -(14 * CELL_X + 13 * GAP_X) / 2.0
+MATRIX_MAX_X = MATRIX_MIN_X + MATRIX_LENGTH
 INFEED_CENTER_X = MATRIX_MIN_X - GAP_X - INFEED_LENGTH / 2.0
 THROAT_CENTER_X = MATRIX_MAX_X + GAP_X + THROAT_LENGTH / 2.0
 THROAT_MAX_X = THROAT_CENTER_X + THROAT_LENGTH / 2.0
@@ -93,9 +94,8 @@ def belt_model(
 
 def matrix_cells() -> str:
     result: list[str] = []
-    row_order = [12, 13] + list(range(0, 12))
-    for row in row_order:
-        x = (row - (ROWS - 1) / 2.0) * PITCH_X
+    for row in range(ROWS):
+        x = MATRIX_MIN_X + CELL_X / 2.0 + row * PITCH_X
         for col in range(COLS):
             y = (col - (COLS - 1) / 2.0) * PITCH_Y
             cell_id = f"r{row:02d}_c{col:02d}"
@@ -205,7 +205,11 @@ def main() -> None:
         / "matrix_14x4_stream_v2.sdf"
     )
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(generate_world(), encoding="utf-8")
+    output.write_text(
+        "\n".join(line.rstrip() for line in generate_world().splitlines())
+        + "\n",
+        encoding="utf-8",
+    )
     print(f"Created upgraded world: {output}")
     print(f"Matrix friction: mu={MU}, mu2={MU2}")
     print(f"Velocity limits: {-MAX_SPEED}..{MAX_SPEED} m/s")
