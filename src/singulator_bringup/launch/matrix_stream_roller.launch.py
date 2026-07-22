@@ -54,6 +54,28 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
+    extension_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="singulator_extension_bridge",
+        output="screen",
+        parameters=[
+            {
+                "config_file": str(
+                    bringup_share / "config" / "bridge_rows_14_17.yaml"
+                )
+            }
+        ],
+    )
+
+    extension_fanout = Node(
+        package="singulator_sim",
+        executable="matrix_command_fanout",
+        name="matrix_command_fanout_18x4",
+        output="screen",
+        parameters=[{"rows": 18, "cols": 4, "use_sim_time": True}],
+    )
+
     throat_controller = Node(
         package="singulator_control",
         executable="roller_throat_controller",
@@ -75,7 +97,7 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[
             {
-                "rows": 14,
+                "rows": 18,
                 "cols": 4,
                 "cell_length_m": 0.360,
                 "cell_width_m": 0.175,
@@ -146,7 +168,7 @@ def generate_launch_description() -> LaunchDescription:
             "-name",
             "roller_throat",
             "-x",
-            "3.070",
+            "3.830",
             "-y",
             "0.0",
             "-z",
@@ -169,6 +191,8 @@ def generate_launch_description() -> LaunchDescription:
     entities.extend(
         [
             throat_bridge,
+            extension_bridge,
+            extension_fanout,
             throat_controller,
             advanced_controller,
             TimerAction(period=1.5, actions=[throat_spawner]),
