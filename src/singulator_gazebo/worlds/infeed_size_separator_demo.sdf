@@ -13,7 +13,7 @@
     <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
 
     <light type="directional" name="sun">
-      <pose>-2 -3 6 0 0 0</pose>
+      <pose>-3 -4 8 0 0 0</pose>
       <cast_shadows>true</cast_shadows>
       <diffuse>0.95 0.95 0.95 1</diffuse>
       <specular>0.25 0.25 0.25 1</specular>
@@ -22,15 +22,10 @@
 
     <model name="floor">
       <static>true</static>
-      <pose>0 0 -0.455 0 0 0</pose>
+      <pose>0 0 -0.505 0 0 0</pose>
       <link name="floor_link">
-        <collision name="floor_collision">
-          <geometry><box><size>5.200000 1.500000 0.050000</size></box></geometry>
-        </collision>
-        <visual name="floor_visual">
-          <geometry><box><size>5.200000 1.500000 0.050000</size></box></geometry>
-          <material><ambient>0.18 0.18 0.18 1</ambient><diffuse>0.25 0.25 0.25 1</diffuse></material>
-        </visual>
+        <collision name="floor_collision"><geometry><box><size>9.000 4.000 0.050</size></box></geometry></collision>
+        <visual name="floor_visual"><geometry><box><size>9.000 4.000 0.050</size></box></geometry><material><ambient>0.18 0.18 0.18 1</ambient><diffuse>0.25 0.25 0.25 1</diffuse></material></visual>
       </link>
     </model>
 
@@ -39,5 +34,34 @@
       <name>infeed_size_separator</name>
       <pose>0 0 0 0 0 0</pose>
     </include>
+
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_00</name><pose>-0.600 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft_odd</uri><name>screen_shaft_01</name><pose>-0.480 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_02</name><pose>-0.360 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft_odd</uri><name>screen_shaft_03</name><pose>-0.240 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_04</name><pose>-0.120 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft_odd</uri><name>screen_shaft_05</name><pose>0.000 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_06</name><pose>0.120 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft_odd</uri><name>screen_shaft_07</name><pose>0.240 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_08</name><pose>0.360 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft_odd</uri><name>screen_shaft_09</name><pose>0.480 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_10</name><pose>0.600 0 0 0 0 0</pose></include>
+
+    <gui fullscreen="0">
+      <plugin filename="MinimalScene" name="3D View">
+        <gz-gui><title>3D View</title><property type="bool" key="showTitleBar">false</property><property type="string" key="state">docked</property></gz-gui>
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.55 0.55 0.55</ambient_light>
+        <background_color>0.75 0.78 0.82</background_color>
+        <camera_pose>-6.8 -5.2 5.0 0 0.48 0.72</camera_pose>
+      </plugin>
+      <plugin name="World control" filename="WorldControl">
+        <gz-gui><title>World control</title><property type="bool" key="showTitleBar">0</property><property type="string" key="state">floating</property></gz-gui>
+        <play_pause>1</play_pause><step>1</step><start_paused>0</start_paused>
+      </plugin>
+      <plugin filename="WorldStats" name="World stats"/>
+      <plugin filename="EntityTree" name="Entity tree"/>
+    </gui>
   </world>
 </sdf>

@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <model name="separator_star_shaft_odd">
+    <static>false</static>
+    <link name="axle">
+      <inertial><mass>8.0</mass><inertia><ixx>4.2</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.002</iyy><iyz>0</iyz><izz>4.2</izz></inertia></inertial>
+      <visual name="axle_visual"><pose>0 0 0.055 1.570796327 0 0</pose><geometry><cylinder><radius>0.008</radius><length>2.480</length></cylinder></geometry><material><ambient>0.22 0.22 0.24 1</ambient><diffuse>0.30 0.30 0.33 1</diffuse></material></visual>
+      <visual name="left_bearing"><pose>0 -1.245 0.055 0 0 0</pose><geometry><box><size>0.080 0.040 0.100</size></box></geometry><material><ambient>0.25 0.25 0.28 1</ambient><diffuse>0.35 0.35 0.38 1</diffuse></material></visual>
+      <visual name="right_bearing"><pose>0 1.245 0.055 0 0 0</pose><geometry><box><size>0.080 0.040 0.100</size></box></geometry><material><ambient>0.25 0.25 0.28 1</ambient><diffuse>0.35 0.35 0.38 1</diffuse></material></visual>
+    </link>
+    <joint name="world_fixed" type="fixed"><parent>world</parent><child>axle</child></joint>
+    <include><uri>model://separator_star_disc</uri><name>disc_00</name><pose>0 -1.150 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_01</name><pose>0 -1.050 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_02</name><pose>0 -0.950 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_03</name><pose>0 -0.850 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_04</name><pose>0 -0.750 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_05</name><pose>0 -0.650 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_06</name><pose>0 -0.550 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_07</name><pose>0 -0.450 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_08</name><pose>0 -0.350 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_09</name><pose>0 -0.250 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_10</name><pose>0 -0.150 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_11</name><pose>0 -0.050 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_12</name><pose>0 0.050 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_13</name><pose>0 0.150 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_14</name><pose>0 0.250 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_15</name><pose>0 0.350 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_16</name><pose>0 0.450 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_17</name><pose>0 0.550 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_18</name><pose>0 0.650 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_19</name><pose>0 0.750 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_20</name><pose>0 0.850 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_21</name><pose>0 0.950 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_22</name><pose>0 1.050 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_disc</uri><name>disc_23</name><pose>0 1.150 0 0 0 0</pose></include>
+  </model>
+</sdf>

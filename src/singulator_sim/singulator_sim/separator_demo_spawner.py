@@ -4,6 +4,7 @@ from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
 import json
 import math
+import random
 import subprocess
 import threading
 import time
@@ -15,69 +16,60 @@ from singulator_sim.box_model import BoxSpec
 
 
 class SeparatorDemoSpawner(Node):
-    """Spawns a finite deterministic sequence of accepted and rejected items."""
+    """Create a controllable random flow on ten fixed transverse spots."""
 
-    SCENARIOS = (
-        (
-            "accepted_large",
-            "UPPER",
-            BoxSpec(0.240, 0.180, 0.120, 1.20, -0.18, 0.00),
-            (0.20, 0.65, 0.25),
-        ),
-        (
-            "rejected_small",
-            "LOWER",
-            BoxSpec(0.055, 0.040, 0.025, 0.04, 0.00, 0.00),
-            (0.95, 0.45, 0.08),
-        ),
-        (
-            "accepted_medium",
-            "UPPER",
-            BoxSpec(0.160, 0.105, 0.080, 0.42, 0.20, 0.00),
-            (0.18, 0.45, 0.92),
-        ),
-        (
-            "rejected_flat",
-            "LOWER",
-            BoxSpec(0.070, 0.048, 0.015, 0.03, -0.08, math.radians(8.0)),
-            (0.90, 0.18, 0.18),
-        ),
-        (
-            "accepted_diagonal",
-            "UPPER",
-            BoxSpec(0.220, 0.140, 0.085, 0.68, 0.12, math.radians(18.0)),
-            (0.55, 0.25, 0.85),
-        ),
-    )
+    SPAWN_SPOTS_M = tuple(-1.0 + index * (2.0 / 9.0) for index in range(10))
 
     def __init__(self) -> None:
         super().__init__("separator_demo_spawner")
         self.declare_parameter("world_name", "infeed_size_separator_demo")
-        self.declare_parameter("spawn_x", -1.60)
+        self.declare_parameter("spawn_x", -3.20)
         self.declare_parameter("belt_top_z", 0.08)
-        self.declare_parameter("spawn_period_s", 1.60)
-        self.declare_parameter("cycles", 3)
+        self.declare_parameter("conveyor_half_width_m", 1.25)
+        self.declare_parameter("target_rate_boxes_per_sec", 4.0)
+        self.declare_parameter("spawn_mode", "continuous")
+        self.declare_parameter("maximum_items", 100)
+        self.declare_parameter("small_item_probability", 0.20)
+        self.declare_parameter("cutoff_m", 0.070)
+        self.declare_parameter("seed", 42)
         self.declare_parameter("service_timeout_ms", 5000)
+        self.declare_parameter("statistics_every_items", 20)
 
         self.world_name = str(self.get_parameter("world_name").value)
         self.spawn_x = float(self.get_parameter("spawn_x").value)
         self.belt_top_z = float(self.get_parameter("belt_top_z").value)
-        self.spawn_period_s = float(
-            self.get_parameter("spawn_period_s").value
+        self.half_width = float(
+            self.get_parameter("conveyor_half_width_m").value
         )
-        self.cycles = int(self.get_parameter("cycles").value)
+        self.target_rate = float(
+            self.get_parameter("target_rate_boxes_per_sec").value
+        )
+        self.spawn_mode = str(self.get_parameter("spawn_mode").value).lower()
+        self.maximum_items = int(
+            self.get_parameter("maximum_items").value
+        )
+        self.small_probability = float(
+            self.get_parameter("small_item_probability").value
+        )
+        self.cutoff = float(self.get_parameter("cutoff_m").value)
         self.service_timeout_ms = int(
             self.get_parameter("service_timeout_ms").value
         )
+        self.statistics_every_items = int(
+            self.get_parameter("statistics_every_items").value
+        )
+        seed = int(self.get_parameter("seed").value)
 
-        if self.spawn_period_s <= 0.0:
-            raise ValueError("spawn_period_s must be positive")
-        if self.cycles <= 0:
-            raise ValueError("cycles must be positive")
-
+        self._validate_parameters()
+        self.rng = random.Random(seed)
         self.session_id = int(time.time())
         self.item_index = 0
-        self.maximum_items = self.cycles * len(self.SCENARIOS)
+        self.created_count = 0
+        self.expected_upper = 0
+        self.expected_lower = 0
+        self.skipped_busy = 0
+        self.started_sim_ns: int | None = None
+
         self.state_lock = threading.Lock()
         self.spawn_in_progress = False
         self.spawn_pool = ThreadPoolExecutor(
@@ -85,46 +77,174 @@ class SeparatorDemoSpawner(Node):
             thread_name_prefix="separator_spawn",
         )
         self.timer = self.create_timer(
-            self.spawn_period_s,
+            1.0 / self.target_rate,
             self._on_timer,
         )
 
+        spots = ", ".join(f"{value:.3f}" for value in self.SPAWN_SPOTS_M)
         self.get_logger().info(
-            "Separator demo sequence: "
-            f"{self.maximum_items} items, "
-            "green/blue -> upper path, orange/red -> lower path"
+            "Separator flow configured: "
+            f"mode={self.spawn_mode}, target_rate={self.target_rate:.2f} item/s, "
+            f"small_probability={self.small_probability:.2f}, "
+            f"cutoff={self.cutoff * 1000:.0f} mm"
+        )
+        self.get_logger().info(f"Ten fixed centre-of-mass spots Y=[{spots}] m")
+
+    def _validate_parameters(self) -> None:
+        if self.target_rate <= 0.0:
+            raise ValueError("target_rate_boxes_per_sec must be positive")
+        if self.spawn_mode not in {"continuous", "finite"}:
+            raise ValueError("spawn_mode must be continuous or finite")
+        if self.maximum_items <= 0:
+            raise ValueError("maximum_items must be positive")
+        if not 0.0 <= self.small_probability <= 1.0:
+            raise ValueError("small_item_probability must be in [0, 1]")
+        if self.cutoff <= 0.0:
+            raise ValueError("cutoff_m must be positive")
+        if self.half_width <= 0.0:
+            raise ValueError("conveyor_half_width_m must be positive")
+        if self.statistics_every_items <= 0:
+            raise ValueError("statistics_every_items must be positive")
+
+    @staticmethod
+    def _projections(
+        size_x: float,
+        size_y: float,
+        yaw: float,
+    ) -> tuple[float, float]:
+        projected_x = (
+            abs(size_x * math.cos(yaw))
+            + abs(size_y * math.sin(yaw))
+        )
+        projected_y = (
+            abs(size_x * math.sin(yaw))
+            + abs(size_y * math.cos(yaw))
+        )
+        return projected_x, projected_y
+
+    @staticmethod
+    def _mass(
+        size_x: float,
+        size_y: float,
+        size_z: float,
+        density: float,
+    ) -> float:
+        return max(
+            0.01,
+            min(5.0, size_x * size_y * size_z * density),
+        )
+
+    def _make_box(
+        self,
+        spot_index: int,
+        expected_lower: bool,
+    ) -> tuple[BoxSpec, tuple[float, float, float], float, float]:
+        y = self.SPAWN_SPOTS_M[spot_index]
+
+        for _ in range(1000):
+            if expected_lower:
+                size_x = self.rng.uniform(0.035, 0.069)
+                size_y = self.rng.uniform(0.015, 0.069)
+                size_z = self.rng.uniform(0.010, 0.080)
+                yaw = math.radians(self.rng.uniform(-32.0, 32.0))
+                density = self.rng.uniform(180.0, 700.0)
+            else:
+                size_x = self.rng.uniform(0.120, 0.400)
+                size_y = self.rng.uniform(0.100, 0.320)
+                size_z = self.rng.uniform(0.030, 0.280)
+                yaw = math.radians(self.rng.uniform(-35.0, 35.0))
+                density = self.rng.uniform(140.0, 650.0)
+
+            projection_x, projection_y = self._projections(
+                size_x,
+                size_y,
+                yaw,
+            )
+            classified_lower = min(projection_x, projection_y) < self.cutoff
+            if classified_lower != expected_lower:
+                continue
+
+            if not expected_lower and min(projection_x, projection_y) < 0.090:
+                continue
+
+            if abs(y) + projection_y / 2.0 > self.half_width - 0.015:
+                continue
+
+            mass = self._mass(size_x, size_y, size_z, density)
+            box = BoxSpec(
+                size_x=size_x,
+                size_y=size_y,
+                size_z=size_z,
+                mass=mass,
+                y=y,
+                yaw=yaw,
+                lane=spot_index,
+            )
+            if expected_lower:
+                color = (
+                    self.rng.uniform(0.82, 0.98),
+                    self.rng.uniform(0.12, 0.45),
+                    self.rng.uniform(0.04, 0.12),
+                )
+            else:
+                color = (
+                    self.rng.uniform(0.08, 0.25),
+                    self.rng.uniform(0.45, 0.85),
+                    self.rng.uniform(0.18, 0.85),
+                )
+            return box, color, projection_x, projection_y
+
+        raise RuntimeError(
+            f"Could not generate a fitting box for spot {spot_index}"
         )
 
     def _on_timer(self) -> None:
-        if self.item_index >= self.maximum_items:
+        if (
+            self.spawn_mode == "finite"
+            and self.item_index >= self.maximum_items
+        ):
             self.timer.cancel()
             self.get_logger().info(
-                "Separator demo sequence finished. "
-                "Restart the launch to repeat it."
+                "Finite separator flow finished; existing boxes keep moving"
             )
             return
 
         with self.state_lock:
             if self.spawn_in_progress:
-                self.get_logger().warning(
-                    "Previous spawn is still running; current tick skipped"
-                )
+                self.skipped_busy += 1
+                if self.skipped_busy % 20 == 1:
+                    self.get_logger().warning(
+                        "Spawn service is still busy; a flow tick was skipped"
+                    )
                 return
             self.spawn_in_progress = True
 
-        scenario_index = self.item_index % len(self.SCENARIOS)
-        cycle_index = self.item_index // len(self.SCENARIOS)
-        label, expected_path, box, color = self.SCENARIOS[scenario_index]
+        expected_lower = self.rng.random() < self.small_probability
+        spot_index = self.rng.randrange(len(self.SPAWN_SPOTS_M))
+        try:
+            box, color, projection_x, projection_y = self._make_box(
+                spot_index,
+                expected_lower,
+            )
+        except Exception:
+            with self.state_lock:
+                self.spawn_in_progress = False
+            raise
+
+        route = "lower" if expected_lower else "upper"
         model_name = (
             f"box_separator_{self.session_id}_"
-            f"c{cycle_index:02d}_{label}"
+            f"n{self.item_index:07d}_exp_{route}_spot{spot_index:02d}"
         )
         self.item_index += 1
 
         self.get_logger().info(
             f"Spawn {model_name}: "
             f"{box.size_x * 1000:.0f}x{box.size_y * 1000:.0f}x"
-            f"{box.size_z * 1000:.0f} mm, expected={expected_path}"
+            f"{box.size_z * 1000:.0f} mm, "
+            f"yaw={math.degrees(box.yaw):.1f} deg, "
+            f"projection={projection_x * 1000:.0f}x"
+            f"{projection_y * 1000:.0f} mm, expected={route.upper()}"
         )
 
         future = self.spawn_pool.submit(
@@ -132,6 +252,7 @@ class SeparatorDemoSpawner(Node):
             model_name,
             box,
             color,
+            expected_lower,
         )
         future.add_done_callback(self._on_spawn_finished)
 
@@ -140,7 +261,8 @@ class SeparatorDemoSpawner(Node):
         model_name: str,
         box: BoxSpec,
         color: tuple[float, float, float],
-    ) -> bool:
+        expected_lower: bool,
+    ) -> tuple[bool, bool]:
         sdf = box.to_sdf(model_name=model_name, color=color)
         spawn_z = self.belt_top_z + box.size_z / 2.0 + 0.008
         escaped_sdf = json.dumps(sdf)
@@ -160,7 +282,6 @@ class SeparatorDemoSpawner(Node):
                 "}",
             )
         )
-
         command = [
             "gz",
             "service",
@@ -175,7 +296,6 @@ class SeparatorDemoSpawner(Node):
             "--req",
             request,
         ]
-
         try:
             result = subprocess.run(
                 command,
@@ -186,7 +306,7 @@ class SeparatorDemoSpawner(Node):
             )
         except (OSError, subprocess.TimeoutExpired) as error:
             self.get_logger().error(f"Gazebo spawn failed: {error}")
-            return False
+            return False, expected_lower
 
         success = (
             result.returncode == 0
@@ -194,18 +314,51 @@ class SeparatorDemoSpawner(Node):
         )
         if not success:
             self.get_logger().error(
-                "Gazebo rejected separator demo item. "
+                "Gazebo rejected separator item. "
                 f"stdout={result.stdout.strip()} "
                 f"stderr={result.stderr.strip()}"
             )
-        return success
+        return success, expected_lower
 
     def _on_spawn_finished(self, future: Future) -> None:
         try:
-            future.result()
+            success, expected_lower = future.result()
+            if success:
+                self.created_count += 1
+                if expected_lower:
+                    self.expected_lower += 1
+                else:
+                    self.expected_upper += 1
+                if self.started_sim_ns is None:
+                    self.started_sim_ns = self.get_clock().now().nanoseconds
+                if self.created_count % self.statistics_every_items == 0:
+                    self._log_statistics()
+        except Exception as error:
+            self.get_logger().error(f"Separator spawn task failed: {error}")
         finally:
             with self.state_lock:
                 self.spawn_in_progress = False
+
+    def _log_statistics(self) -> None:
+        now_ns = self.get_clock().now().nanoseconds
+        elapsed = (
+            (now_ns - self.started_sim_ns) / 1e9
+            if self.started_sim_ns is not None
+            else 0.0
+        )
+        actual_rate = (
+            (self.created_count - 1) / elapsed
+            if elapsed > 0.0
+            else 0.0
+        )
+        self.get_logger().info(
+            "Spawner statistics: "
+            f"created={self.created_count}, "
+            f"expected_upper={self.expected_upper}, "
+            f"expected_lower={self.expected_lower}, "
+            f"actual_rate={actual_rate:.2f} item/s, "
+            f"busy_ticks={self.skipped_busy}"
+        )
 
     def destroy_node(self) -> bool:
         self.timer.cancel()
