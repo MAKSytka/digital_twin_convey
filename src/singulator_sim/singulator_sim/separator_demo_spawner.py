@@ -53,7 +53,7 @@ class SeparatorDemoSpawner(Node):
     def __init__(self) -> None:
         super().__init__("separator_demo_spawner")
         self.declare_parameter("world_name", "infeed_size_separator_demo")
-        self.declare_parameter("spawn_x", -1.72)
+        self.declare_parameter("spawn_x", -1.60)
         self.declare_parameter("belt_top_z", 0.08)
         self.declare_parameter("spawn_period_s", 1.60)
         self.declare_parameter("cycles", 3)
