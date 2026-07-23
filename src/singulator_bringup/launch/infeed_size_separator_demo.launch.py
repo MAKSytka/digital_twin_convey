@@ -65,7 +65,7 @@ def generate_launch_description() -> LaunchDescription:
         parameters=[
             {
                 "world_name": "infeed_size_separator_demo",
-                "spawn_x": -1.72,
+                "spawn_x": -1.60,
                 "belt_top_z": 0.08,
                 "spawn_period_s": ParameterValue(
                     spawn_period,
