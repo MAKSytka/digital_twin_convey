@@ -126,6 +126,10 @@ def main() -> None:
         "separator_demo_spawner" in launch_text,
         "Spawner is missing from launch",
     )
+    require(
+        "separator_demo_cleanup" in launch_text,
+        "Output cleanup is missing from launch",
+    )
 
     control_setup = (
         ROOT / "src" / "singulator_control" / "setup.py"
@@ -140,6 +144,10 @@ def main() -> None:
     require(
         "separator_demo_spawner" in sim_setup,
         "Spawner entry point is missing",
+    )
+    require(
+        "separator_demo_cleanup" in sim_setup,
+        "Cleanup entry point is missing",
     )
 
     print(

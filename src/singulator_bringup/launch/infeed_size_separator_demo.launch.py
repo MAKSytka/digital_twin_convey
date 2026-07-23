@@ -77,6 +77,21 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
+    cleanup = Node(
+        package="singulator_sim",
+        executable="separator_demo_cleanup",
+        name="separator_demo_cleanup",
+        output="screen",
+        parameters=[
+            {
+                "world_name": "infeed_size_separator_demo",
+                "exit_x_m": 1.82,
+                "fallen_z_m": -0.80,
+                "use_sim_time": True,
+            }
+        ],
+    )
+
     return LaunchDescription(
         [
             DeclareLaunchArgument("spawn_period_s", default_value="1.60"),
@@ -84,6 +99,7 @@ def generate_launch_description() -> LaunchDescription:
             gazebo,
             bridge,
             controller,
+            TimerAction(period=3.0, actions=[cleanup]),
             TimerAction(period=4.0, actions=[spawner]),
         ]
     )
