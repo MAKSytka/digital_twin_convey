@@ -28,6 +28,7 @@ setup(
             "uniform_matrix_controller = singulator_control.uniform_matrix_controller:main",
             "row_1x4_controller = singulator_control.row_1x4_controller:main",
             "roller_throat_controller = singulator_control.roller_throat_controller:main",
+            "separator_demo_controller = singulator_control.separator_demo_controller:main",
         ]
     },
 )
