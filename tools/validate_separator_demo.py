@@ -9,11 +9,48 @@ ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT / "src" / "singulator_description" / "models"
 MODEL = MODEL_DIR / "infeed_size_separator" / "model.sdf"
 SHAFT = MODEL_DIR / "separator_star_shaft" / "model.sdf"
-WORLD = ROOT / "src" / "singulator_gazebo" / "worlds" / "infeed_size_separator_demo.sdf"
-BRIDGE = ROOT / "src" / "singulator_bringup" / "config" / "bridge_separator_demo.yaml"
-LAUNCH = ROOT / "src" / "singulator_bringup" / "launch" / "infeed_size_separator_demo.launch.py"
-SPAWNER = ROOT / "src" / "singulator_sim" / "singulator_sim" / "separator_demo_spawner.py"
-CLEANUP = ROOT / "src" / "singulator_sim" / "singulator_sim" / "separator_demo_cleanup.py"
+WORLD = (
+    ROOT
+    / "src"
+    / "singulator_gazebo"
+    / "worlds"
+    / "infeed_size_separator_demo.sdf"
+)
+BRIDGE = (
+    ROOT
+    / "src"
+    / "singulator_bringup"
+    / "config"
+    / "bridge_separator_demo.yaml"
+)
+LAUNCH = (
+    ROOT
+    / "src"
+    / "singulator_bringup"
+    / "launch"
+    / "infeed_size_separator_demo.launch.py"
+)
+CONTROLLER = (
+    ROOT
+    / "src"
+    / "singulator_control"
+    / "singulator_control"
+    / "separator_demo_controller.py"
+)
+SPAWNER = (
+    ROOT
+    / "src"
+    / "singulator_sim"
+    / "singulator_sim"
+    / "separator_demo_spawner.py"
+)
+CLEANUP = (
+    ROOT
+    / "src"
+    / "singulator_sim"
+    / "singulator_sim"
+    / "separator_demo_cleanup.py"
+)
 
 
 def require(condition: bool, message: str) -> None:
@@ -26,7 +63,11 @@ def vector(text: str | None) -> list[float]:
     return [float(value) for value in text.split()]
 
 
-def belt_size(root: ET.Element, link_name: str, collision_name: str) -> list[float]:
+def belt_size(
+    root: ET.Element,
+    link_name: str,
+    collision_name: str,
+) -> list[float]:
     link = root.find(f".//link[@name='{link_name}']")
     require(link is not None, f"{link_name} is missing")
     return vector(
@@ -123,8 +164,14 @@ def main() -> None:
         for node in rotor.findall("./collision")
         if node.get("name", "").startswith("disc_collision_")
     ]
-    require(len(disc_collisions) == 25, "A shaft must contain 25 disc collisions")
-    disc_y = sorted(vector(node.findtext("pose"))[1] for node in disc_collisions)
+    require(
+        len(disc_collisions) == 25,
+        "A shaft must contain 25 disc collisions",
+    )
+    disc_y = sorted(
+        vector(node.findtext("pose"))[1]
+        for node in disc_collisions
+    )
     transverse_pitch = min(
         right - left
         for left, right in zip(disc_y, disc_y[1:])
@@ -138,7 +185,10 @@ def main() -> None:
     disc_radius = float(radius_text)
     disc_thickness = float(thickness_text)
     require(abs(disc_radius - 0.025) < 1e-9, "Disc radius must be 25 mm")
-    require(abs(disc_thickness - 0.030) < 1e-9, "Disc thickness must be 30 mm")
+    require(
+        abs(disc_thickness - 0.030) < 1e-9,
+        "Disc thickness must be 30 mm",
+    )
 
     longitudinal_gap = shaft_pitch - 2.0 * disc_radius
     transverse_gap = transverse_pitch - disc_thickness
@@ -151,8 +201,13 @@ def main() -> None:
         "Transverse clear opening must be 70 mm",
     )
 
-    joints = shaft_root.findall(".//joint[@name='shaft_joint'][@type='revolute']")
-    require(len(joints) == 1, "Each shaft must have exactly one revolute joint")
+    joints = shaft_root.findall(
+        ".//joint[@name='shaft_joint'][@type='revolute']"
+    )
+    require(
+        len(joints) == 1,
+        "Each shaft must have exactly one revolute joint",
+    )
     require(
         vector(joints[0].findtext("./axis/xyz")) == [0.0, 1.0, 0.0],
         "Shaft must rotate around Y",
@@ -170,18 +225,23 @@ def main() -> None:
         "Shaft command topic is incorrect",
     )
 
-    camera_tracking = world_root.find(
-        ".//gui/plugin[@filename='CameraTracking']"
+    require(
+        world_root.find(".//gui/plugin[@filename='CameraTracking']")
+        is not None,
+        "CameraTracking GUI plugin is missing",
     )
-    require(camera_tracking is not None, "CameraTracking GUI plugin is missing")
-    scene_manager = world_root.find(
-        ".//gui/plugin[@filename='GzSceneManager']"
+    require(
+        world_root.find(".//gui/plugin[@filename='GzSceneManager']")
+        is not None,
+        "GzSceneManager GUI plugin is missing",
     )
-    require(scene_manager is not None, "GzSceneManager GUI plugin is missing")
-    camera_pose = world_root.findtext(
-        ".//gui/plugin[@filename='MinimalScene']/camera_pose"
+    require(
+        world_root.findtext(
+            ".//gui/plugin[@filename='MinimalScene']/camera_pose"
+        )
+        is not None,
+        "Initial camera pose is missing",
     )
-    require(camera_pose is not None, "Initial camera pose is missing")
 
     bridge_text = BRIDGE.read_text(encoding="utf-8")
     for suffix in (
@@ -202,26 +262,73 @@ def main() -> None:
         'default_value="4.0"',
         'default_value="0.20"',
         'default_value="2.0"',
+        'default_value="0.002"',
+        'default_value="0.02"',
+        'default_value="0.35"',
+        'default_value="0.30"',
         "separator_demo_controller",
         "separator_demo_spawner",
         "separator_demo_cleanup",
     ):
         require(token in launch_text, f"Launch token is missing: {token}")
 
-    spawner_text = SPAWNER.read_text(encoding="utf-8")
-    require("range(10)" in spawner_text, "Spawner does not define ten fixed spots")
+    controller_text = CONTROLLER.read_text(encoding="utf-8")
+    for token in (
+        'self.declare_parameter("shaft_collision_radius_m", 0.025)',
+        "angular_speed = surface_speed / radius",
+        "rpm = angular_speed * 60.0 / (2.0 * math.pi)",
+        "disc_contact_radius",
+    ):
+        require(
+            token in controller_text,
+            f"Roller speed token missing: {token}",
+        )
+
+    expected_angular_speed = 2.0 / disc_radius
     require(
-        "min(projection_x, projection_y) < self.cutoff" in spawner_text,
+        abs(expected_angular_speed - 80.0) < 1e-9,
+        "A 25 mm radius must require 80 rad/s for 2 m/s",
+    )
+
+    spawner_text = SPAWNER.read_text(encoding="utf-8")
+    require(
+        "range(10)" in spawner_text,
+        "Spawner does not define ten fixed spots",
+    )
+    require(
+        "minimum_projection < self.cutoff" in spawner_text,
         "Spawner does not use the two-projection cutoff rule",
     )
-    require(
-        'self.declare_parameter("spawn_mode", "continuous")' in spawner_text,
-        "Continuous mode is not the spawner default",
-    )
-    require(
-        'self.declare_parameter("small_item_probability", 0.20)' in spawner_text,
-        "Small-item default probability is not 20%",
-    )
+    for profile in (
+        "micro_parcel",
+        "long_narrow",
+        "flat_strip",
+        "tall_slender",
+        "near_cutoff",
+        "medium_carton",
+        "large_carton",
+        "long_parcel",
+        "flat_panel",
+        "tall_carton",
+        "square_carton",
+    ):
+        require(
+            f'"{profile}"' in spawner_text,
+            f"Box profile is missing: {profile}",
+        )
+    for token in (
+        'self.declare_parameter("small_item_probability", 0.20)',
+        'self.declare_parameter("spawn_clearance_m", 0.002)',
+        'self.declare_parameter("box_restitution", 0.02)',
+        'self.declare_parameter("angular_velocity_decay", 0.30)',
+        "cardboard_areal_density",
+        "profile.minimum_mass_kg",
+        "<velocity_decay>",
+        "<restitution_coefficient>",
+        "<max_vel>",
+        "<allow_auto_disable>true</allow_auto_disable>",
+    ):
+        require(token in spawner_text, f"Spawner dynamics token missing: {token}")
     require(
         "transport_assist" not in spawner_text,
         "Artificial persistent-force transport must not be used",
@@ -234,7 +341,10 @@ def main() -> None:
         "mismatch_count",
         "Separator statistics",
     ):
-        require(token in cleanup_text, f"Cleanup/statistics token missing: {token}")
+        require(
+            token in cleanup_text,
+            f"Cleanup/statistics token missing: {token}",
+        )
 
     control_setup = (
         ROOT / "src" / "singulator_control" / "setup.py"
@@ -242,10 +352,20 @@ def main() -> None:
     sim_setup = (
         ROOT / "src" / "singulator_sim" / "setup.py"
     ).read_text(encoding="utf-8")
-    require("separator_demo_controller" in control_setup, "Controller entry point is missing")
-    require("separator_demo_spawner" in sim_setup, "Spawner entry point is missing")
-    require("separator_demo_cleanup" in sim_setup, "Cleanup entry point is missing")
+    require(
+        "separator_demo_controller" in control_setup,
+        "Controller entry point is missing",
+    )
+    require(
+        "separator_demo_spawner" in sim_setup,
+        "Spawner entry point is missing",
+    )
+    require(
+        "separator_demo_cleanup" in sim_setup,
+        "Cleanup entry point is missing",
+    )
 
+    rpm = expected_angular_speed * 60.0 / (2.0 * 3.141592653589793)
     print(
         "Separator demo static validation passed: "
         f"width={entry[1]:.3f} m, "
@@ -253,7 +373,9 @@ def main() -> None:
         f"shafts={len(shaft_includes)}, "
         f"discs_per_shaft={len(disc_collisions)}, "
         f"openings={longitudinal_gap:.3f}/{transverse_gap:.3f} m, "
-        "controllers=11"
+        f"roller_radius={disc_radius:.3f} m, "
+        f"omega_2mps={expected_angular_speed:.1f} rad/s, "
+        f"rpm_2mps={rpm:.1f}, profiles=11"
     )
 
 
