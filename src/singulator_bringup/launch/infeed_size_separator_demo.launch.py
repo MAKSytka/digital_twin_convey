@@ -14,33 +14,67 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description() -> LaunchDescription:
-    gazebo_share = Path(get_package_share_directory("singulator_gazebo"))
-    bringup_share = Path(get_package_share_directory("singulator_bringup"))
-    ros_gz_share = Path(get_package_share_directory("ros_gz_sim"))
+    gazebo_share = Path(
+        get_package_share_directory("singulator_gazebo")
+    )
+    bringup_share = Path(
+        get_package_share_directory("singulator_bringup")
+    )
+    ros_gz_share = Path(
+        get_package_share_directory("ros_gz_sim")
+    )
 
-    world = gazebo_share / "worlds" / "infeed_size_separator_demo.sdf"
+    world = (
+        gazebo_share
+        / "worlds"
+        / "infeed_size_separator_demo.sdf"
+    )
 
     spawn_mode = LaunchConfiguration("spawn_mode")
-    target_rate = LaunchConfiguration("target_rate_boxes_per_sec")
+    target_rate = LaunchConfiguration(
+        "target_rate_boxes_per_sec"
+    )
     maximum_items = LaunchConfiguration("maximum_items")
-    small_probability = LaunchConfiguration("small_item_probability")
+    small_probability = LaunchConfiguration(
+        "small_item_probability"
+    )
     seed = LaunchConfiguration("seed")
-    conveyor_speed = LaunchConfiguration("conveyor_speed_mps")
-    screen_surface_speed = LaunchConfiguration("screen_surface_speed_mps")
-    spawn_clearance = LaunchConfiguration("spawn_clearance_m")
-    box_restitution = LaunchConfiguration("box_restitution")
-    bounce_threshold = LaunchConfiguration("bounce_capture_velocity_mps")
-    linear_decay = LaunchConfiguration("linear_velocity_decay")
-    angular_decay = LaunchConfiguration("angular_velocity_decay")
+    conveyor_speed = LaunchConfiguration(
+        "conveyor_speed_mps"
+    )
+    screen_surface_speed = LaunchConfiguration(
+        "screen_surface_speed_mps"
+    )
+    spawn_clearance = LaunchConfiguration(
+        "spawn_clearance_m"
+    )
+    box_restitution = LaunchConfiguration(
+        "box_restitution"
+    )
+    bounce_threshold = LaunchConfiguration(
+        "bounce_capture_velocity_mps"
+    )
+    linear_decay = LaunchConfiguration(
+        "linear_velocity_decay"
+    )
+    angular_decay = LaunchConfiguration(
+        "angular_velocity_decay"
+    )
     contact_max_vel = LaunchConfiguration(
         "contact_max_correcting_velocity_mps"
     )
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            str(ros_gz_share / "launch" / "gz_sim.launch.py")
+            str(
+                ros_gz_share
+                / "launch"
+                / "gz_sim.launch.py"
+            )
         ),
-        launch_arguments={"gz_args": f"-r -v 3 {world}"}.items(),
+        launch_arguments={
+            "gz_args": f"-r -v 3 {world}"
+        }.items(),
     )
 
     bridge = Node(
@@ -98,6 +132,10 @@ def generate_launch_description() -> LaunchDescription:
                 "lateral_limit_m": 1.80,
                 "maximum_lifetime_s": 30.0,
                 "statistics_period_s": 2.0,
+                "service_timeout_ms": 2000,
+                "remove_retries": 3,
+                "remove_retry_delay_s": 0.15,
+                "monitor_restart_delay_s": 0.50,
                 "use_sim_time": True,
             }
         ],
@@ -133,7 +171,10 @@ def generate_launch_description() -> LaunchDescription:
                 ),
                 "cutoff_m": 0.070,
                 "upper_safety_projection_m": 0.090,
-                "seed": ParameterValue(seed, value_type=int),
+                "seed": ParameterValue(
+                    seed,
+                    value_type=int,
+                ),
                 "statistics_every_items": 20,
                 "box_restitution": ParameterValue(
                     box_restitution,
@@ -176,9 +217,12 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 "small_item_probability",
-                default_value="0.20",
+                default_value="0.50",
             ),
-            DeclareLaunchArgument("seed", default_value="42"),
+            DeclareLaunchArgument(
+                "seed",
+                default_value="42",
+            ),
             DeclareLaunchArgument(
                 "conveyor_speed_mps",
                 default_value="2.0",
@@ -214,7 +258,13 @@ def generate_launch_description() -> LaunchDescription:
             gazebo,
             bridge,
             controller,
-            TimerAction(period=2.5, actions=[cleanup]),
-            TimerAction(period=4.0, actions=[spawner]),
+            TimerAction(
+                period=2.5,
+                actions=[cleanup],
+            ),
+            TimerAction(
+                period=4.0,
+                actions=[spawner],
+            ),
         ]
     )
