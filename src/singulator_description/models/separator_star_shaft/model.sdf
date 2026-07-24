@@ -11,60 +11,352 @@
     <link name="rotor">
       <pose>0 0 0.055 0 0 0</pose>
       <inertial><mass>12.0</mass><inertia><ixx>6.25</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.020</iyy><iyz>0</iyz><izz>6.25</izz></inertia></inertial>
+      <collision name="axle_collision">
+        <pose>0 0 0 1.570796327 0 0</pose>
+        <max_contacts>12</max_contacts>
+        <geometry><cylinder><radius>0.008</radius><length>2.480</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>0.65</mu><mu2>0.45</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.02</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
       <visual name="axle_visual"><pose>0 0 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.008</radius><length>2.480</length></cylinder></geometry><material><ambient>0.22 0.22 0.24 1</ambient><diffuse>0.30 0.30 0.33 1</diffuse></material></visual>
-      <collision name="disc_collision_00"><pose>0 -1.200 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_00"><pose>0 -1.200 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual><visual name="tooth_a_00"><pose>0 -1.200 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_00"><pose>0 -1.200 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_01"><pose>0 -1.100 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_01"><pose>0 -1.100 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_01"><pose>0 -1.100 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_01"><pose>0 -1.100 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_02"><pose>0 -1.000 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_02"><pose>0 -1.000 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_02"><pose>0 -1.000 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_02"><pose>0 -1.000 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_03"><pose>0 -0.900 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_03"><pose>0 -0.900 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_03"><pose>0 -0.900 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_03"><pose>0 -0.900 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_04"><pose>0 -0.800 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_04"><pose>0 -0.800 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_04"><pose>0 -0.800 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_04"><pose>0 -0.800 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_05"><pose>0 -0.700 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_05"><pose>0 -0.700 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_05"><pose>0 -0.700 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_05"><pose>0 -0.700 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_06"><pose>0 -0.600 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_06"><pose>0 -0.600 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_06"><pose>0 -0.600 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_06"><pose>0 -0.600 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_07"><pose>0 -0.500 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_07"><pose>0 -0.500 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_07"><pose>0 -0.500 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_07"><pose>0 -0.500 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_08"><pose>0 -0.400 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_08"><pose>0 -0.400 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_08"><pose>0 -0.400 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_08"><pose>0 -0.400 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_09"><pose>0 -0.300 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_09"><pose>0 -0.300 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_09"><pose>0 -0.300 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_09"><pose>0 -0.300 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_10"><pose>0 -0.200 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_10"><pose>0 -0.200 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_10"><pose>0 -0.200 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_10"><pose>0 -0.200 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_11"><pose>0 -0.100 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_11"><pose>0 -0.100 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_11"><pose>0 -0.100 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_11"><pose>0 -0.100 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_12"><pose>0 0.000 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_12"><pose>0 0.000 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_12"><pose>0 0.000 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_12"><pose>0 0.000 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_13"><pose>0 0.100 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_13"><pose>0 0.100 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_13"><pose>0 0.100 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_13"><pose>0 0.100 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_14"><pose>0 0.200 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_14"><pose>0 0.200 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_14"><pose>0 0.200 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_14"><pose>0 0.200 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_15"><pose>0 0.300 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_15"><pose>0 0.300 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_15"><pose>0 0.300 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_15"><pose>0 0.300 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_16"><pose>0 0.400 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_16"><pose>0 0.400 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_16"><pose>0 0.400 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_16"><pose>0 0.400 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_17"><pose>0 0.500 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_17"><pose>0 0.500 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_17"><pose>0 0.500 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_17"><pose>0 0.500 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_18"><pose>0 0.600 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_18"><pose>0 0.600 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_18"><pose>0 0.600 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_18"><pose>0 0.600 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_19"><pose>0 0.700 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_19"><pose>0 0.700 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_19"><pose>0 0.700 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_19"><pose>0 0.700 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_20"><pose>0 0.800 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_20"><pose>0 0.800 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_20"><pose>0 0.800 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_20"><pose>0 0.800 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_21"><pose>0 0.900 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_21"><pose>0 0.900 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_21"><pose>0 0.900 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_21"><pose>0 0.900 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_22"><pose>0 1.000 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_22"><pose>0 1.000 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_22"><pose>0 1.000 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_22"><pose>0 1.000 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_23"><pose>0 1.100 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_23"><pose>0 1.100 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_23"><pose>0 1.100 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_23"><pose>0 1.100 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
-      <collision name="disc_collision_24"><pose>0 1.200 0 1.570796327 0 0</pose><max_contacts>6</max_contacts><geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry><surface><friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
-      <visual name="hub_24"><pose>0 1.200 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_a_24"><pose>0 1.200 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual><visual name="tooth_b_24"><pose>0 1.200 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_00">
+        <pose>0 -1.200 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_00"><pose>0 -1.200 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_00"><pose>0 -1.200 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_00"><pose>0 -1.200 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_01">
+        <pose>0 -1.100 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_01"><pose>0 -1.100 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_01"><pose>0 -1.100 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_01"><pose>0 -1.100 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_02">
+        <pose>0 -1.000 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_02"><pose>0 -1.000 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_02"><pose>0 -1.000 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_02"><pose>0 -1.000 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_03">
+        <pose>0 -0.900 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_03"><pose>0 -0.900 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_03"><pose>0 -0.900 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_03"><pose>0 -0.900 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_04">
+        <pose>0 -0.800 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_04"><pose>0 -0.800 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_04"><pose>0 -0.800 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_04"><pose>0 -0.800 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_05">
+        <pose>0 -0.700 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_05"><pose>0 -0.700 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_05"><pose>0 -0.700 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_05"><pose>0 -0.700 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_06">
+        <pose>0 -0.600 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_06"><pose>0 -0.600 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_06"><pose>0 -0.600 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_06"><pose>0 -0.600 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_07">
+        <pose>0 -0.500 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_07"><pose>0 -0.500 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_07"><pose>0 -0.500 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_07"><pose>0 -0.500 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_08">
+        <pose>0 -0.400 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_08"><pose>0 -0.400 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_08"><pose>0 -0.400 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_08"><pose>0 -0.400 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_09">
+        <pose>0 -0.300 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_09"><pose>0 -0.300 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_09"><pose>0 -0.300 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_09"><pose>0 -0.300 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_10">
+        <pose>0 -0.200 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_10"><pose>0 -0.200 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_10"><pose>0 -0.200 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_10"><pose>0 -0.200 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_11">
+        <pose>0 -0.100 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_11"><pose>0 -0.100 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_11"><pose>0 -0.100 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_11"><pose>0 -0.100 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_12">
+        <pose>0 0.000 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_12"><pose>0 0.000 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_12"><pose>0 0.000 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_12"><pose>0 0.000 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_13">
+        <pose>0 0.100 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_13"><pose>0 0.100 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_13"><pose>0 0.100 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_13"><pose>0 0.100 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_14">
+        <pose>0 0.200 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_14"><pose>0 0.200 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_14"><pose>0 0.200 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_14"><pose>0 0.200 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_15">
+        <pose>0 0.300 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_15"><pose>0 0.300 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_15"><pose>0 0.300 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_15"><pose>0 0.300 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_16">
+        <pose>0 0.400 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_16"><pose>0 0.400 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_16"><pose>0 0.400 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_16"><pose>0 0.400 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_17">
+        <pose>0 0.500 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_17"><pose>0 0.500 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_17"><pose>0 0.500 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_17"><pose>0 0.500 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_18">
+        <pose>0 0.600 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_18"><pose>0 0.600 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_18"><pose>0 0.600 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_18"><pose>0 0.600 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_19">
+        <pose>0 0.700 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_19"><pose>0 0.700 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_19"><pose>0 0.700 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_19"><pose>0 0.700 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_20">
+        <pose>0 0.800 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_20"><pose>0 0.800 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_20"><pose>0 0.800 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_20"><pose>0 0.800 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_21">
+        <pose>0 0.900 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_21"><pose>0 0.900 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_21"><pose>0 0.900 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_21"><pose>0 0.900 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_22">
+        <pose>0 1.000 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_22"><pose>0 1.000 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_22"><pose>0 1.000 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_22"><pose>0 1.000 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_23">
+        <pose>0 1.100 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_23"><pose>0 1.100 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_23"><pose>0 1.100 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_23"><pose>0 1.100 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <collision name="disc_collision_24">
+        <pose>0 1.200 0 1.570796327 0 0</pose>
+        <max_contacts>6</max_contacts>
+        <geometry><cylinder><radius>0.025</radius><length>0.030</length></cylinder></geometry>
+        <surface>
+                  <friction><ode><mu>1.10</mu><mu2>0.85</mu2><fdir1>1 0 0</fdir1></ode></friction>
+                  <bounce><restitution_coefficient>0.0</restitution_coefficient><threshold>1000</threshold></bounce>
+                  <contact><ode><kp>50000000</kp><kd>50000</kd><max_vel>0.03</max_vel><min_depth>0.0005</min_depth></ode></contact>
+                </surface>
+      </collision>
+      <visual name="hub_24"><pose>0 1.200 0 1.570796327 0 0</pose><geometry><cylinder><radius>0.019</radius><length>0.030</length></cylinder></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse><specular>0.35 0.35 0.35 1</specular></material></visual>
+      <visual name="tooth_a_24"><pose>0 1.200 0 0 0 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
+      <visual name="tooth_b_24"><pose>0 1.200 0 0 1.570796327 0</pose><geometry><box><size>0.064 0.030 0.012</size></box></geometry><material><ambient>0.08 0.08 0.10 1</ambient><diffuse>0.14 0.14 0.17 1</diffuse></material></visual>
     </link>
     <joint name="world_fixed" type="fixed"><parent>world</parent><child>base</child></joint>
-    <joint name="shaft_joint" type="revolute"><parent>base</parent><child>rotor</child><axis><xyz>0 1 0</xyz><limit><lower>-1e16</lower><upper>1e16</upper><effort>400</effort><velocity>120</velocity></limit><dynamics><damping>0.02</damping><friction>0.0</friction></dynamics></axis></joint>
-    <plugin filename="gz-sim-joint-controller-system" name="gz::sim::systems::JointController"><joint_name>shaft_joint</joint_name><topic>/singulator/separator/screen/cmd_vel</topic><initial_velocity>80.0</initial_velocity></plugin>
+    <joint name="shaft_joint" type="revolute">
+      <parent>base</parent><child>rotor</child>
+      <axis><xyz>0 1 0</xyz><limit><lower>-1e16</lower><upper>1e16</upper><effort>400</effort><velocity>120</velocity></limit><dynamics><damping>0.02</damping><friction>0.0</friction></dynamics></axis>
+    </joint>
+    <plugin filename="gz-sim-joint-controller-system" name="gz::sim::systems::JointController">
+      <joint_name>shaft_joint</joint_name>
+      <topic>/singulator/separator/screen/cmd_vel</topic>
+      <initial_velocity>80.0</initial_velocity>
+    </plugin>
   </model>
 </sdf>
