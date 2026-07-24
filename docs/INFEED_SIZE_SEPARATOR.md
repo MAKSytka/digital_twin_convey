@@ -18,21 +18,29 @@
 ## Геометрия экрана
 
 Экран состоит из 11 физических поперечных валов с шагом 120 мм. Каждый вал
-вращается вокруг оси Y через `revolute`-соединение и
-`gz::sim::systems::JointController`.
+является одной динамической моделью и содержит:
 
-Валы собраны из зубчатых дисков:
+- один неподвижный корпус с опорами;
+- один вращающийся link `rotor`;
+- одно `revolute`-соединение вокруг оси Y;
+- один `gz::sim::systems::JointController`;
+- 25 дисковых коллизий на общем вращающемся link.
 
-- чётные валы: 25 дисков;
-- нечётные валы: 24 диска со смещением 50 мм;
+Это важно для производительности. В ранней версии каждый диск был отдельной
+динамической моделью со своим joint и контроллером. При 11 валах получалось
+275 отдельных моделей и контроллеров, что могло перегружать GUI и приводить к
+белому окну. В текущей версии количество управляемых вращающихся моделей
+снижено до 11, при этом дисковые контакты сохранены.
+
+Параметры дисков:
+
 - шаг дисков по ширине: 100 мм;
-- упрощённая цилиндрическая коллизия диска: диаметр 50 мм, толщина 30 мм;
+- упрощённая цилиндрическая коллизия: диаметр 50 мм, толщина 30 мм;
 - чистое отверстие по X: `120 - 50 = 70 мм`;
 - чистое отверстие по Y: `100 - 30 = 70 мм`.
 
-Визуальные зубья детализированы сильнее коллизий. Это сохраняет физическое
-вращение и пространственную решётку, но не создаёт отдельную сложную коллизию
-для каждого зуба.
+Визуальные зубья детализированы сильнее коллизий. Это сохраняет понятный вид
+механизма, но не создаёт отдельную сложную коллизию для каждого зуба.
 
 ## Правило размерного класса
 
@@ -81,13 +89,24 @@ seed                        = 42
 
 ```bash
 cd ~/singulator_digital_twin
+git fetch origin
+git switch feature-realistic-separator-flow
+git pull --ff-only
+
 source /opt/ros/jazzy/setup.bash
+rm -rf build/singulator_description build/singulator_gazebo \
+  build/singulator_bringup build/singulator_control build/singulator_sim
+rm -rf install/singulator_description install/singulator_gazebo \
+  install/singulator_bringup install/singulator_control install/singulator_sim
 
 colcon build --symlink-install
 source install/setup.bash
 
 ros2 launch singulator_bringup infeed_size_separator_demo.launch.py
 ```
+
+Очистка выбранных пакетов перед сборкой обязательна после изменения структуры
+моделей. Иначе в `install` могут остаться старые модели отдельных дисков.
 
 ### Регулирование непрерывного потока
 
@@ -113,6 +132,58 @@ ros2 launch singulator_bringup infeed_size_separator_demo.launch.py \
 
 После создания последней коробки спавнер останавливается, но оставшиеся товары
 продолжают движение до выхода и деспавна.
+
+## Камера и белое окно
+
+В world-файл добавлены `GzSceneManager`, `InteractiveViewControl` и
+`CameraTracking`. Поэтому команды `move_to`, `follow` и `track` должны быть
+доступны. Для совместимости стенд по умолчанию использует Ogre 1 вместо Ogre 2.
+
+Проверка доступности камеры:
+
+```bash
+gz service -l | grep -E '/gui/(follow|move_to|track)'
+```
+
+Переместить камеру к сепаратору:
+
+```bash
+gz service -s /gui/move_to \
+  --reqtype gz.msgs.StringMsg \
+  --reptype gz.msgs.Boolean \
+  --timeout 3000 \
+  --req 'data: "infeed_size_separator"'
+```
+
+Следовать за конкретной коробкой можно только после её появления и с точным
+именем из лога спавнера:
+
+```bash
+gz service -s /gui/follow \
+  --reqtype gz.msgs.StringMsg \
+  --reptype gz.msgs.Boolean \
+  --timeout 3000 \
+  --req 'data: "box_separator_<точное_имя>"'
+```
+
+Если окно остаётся белым, сначала проверь простой мир:
+
+```bash
+gz sim -v 4 shapes.sdf --render-engine ogre
+```
+
+Затем посмотри ошибки клиента:
+
+```bash
+grep -iE 'error|exception|render|ogre' ~/.gz/rendering/ogre*.log | tail -n 80
+```
+
+Для проблем Qt / Wayland можно проверить запуск в X11-режиме:
+
+```bash
+QT_QPA_PLATFORM=xcb ros2 launch singulator_bringup \
+  infeed_size_separator_demo.launch.py
+```
 
 ## Логи
 
@@ -154,9 +225,10 @@ python3 -m py_compile \
   tools/validate_separator_demo.py
 ```
 
-Валидатор проверяет ширину и длину лент, 11 физических валов, число дисков,
-двухкоординатные отверстия 70 мм, `revolute`-соединения, управляющие топики,
-параметры потока и отсутствие искусственного `transport_assist`.
+Валидатор проверяет ширину и длину лент, 11 физических валов, 25 дисковых
+коллизий на каждом валу, отверстия 70 мм, по одному `revolute`-соединению и
+контроллеру на вал, плагины камеры, управляющие топики, параметры потока и
+отсутствие искусственного `transport_assist`.
 
 ## Ограничения текущей модели
 
