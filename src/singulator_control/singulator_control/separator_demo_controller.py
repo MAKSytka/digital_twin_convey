@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64
@@ -63,14 +65,17 @@ class SeparatorDemoController(Node):
         surface_speed = max(-2.5, min(2.5, surface_speed))
         angular_speed = surface_speed / radius
         angular_speed = max(-120.0, min(120.0, angular_speed))
+        rpm = angular_speed * 60.0 / (2.0 * math.pi)
 
         current = (conveyor_speed, surface_speed, angular_speed)
         if current != self.last_command:
             self.get_logger().info(
                 "Separator commands: "
                 f"belts={conveyor_speed:.3f} m/s, "
+                f"disc_contact_radius={radius * 1000:.1f} mm, "
+                f"disc_contact_diameter={2.0 * radius * 1000:.1f} mm, "
                 f"screen_surface={surface_speed:.3f} m/s, "
-                f"shaft={angular_speed:.3f} rad/s"
+                f"shaft={angular_speed:.3f} rad/s ({rpm:.1f} rpm)"
             )
             self.last_command = current
 
