@@ -26,8 +26,14 @@ def generate_launch_description() -> LaunchDescription:
     small_probability = LaunchConfiguration("small_item_probability")
     seed = LaunchConfiguration("seed")
     conveyor_speed = LaunchConfiguration("conveyor_speed_mps")
-    screen_surface_speed = LaunchConfiguration(
-        "screen_surface_speed_mps"
+    screen_surface_speed = LaunchConfiguration("screen_surface_speed_mps")
+    spawn_clearance = LaunchConfiguration("spawn_clearance_m")
+    box_restitution = LaunchConfiguration("box_restitution")
+    bounce_threshold = LaunchConfiguration("bounce_capture_velocity_mps")
+    linear_decay = LaunchConfiguration("linear_velocity_decay")
+    angular_decay = LaunchConfiguration("angular_velocity_decay")
+    contact_max_vel = LaunchConfiguration(
+        "contact_max_correcting_velocity_mps"
     )
 
     gazebo = IncludeLaunchDescription(
@@ -107,6 +113,10 @@ def generate_launch_description() -> LaunchDescription:
                 "world_name": "infeed_size_separator_demo",
                 "spawn_x": -3.20,
                 "belt_top_z": 0.08,
+                "spawn_clearance_m": ParameterValue(
+                    spawn_clearance,
+                    value_type=float,
+                ),
                 "conveyor_half_width_m": 1.25,
                 "target_rate_boxes_per_sec": ParameterValue(
                     target_rate,
@@ -122,8 +132,29 @@ def generate_launch_description() -> LaunchDescription:
                     value_type=float,
                 ),
                 "cutoff_m": 0.070,
+                "upper_safety_projection_m": 0.090,
                 "seed": ParameterValue(seed, value_type=int),
                 "statistics_every_items": 20,
+                "box_restitution": ParameterValue(
+                    box_restitution,
+                    value_type=float,
+                ),
+                "bounce_capture_velocity_mps": ParameterValue(
+                    bounce_threshold,
+                    value_type=float,
+                ),
+                "linear_velocity_decay": ParameterValue(
+                    linear_decay,
+                    value_type=float,
+                ),
+                "angular_velocity_decay": ParameterValue(
+                    angular_decay,
+                    value_type=float,
+                ),
+                "contact_max_correcting_velocity_mps": ParameterValue(
+                    contact_max_vel,
+                    value_type=float,
+                ),
                 "use_sim_time": True,
             }
         ],
@@ -155,6 +186,30 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument(
                 "screen_surface_speed_mps",
                 default_value="2.0",
+            ),
+            DeclareLaunchArgument(
+                "spawn_clearance_m",
+                default_value="0.002",
+            ),
+            DeclareLaunchArgument(
+                "box_restitution",
+                default_value="0.02",
+            ),
+            DeclareLaunchArgument(
+                "bounce_capture_velocity_mps",
+                default_value="0.35",
+            ),
+            DeclareLaunchArgument(
+                "linear_velocity_decay",
+                default_value="0.05",
+            ),
+            DeclareLaunchArgument(
+                "angular_velocity_decay",
+                default_value="0.30",
+            ),
+            DeclareLaunchArgument(
+                "contact_max_correcting_velocity_mps",
+                default_value="0.05",
             ),
             gazebo,
             bridge,
