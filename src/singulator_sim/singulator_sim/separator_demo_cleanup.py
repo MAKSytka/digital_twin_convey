@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Track the two separator branches, log statistics and remove completed items."""
+"""Track both separator branches and remove completed parcel models."""
 
 from __future__ import annotations
 
@@ -13,33 +13,51 @@ import rclpy
 from rclpy.node import Node
 
 
+# Supports both the old name without a profile and the current name:
+# box_separator_<session>_n0000001_exp_lower_long_narrow_spot04
 BOX_NAME = re.compile(
-    r"^box_separator_[A-Za-z0-9_]+_exp_(upper|lower)_spot\d+$"
+    r"^box_separator_\d+_n\d+_exp_(upper|lower)"
+    r"(?:_[A-Za-z0-9_]+)?_spot\d+$"
 )
-NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+NUMBER = (
+    r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)"
+    r"(?:[eE][-+]?\d+)?"
+)
 
 
 def pose_blocks(stream):
     """Yield complete ``pose { ... }`` records from ``gz topic -e``."""
+
     collecting = False
     depth = 0
     lines: list[str] = []
     for line in stream:
         if not collecting:
             if line.strip() == "pose {":
-                collecting, depth, lines = True, 1, [line]
+                collecting = True
+                depth = 1
+                lines = [line]
             continue
 
         lines.append(line)
         depth += line.count("{") - line.count("}")
         if depth == 0:
             yield "".join(lines)
-            collecting, lines = False, []
+            collecting = False
+            lines = []
 
 
-def parse_pose(block: str) -> tuple[str, float, float, float] | None:
+def parse_pose(
+    block: str,
+) -> tuple[str, float, float, float] | None:
+    """Extract model name and XYZ from one Gazebo pose record."""
+
     name = re.search(r'name:\s*"([^"]+)"', block)
-    position = re.search(r"position\s*\{(.*?)\}", block, re.DOTALL)
+    position = re.search(
+        r"position\s*\{(.*?)\}",
+        block,
+        re.DOTALL,
+    )
     if name is None or position is None:
         return None
 
@@ -59,66 +77,135 @@ def parse_pose(block: str) -> tuple[str, float, float, float] | None:
 
 
 class SeparatorDemoCleanup(Node):
-    """Classify actual paths and despawn boxes after either 3 m output."""
+    """Classify actual routes and despawn boxes after either output."""
 
     def __init__(self) -> None:
         super().__init__("separator_demo_cleanup")
-        self.declare_parameter("world_name", "infeed_size_separator_demo")
-        self.declare_parameter("route_decision_x_m", 0.85)
-        self.declare_parameter("upper_exit_x_m", 3.45)
-        self.declare_parameter("lower_exit_x_m", 3.52)
-        self.declare_parameter("upper_route_min_z_m", -0.05)
-        self.declare_parameter("lower_route_max_z_m", -0.08)
-        self.declare_parameter("fallen_z_m", -0.85)
-        self.declare_parameter("lateral_limit_m", 1.80)
-        self.declare_parameter("maximum_lifetime_s", 30.0)
-        self.declare_parameter("statistics_period_s", 2.0)
-        self.declare_parameter("service_timeout_ms", 2000)
+        self.declare_parameter(
+            "world_name",
+            "infeed_size_separator_demo",
+        )
+        self.declare_parameter(
+            "route_decision_x_m",
+            0.85,
+        )
+        self.declare_parameter(
+            "upper_exit_x_m",
+            3.45,
+        )
+        self.declare_parameter(
+            "lower_exit_x_m",
+            3.52,
+        )
+        self.declare_parameter(
+            "upper_route_min_z_m",
+            -0.05,
+        )
+        self.declare_parameter(
+            "lower_route_max_z_m",
+            -0.08,
+        )
+        self.declare_parameter(
+            "fallen_z_m",
+            -0.85,
+        )
+        self.declare_parameter(
+            "lateral_limit_m",
+            1.80,
+        )
+        self.declare_parameter(
+            "maximum_lifetime_s",
+            30.0,
+        )
+        self.declare_parameter(
+            "statistics_period_s",
+            2.0,
+        )
+        self.declare_parameter(
+            "service_timeout_ms",
+            2000,
+        )
+        self.declare_parameter(
+            "remove_retries",
+            3,
+        )
+        self.declare_parameter(
+            "remove_retry_delay_s",
+            0.15,
+        )
+        self.declare_parameter(
+            "monitor_restart_delay_s",
+            0.50,
+        )
 
-        self.world_name = str(self.get_parameter("world_name").value)
+        self.world_name = str(
+            self.get_parameter("world_name").value
+        )
         self.route_x = float(
-            self.get_parameter("route_decision_x_m").value
+            self.get_parameter(
+                "route_decision_x_m"
+            ).value
         )
         self.upper_exit_x = float(
-            self.get_parameter("upper_exit_x_m").value
+            self.get_parameter(
+                "upper_exit_x_m"
+            ).value
         )
         self.lower_exit_x = float(
-            self.get_parameter("lower_exit_x_m").value
+            self.get_parameter(
+                "lower_exit_x_m"
+            ).value
         )
         self.upper_min_z = float(
-            self.get_parameter("upper_route_min_z_m").value
+            self.get_parameter(
+                "upper_route_min_z_m"
+            ).value
         )
         self.lower_max_z = float(
-            self.get_parameter("lower_route_max_z_m").value
+            self.get_parameter(
+                "lower_route_max_z_m"
+            ).value
         )
         self.fallen_z = float(
             self.get_parameter("fallen_z_m").value
         )
         self.lateral_limit = float(
-            self.get_parameter("lateral_limit_m").value
+            self.get_parameter(
+                "lateral_limit_m"
+            ).value
         )
         self.maximum_lifetime = float(
-            self.get_parameter("maximum_lifetime_s").value
+            self.get_parameter(
+                "maximum_lifetime_s"
+            ).value
         )
         statistics_period = float(
-            self.get_parameter("statistics_period_s").value
+            self.get_parameter(
+                "statistics_period_s"
+            ).value
         )
         self.timeout_ms = int(
-            self.get_parameter("service_timeout_ms").value
+            self.get_parameter(
+                "service_timeout_ms"
+            ).value
+        )
+        self.remove_retries = int(
+            self.get_parameter("remove_retries").value
+        )
+        self.remove_retry_delay = float(
+            self.get_parameter(
+                "remove_retry_delay_s"
+            ).value
+        )
+        self.monitor_restart_delay = float(
+            self.get_parameter(
+                "monitor_restart_delay_s"
+            ).value
         )
 
-        if self.upper_exit_x <= self.route_x:
-            raise ValueError("upper_exit_x_m must be after route_decision_x_m")
-        if self.lower_exit_x <= self.route_x:
-            raise ValueError("lower_exit_x_m must be after route_decision_x_m")
-        if self.lower_max_z >= self.upper_min_z:
-            raise ValueError(
-                "lower_route_max_z_m must be below upper_route_min_z_m"
-            )
-        if self.maximum_lifetime <= 0.0:
-            raise ValueError("maximum_lifetime_s must be positive")
-        if statistics_period <= 0.0:
-            raise ValueError("statistics_period_s must be positive")
+        self._validate_parameters(
+            statistics_period,
+        )
 
         self.pending: set[str] = set()
         self.deleted: set[str] = set()
@@ -132,6 +219,7 @@ class SeparatorDemoCleanup(Node):
         self.mismatch_count = 0
         self.removed_count = 0
         self.remove_failures = 0
+        self.monitor_restarts = 0
 
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -141,7 +229,7 @@ class SeparatorDemoCleanup(Node):
             thread_name_prefix="separator_remove",
         )
         self.monitor = threading.Thread(
-            target=self._monitor,
+            target=self._monitor_loop,
             daemon=True,
         )
         self.monitor.start()
@@ -153,17 +241,77 @@ class SeparatorDemoCleanup(Node):
             "Separator flow monitor: "
             f"route at x={self.route_x:.2f} m, "
             f"upper delete x={self.upper_exit_x:.2f} m, "
-            f"lower delete x={self.lower_exit_x:.2f} m"
+            f"lower delete x={self.lower_exit_x:.2f} m, "
+            f"remove retries={self.remove_retries}"
         )
+
+    def _validate_parameters(
+        self,
+        statistics_period: float,
+    ) -> None:
+        if self.upper_exit_x <= self.route_x:
+            raise ValueError(
+                "upper_exit_x_m must be after "
+                "route_decision_x_m"
+            )
+        if self.lower_exit_x <= self.route_x:
+            raise ValueError(
+                "lower_exit_x_m must be after "
+                "route_decision_x_m"
+            )
+        if self.lower_max_z >= self.upper_min_z:
+            raise ValueError(
+                "lower_route_max_z_m must be below "
+                "upper_route_min_z_m"
+            )
+        if self.maximum_lifetime <= 0.0:
+            raise ValueError(
+                "maximum_lifetime_s must be positive"
+            )
+        if statistics_period <= 0.0:
+            raise ValueError(
+                "statistics_period_s must be positive"
+            )
+        if self.remove_retries <= 0:
+            raise ValueError(
+                "remove_retries must be positive"
+            )
+        if self.remove_retry_delay < 0.0:
+            raise ValueError(
+                "remove_retry_delay_s cannot be negative"
+            )
+        if self.monitor_restart_delay < 0.0:
+            raise ValueError(
+                "monitor_restart_delay_s cannot be negative"
+            )
 
     @staticmethod
     def _expected_route(name: str) -> str:
         match = BOX_NAME.fullmatch(name)
         if match is None:
-            raise ValueError(f"Unexpected separator model name: {name}")
+            raise ValueError(
+                f"Unexpected separator model name: {name}"
+            )
         return match.group(1)
 
-    def _monitor(self) -> None:
+    def _monitor_loop(self) -> None:
+        """Restart the Gazebo pose subscriber if it exits unexpectedly."""
+
+        while not self.stop_event.is_set():
+            reason = self._monitor_once()
+            if self.stop_event.is_set():
+                break
+            self.monitor_restarts += 1
+            self.get_logger().warning(
+                "Gazebo pose monitor stopped "
+                f"({reason}); restarting in "
+                f"{self.monitor_restart_delay:.2f} s"
+            )
+            self.stop_event.wait(
+                self.monitor_restart_delay
+            )
+
+    def _monitor_once(self) -> str:
         command = [
             "gz",
             "topic",
@@ -175,18 +323,16 @@ class SeparatorDemoCleanup(Node):
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
                 bufsize=1,
             )
             self.monitor_process = process
         except OSError as error:
-            self.get_logger().error(
-                f"Cannot subscribe to Gazebo poses: {error}"
-            )
-            return
+            return f"start error: {error}"
 
         if process.stdout is None:
-            return
+            return "stdout unavailable"
 
         for block in pose_blocks(process.stdout):
             if self.stop_event.is_set():
@@ -197,7 +343,31 @@ class SeparatorDemoCleanup(Node):
             name, x, y, z = parsed
             if BOX_NAME.fullmatch(name) is None:
                 continue
-            self._process_pose(name, x, y, z)
+            self._process_pose(
+                name,
+                x,
+                y,
+                z,
+            )
+
+        if self.stop_event.is_set():
+            return "shutdown"
+
+        return_code = process.poll()
+        if return_code is None:
+            try:
+                return_code = process.wait(timeout=0.2)
+            except subprocess.TimeoutExpired:
+                process.terminate()
+                return_code = process.wait(timeout=1.0)
+
+        stderr = ""
+        if process.stderr is not None:
+            stderr = process.stderr.read().strip()
+        return (
+            f"returncode={return_code}, "
+            f"stderr={stderr or '<empty>'}"
+        )
 
     def _process_pose(
         self,
@@ -223,13 +393,19 @@ class SeparatorDemoCleanup(Node):
 
                 if route is not None:
                     self.actual_route[name] = route
-                    transit = now - self.first_seen[name]
+                    transit = (
+                        now - self.first_seen[name]
+                    )
                     if route == "upper":
                         self.actual_upper += 1
-                        self.route_times_upper.append(transit)
+                        self.route_times_upper.append(
+                            transit
+                        )
                     else:
                         self.actual_lower += 1
-                        self.route_times_lower.append(transit)
+                        self.route_times_lower.append(
+                            transit
+                        )
 
                     expected = self._expected_route(name)
                     if expected != route:
@@ -237,12 +413,14 @@ class SeparatorDemoCleanup(Node):
                         self.get_logger().warning(
                             f"Route mismatch for {name}: "
                             f"expected={expected.upper()}, "
-                            f"actual={route.upper()}, x={x:.3f}, z={z:.3f}"
+                            f"actual={route.upper()}, "
+                            f"x={x:.3f}, z={z:.3f}"
                         )
                     else:
                         self.get_logger().info(
                             f"Route confirmed for {name}: "
-                            f"{route.upper()}, transit={transit:.2f} s"
+                            f"{route.upper()}, "
+                            f"transit={transit:.2f} s"
                         )
 
             age = now - self.first_seen[name]
@@ -259,7 +437,11 @@ class SeparatorDemoCleanup(Node):
                 or abs(y) >= self.lateral_limit
                 or age >= self.maximum_lifetime
             )
-            if not (completed_upper or completed_lower or unsafe):
+            if not (
+                completed_upper
+                or completed_lower
+                or unsafe
+            ):
                 return
             self.pending.add(name)
 
@@ -270,9 +452,17 @@ class SeparatorDemoCleanup(Node):
             if completed_lower
             else "safety_cleanup"
         )
-        self.pool.submit(self._remove, name, reason)
+        self.pool.submit(
+            self._remove,
+            name,
+            reason,
+        )
 
-    def _remove(self, name: str, reason: str) -> None:
+    def _remove(
+        self,
+        name: str,
+        reason: str,
+    ) -> None:
         command = [
             "gz",
             "service",
@@ -287,21 +477,49 @@ class SeparatorDemoCleanup(Node):
             "--req",
             f'name: "{name}" type: MODEL',
         ]
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_ms / 1000.0 + 2.0,
-                check=False,
-            )
-            success = (
-                result.returncode == 0
-                and "data: true" in result.stdout.lower()
-            )
-        except (OSError, subprocess.TimeoutExpired) as error:
-            self.get_logger().error(f"Failed to remove {name}: {error}")
-            success = False
+        success = False
+        last_stdout = ""
+        last_stderr = ""
+
+        for attempt in range(
+            1,
+            self.remove_retries + 1,
+        ):
+            try:
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    timeout=(
+                        self.timeout_ms / 1000.0
+                        + 2.0
+                    ),
+                    check=False,
+                )
+                last_stdout = result.stdout.strip()
+                last_stderr = result.stderr.strip()
+                success = (
+                    result.returncode == 0
+                    and "data: true"
+                    in result.stdout.lower()
+                )
+            except (
+                OSError,
+                subprocess.TimeoutExpired,
+            ) as error:
+                last_stderr = str(error)
+                success = False
+
+            if success:
+                break
+            if attempt < self.remove_retries:
+                self.get_logger().warning(
+                    f"Remove retry {attempt}/"
+                    f"{self.remove_retries} for {name}: "
+                    f"stdout={last_stdout or '<empty>'}, "
+                    f"stderr={last_stderr or '<empty>'}"
+                )
+                time.sleep(self.remove_retry_delay)
 
         with self.lock:
             self.pending.discard(name)
@@ -315,10 +533,20 @@ class SeparatorDemoCleanup(Node):
                 )
             else:
                 self.remove_failures += 1
+                self.get_logger().error(
+                    f"Failed to despawn {name} after "
+                    f"{self.remove_retries} attempts: "
+                    f"stdout={last_stdout or '<empty>'}, "
+                    f"stderr={last_stderr or '<empty>'}"
+                )
 
     @staticmethod
     def _average(values: list[float]) -> float:
-        return sum(values) / len(values) if values else 0.0
+        return (
+            sum(values) / len(values)
+            if values
+            else 0.0
+        )
 
     def _log_statistics(self) -> None:
         with self.lock:
@@ -331,9 +559,12 @@ class SeparatorDemoCleanup(Node):
                 f"mismatches={self.mismatch_count}, "
                 f"removed={self.removed_count}, "
                 f"active={active}, "
-                f"avg_upper={self._average(self.route_times_upper):.2f} s, "
-                f"avg_lower={self._average(self.route_times_lower):.2f} s, "
-                f"remove_failures={self.remove_failures}"
+                f"avg_upper="
+                f"{self._average(self.route_times_upper):.2f} s, "
+                f"avg_lower="
+                f"{self._average(self.route_times_lower):.2f} s, "
+                f"remove_failures={self.remove_failures}, "
+                f"monitor_restarts={self.monitor_restarts}"
             )
 
     def destroy_node(self) -> bool:
@@ -341,7 +572,10 @@ class SeparatorDemoCleanup(Node):
         if self.monitor_process is not None:
             self.monitor_process.terminate()
         self.statistics_timer.cancel()
-        self.pool.shutdown(wait=False, cancel_futures=True)
+        self.pool.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
         return super().destroy_node()
 
 
