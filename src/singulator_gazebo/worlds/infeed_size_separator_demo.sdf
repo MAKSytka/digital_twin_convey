@@ -60,7 +60,7 @@
           <property type="bool" key="showTitleBar">false</property>
           <property type="string" key="state">docked</property>
         </gz-gui>
-        <engine>ogre2</engine>
+        <engine>ogre</engine>
         <scene>scene</scene>
         <ambient_light>0.45 0.45 0.45</ambient_light>
         <background_color>0.18 0.20 0.24</background_color>
