@@ -27,8 +27,11 @@
       <max_command_age>2.0</max_command_age>
     </plugin>
 
+    <!-- Upper output starts 1 mm after the final 25 mm-radius disc and is
+         4 mm lower than the roller crest. The small downward transfer removes
+         the vertical leading-edge impact that previously formed jams. -->
     <link name="accepted_belt">
-      <pose>2.134 0 0.040 0 0 0</pose>
+      <pose>2.126 0 0.036 0 0 0</pose>
       <collision name="accepted_belt_collision">
         <max_contacts>12</max_contacts>
         <geometry><box><size>3.000 2.500 0.080</size></box></geometry>
@@ -75,8 +78,9 @@
       <max_command_age>2.0</max_command_age>
     </plugin>
 
+    <!-- The lower output uses the same 1 mm gap and 4 mm downward step. -->
     <link name="reject_belt">
-      <pose>2.209 0 -0.260 0 0 0</pose>
+      <pose>2.201 0 -0.264 0 0 0</pose>
       <collision name="reject_belt_collision">
         <max_contacts>12</max_contacts>
         <geometry><box><size>3.000 2.500 0.080</size></box></geometry>
