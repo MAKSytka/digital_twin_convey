@@ -1,0 +1,73 @@
+station_controller:
+  ros__parameters:
+    use_sim_time: true
+    world_name: kty_station
+    kty_spawn_x_m: -1.30
+    support_top_z_m: 0.50
+    approach_speed_mps: 0.65
+    approach_duration_s: 2.0
+    clamp_duration_s: 0.20
+    vibration_start_delay_s: 0.50
+    vibration_frequency_hz: 25.0
+    vibration_amplitude_m: 0.001
+    inspection_period_s: 3.0
+    settle_duration_s: 0.50
+    scan_timeout_s: 1.50
+    fill_height_threshold_m: 0.34
+    eject_preparation_s: 0.50
+    eject_speed_mps: 0.80
+    eject_duration_s: 1.0
+    maximum_kty_mass_kg: 35.0
+    maximum_cycle_duration_s: 120.0
+
+product_spawner:
+  ros__parameters:
+    use_sim_time: true
+    world_name: kty_station
+    rate_products_per_s: 1.0
+    seed: 42
+    spawn_x_m: -1.02
+    spawn_y_half_range_m: 0.20
+    spawn_z_m: 1.57
+    spawn_clearance_m: 0.01
+
+kty_depth_perception:
+  ros__parameters:
+    use_sim_time: true
+    rgb_topic: /kty/camera/image
+    depth_topic: /kty/camera/depth_image
+    camera_info_topic: /kty/camera/camera_info
+    output_topic: /kty/perception/contours
+    debug_topic: /kty/perception/debug_image
+    camera_to_kty_bottom_m: 1.25
+    internal_length_m: 0.60
+    internal_width_m: 0.40
+    internal_height_m: 0.40
+    minimum_product_height_m: 0.008
+    minimum_contour_area_px: 40.0
+    split_peak_ratio: 0.42
+    track_max_distance_m: 0.12
+    track_max_misses: 6
+    side_clearance_m: 0.025
+    simulated_depth_noise_std_m: 0.002
+    simulated_dropout_probability: 0.01
+
+kty_safety_monitor:
+  ros__parameters:
+    use_sim_time: true
+    kty_center_tolerance_m: 0.16
+    kty_presence_timeout_s: 0.8
+    camera_timeout_s: 1.0
+    maximum_mass_kg: 35.0
+    chute_jam_timeout_s: 2.5
+    still_moving_speed_mps: 0.03
+    still_moving_timeout_s: 1.0
+
+kty_metrics:
+  ros__parameters:
+    use_sim_time: true
+    output_directory: /tmp/kty_station_metrics
+    voxel_size_m: 0.02
+    internal_length_m: 0.60
+    internal_width_m: 0.40
+    internal_height_m: 0.40

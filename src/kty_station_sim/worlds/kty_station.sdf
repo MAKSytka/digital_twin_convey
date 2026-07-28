@@ -1,0 +1,189 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <world name="kty_station">
+    <gravity>0 0 -9.81</gravity>
+
+    <!-- 0.5 ms resolves the 20-50 Hz platform command and dense contacts. -->
+    <physics name="kty_physics" type="ignored">
+      <max_step_size>0.0005</max_step_size>
+      <real_time_factor>0.5</real_time_factor>
+      <real_time_update_rate>2000</real_time_update_rate>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <light type="directional" name="sun">
+      <pose>0 0 4 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <diffuse>0.85 0.85 0.85 1</diffuse>
+      <specular>0.20 0.20 0.20 1</specular>
+      <direction>-0.35 0.20 -1.0</direction>
+    </light>
+
+    <model name="floor">
+      <static>true</static>
+      <link name="floor_link">
+        <collision name="floor_collision">
+          <geometry><box><size>5.0 3.0 0.10</size></box></geometry>
+        </collision>
+        <visual name="floor_visual">
+          <geometry><box><size>5.0 3.0 0.10</size></box></geometry>
+          <material><ambient>0.18 0.18 0.18 1</ambient><diffuse>0.28 0.28 0.28 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Input contact zone. The visible roller bed is simplified as a moving surface. -->
+    <model name="kty_infeed">
+      <static>true</static>
+      <pose>-1.15 0 0 0 0 0</pose>
+      <link name="belt">
+        <pose>0 0 0.46 0 0 0</pose>
+        <collision name="belt_collision">
+          <geometry><box><size>1.60 0.55 0.08</size></box></geometry>
+          <surface><friction><ode><mu>0.75</mu><mu2>0.75</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+        </collision>
+        <visual name="belt_visual">
+          <geometry><box><size>1.60 0.55 0.08</size></box></geometry>
+          <material><ambient>0.30 0.31 0.33 1</ambient><diffuse>0.42 0.43 0.45 1</diffuse></material>
+        </visual>
+      </link>
+      <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
+        <link>belt</link>
+        <track_orientation>0 0 0</track_orientation>
+        <velocity_topic>/kty/infeed/cmd_vel</velocity_topic>
+        <min_velocity>-1.5</min_velocity><max_velocity>1.5</max_velocity>
+        <min_acceleration>-4.0</min_acceleration><max_acceleration>4.0</max_acceleration>
+        <min_jerk>-20.0</min_jerk><max_jerk>20.0</max_jerk>
+      </plugin>
+    </model>
+
+    <!-- Active vibration table. The same top link provides vertical motion and surface velocity. -->
+    <model name="kty_vibration_platform">
+      <link name="base">
+        <pose>0 0 0.34 0 0 0</pose>
+        <inertial><mass>80</mass><inertia><ixx>2</ixx><iyy>2</iyy><izz>2</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="base_collision"><geometry><box><size>0.76 0.62 0.10</size></box></geometry></collision>
+        <visual name="base_visual"><geometry><box><size>0.76 0.62 0.10</size></box></geometry><material><ambient>0.16 0.18 0.20 1</ambient><diffuse>0.23 0.25 0.28 1</diffuse></material></visual>
+      </link>
+      <link name="table">
+        <pose>0 0 0.475 0 0 0</pose>
+        <inertial><mass>35</mass><inertia><ixx>0.80</ixx><iyy>1.40</iyy><izz>1.70</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="table_collision">
+          <geometry><box><size>0.70 0.50 0.05</size></box></geometry>
+          <surface><friction><ode><mu>0.75</mu><mu2>0.75</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+        </collision>
+        <visual name="table_visual">
+          <geometry><box><size>0.70 0.50 0.05</size></box></geometry>
+          <!-- TPU-95A pad represented as a dark polyurethane top. -->
+          <material><ambient>0.08 0.09 0.10 1</ambient><diffuse>0.14 0.15 0.17 1</diffuse></material>
+        </visual>
+      </link>
+      <joint name="base_to_world" type="fixed"><parent>world</parent><child>base</child></joint>
+      <joint name="vertical_slide" type="prismatic">
+        <parent>base</parent><child>table</child>
+        <axis>
+          <xyz>0 0 1</xyz>
+          <limit><lower>-0.0032</lower><upper>0.0032</upper><effort>20000</effort><velocity>2.0</velocity></limit>
+          <dynamics><damping>80</damping><friction>2</friction></dynamics>
+        </axis>
+      </joint>
+      <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+        <joint_name>vertical_slide</joint_name>
+        <topic>/kty/platform/cmd_pos</topic>
+        <p_gain>250000</p_gain><i_gain>0</i_gain><d_gain>3500</d_gain>
+        <cmd_min>-20000</cmd_min><cmd_max>20000</cmd_max>
+      </plugin>
+      <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
+        <link>table</link>
+        <track_orientation>0 0 0</track_orientation>
+        <velocity_topic>/kty/platform/cmd_vel</velocity_topic>
+        <min_velocity>-1.5</min_velocity><max_velocity>1.5</max_velocity>
+        <min_acceleration>-4.0</min_acceleration><max_acceleration>4.0</max_acceleration>
+        <min_jerk>-20.0</min_jerk><max_jerk>20.0</max_jerk>
+      </plugin>
+    </model>
+
+    <!-- Four visible spring supports. Collision is omitted because the prismatic joint is the physical model. -->
+    <model name="spring_visuals"><static>true</static><link name="springs">
+      <visual name="s1"><pose>-0.27 -0.18 0.415 0 0 0</pose><geometry><cylinder><radius>0.035</radius><length>0.10</length></cylinder></geometry><material><ambient>0.10 0.35 0.80 1</ambient><diffuse>0.10 0.45 0.95 1</diffuse></material></visual>
+      <visual name="s2"><pose>-0.27 0.18 0.415 0 0 0</pose><geometry><cylinder><radius>0.035</radius><length>0.10</length></cylinder></geometry><material><ambient>0.10 0.35 0.80 1</ambient><diffuse>0.10 0.45 0.95 1</diffuse></material></visual>
+      <visual name="s3"><pose>0.27 -0.18 0.415 0 0 0</pose><geometry><cylinder><radius>0.035</radius><length>0.10</length></cylinder></geometry><material><ambient>0.10 0.35 0.80 1</ambient><diffuse>0.10 0.45 0.95 1</diffuse></material></visual>
+      <visual name="s4"><pose>0.27 0.18 0.415 0 0 0</pose><geometry><cylinder><radius>0.035</radius><length>0.10</length></cylinder></geometry><material><ambient>0.10 0.35 0.80 1</ambient><diffuse>0.10 0.45 0.95 1</diffuse></material></visual>
+    </link></model>
+
+    <!-- Side guides model the clamp as lateral constraints, without clamping downwards. -->
+    <model name="kty_side_guides"><static>true</static><link name="guides">
+      <collision name="guide_neg_y_collision"><pose>0 -0.218 0.64 0 0 0</pose><geometry><box><size>0.72 0.018 0.28</size></box></geometry></collision>
+      <visual name="guide_neg_y_visual"><pose>0 -0.218 0.64 0 0 0</pose><geometry><box><size>0.72 0.018 0.28</size></box></geometry><material><ambient>0.40 0.42 0.45 1</ambient><diffuse>0.52 0.54 0.58 1</diffuse></material></visual>
+      <collision name="guide_pos_y_collision"><pose>0 0.218 0.64 0 0 0</pose><geometry><box><size>0.72 0.018 0.28</size></box></geometry></collision>
+      <visual name="guide_pos_y_visual"><pose>0 0.218 0.64 0 0 0</pose><geometry><box><size>0.72 0.018 0.28</size></box></geometry><material><ambient>0.40 0.42 0.45 1</ambient><diffuse>0.52 0.54 0.58 1</diffuse></material></visual>
+    </link></model>
+
+    <model name="kty_outfeed">
+      <static>true</static>
+      <pose>1.15 0 0 0 0 0</pose>
+      <link name="belt">
+        <pose>0 0 0.46 0 0 0</pose>
+        <collision name="belt_collision">
+          <geometry><box><size>1.60 0.55 0.08</size></box></geometry>
+          <surface><friction><ode><mu>0.75</mu><mu2>0.75</mu2><fdir1>1 0 0</fdir1></ode></friction></surface>
+        </collision>
+        <visual name="belt_visual"><geometry><box><size>1.60 0.55 0.08</size></box></geometry><material><ambient>0.30 0.31 0.33 1</ambient><diffuse>0.42 0.43 0.45 1</diffuse></material></visual>
+      </link>
+      <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
+        <link>belt</link><track_orientation>0 0 0</track_orientation>
+        <velocity_topic>/kty/outfeed/cmd_vel</velocity_topic>
+        <min_velocity>-1.5</min_velocity><max_velocity>1.5</max_velocity>
+        <min_acceleration>-4.0</min_acceleration><max_acceleration>4.0</max_acceleration>
+        <min_jerk>-20.0</min_jerk><max_jerk>20.0</max_jerk>
+      </plugin>
+    </model>
+
+    <!-- 1000 x 600 mm chute, 32 degrees, low edge 420 mm above the KTY bottom. -->
+    <model name="product_chute"><static>true</static><pose>-0.730 0 1.185 0 0.5585053606 0</pose><link name="chute">
+      <collision name="bed_collision"><geometry><box><size>1.000 0.600 0.020</size></box></geometry><surface><friction><ode><mu>0.75</mu><mu2>0.75</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
+      <visual name="bed_visual"><geometry><box><size>1.000 0.600 0.020</size></box></geometry><material><ambient>0.22 0.23 0.25 1</ambient><diffuse>0.34 0.35 0.38 1</diffuse></material></visual>
+      <collision name="rail_neg_y_collision"><pose>0 -0.310 0.055 0 0 0</pose><geometry><box><size>1.000 0.020 0.130</size></box></geometry></collision>
+      <visual name="rail_neg_y_visual"><pose>0 -0.310 0.055 0 0 0</pose><geometry><box><size>1.000 0.020 0.130</size></box></geometry><material><ambient>0.12 0.12 0.13 1</ambient><diffuse>0.18 0.18 0.20 1</diffuse></material></visual>
+      <collision name="rail_pos_y_collision"><pose>0 0.310 0.055 0 0 0</pose><geometry><box><size>1.000 0.020 0.130</size></box></geometry></collision>
+      <visual name="rail_pos_y_visual"><pose>0 0.310 0.055 0 0 0</pose><geometry><box><size>1.000 0.020 0.130</size></box></geometry><material><ambient>0.12 0.12 0.13 1</ambient><diffuse>0.18 0.18 0.20 1</diffuse></material></visual>
+    </link></model>
+
+    <!-- Sliding shutter: z=0 is closed, z=0.22 m is open. -->
+    <model name="product_shutter">
+      <link name="anchor"><pose>-0.285 0 0.98 0 0 0</pose><inertial><mass>20</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial></link>
+      <link name="plate"><pose>-0.285 0 0.98 0 0 0</pose><inertial><mass>3</mass><inertia><ixx>0.10</ixx><iyy>0.04</iyy><izz>0.12</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="plate_collision"><geometry><box><size>0.035 0.620 0.150</size></box></geometry><surface><friction><ode><mu>0.75</mu><mu2>0.75</mu2></ode></friction></surface></collision>
+        <visual name="plate_visual"><geometry><box><size>0.035 0.620 0.150</size></box></geometry><material><ambient>0.06 0.06 0.07 1</ambient><diffuse>0.10 0.10 0.12 1</diffuse></material></visual>
+      </link>
+      <joint name="anchor_to_world" type="fixed"><parent>world</parent><child>anchor</child></joint>
+      <joint name="shutter_slide" type="prismatic"><parent>anchor</parent><child>plate</child><axis><xyz>0 0 1</xyz><limit><lower>0</lower><upper>0.24</upper><effort>2000</effort><velocity>1.0</velocity></limit><dynamics><damping>20</damping></dynamics></axis></joint>
+      <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+        <joint_name>shutter_slide</joint_name><topic>/kty/shutter/cmd_pos</topic>
+        <p_gain>12000</p_gain><i_gain>0</i_gain><d_gain>500</d_gain><cmd_min>-2000</cmd_min><cmd_max>2000</cmd_max>
+      </plugin>
+    </model>
+
+    <!-- Fixed overhead RGB-D camera. The chute ends before the optical axis. -->
+    <model name="kty_vision_station"><static>true</static><link name="camera_link">
+      <!-- Camera optical +X points down; image right approximately follows world +X. -->
+      <pose>0 0 1.75 0 1.57079632679 1.57079632679</pose>
+      <sensor name="overhead_rgbd" type="rgbd_camera">
+        <always_on>true</always_on><update_rate>15</update_rate><topic>/kty/camera</topic>
+        <camera>
+          <horizontal_fov>1.05</horizontal_fov>
+          <image><width>800</width><height>600</height><format>R8G8B8</format></image>
+          <clip><near>0.20</near><far>3.0</far></clip>
+          <noise><type>gaussian</type><mean>0.0</mean><stddev>0.002</stddev></noise>
+        </camera>
+        <visualize>true</visualize>
+      </sensor>
+    </link></model>
+  </world>
+</sdf>

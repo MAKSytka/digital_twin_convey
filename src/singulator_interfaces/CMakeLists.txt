@@ -11,6 +11,12 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/BoxObservationArray.msg"
   "msg/MatrixCommand.msg"
   "msg/MatrixState.msg"
+  "msg/KtyProductContour.msg"
+  "msg/KtyProductContourArray.msg"
+  "msg/KtyGroundTruth.msg"
+  "msg/KtyGroundTruthArray.msg"
+  "msg/KtyStationState.msg"
+  "msg/KtyFault.msg"
   "srv/ResetScenario.srv"
   DEPENDENCIES geometry_msgs std_msgs
 )
