@@ -1,0 +1,25 @@
+uint8 WAIT_EMPTY_KTY=0
+uint8 POSITION_KTY=1
+uint8 CLAMP=2
+uint8 LOAD=3
+uint8 VIBRATE=4
+uint8 SETTLE=5
+uint8 SCAN=6
+uint8 EJECT_PREP=7
+uint8 EJECT=8
+uint8 FAULT=9
+
+std_msgs/Header header
+uint32 cycle_id
+uint8 state
+string state_name
+string reason
+bool kty_expected
+bool shutter_closed
+bool vibration_enabled
+bool product_feed_enabled
+float32 vibration_frequency_hz
+float32 vibration_amplitude_m
+float32 measured_maximum_height_m
+float32 fill_height_threshold_m
+float32 estimated_mass_kg

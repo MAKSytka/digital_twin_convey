@@ -3,132 +3,169 @@
 ## Чистая установка
 
 ```bash
-git clone <repository-url> ~/singulator_digital_twin
+git clone https://github.com/MAKSytka/digital_twin_convey.git ~/singulator_digital_twin
 cd ~/singulator_digital_twin
 chmod +x scripts/*.sh tools/*.py
-```
-
-Проверить Ubuntu и установленные компоненты:
-
-```bash
 ./scripts/check_environment.sh
-```
-
-Установить зависимости:
-
-```bash
 ./scripts/setup_dependencies.sh
-```
-
-Собрать workspace:
-
-```bash
 ./scripts/build.sh
 source install/setup.bash
 ```
 
-## Рекомендуемый рабочий процесс второго программиста
-
-### Терминал 1 — симулятор и поток коробок
+## Статическая проверка
 
 ```bash
-cd ~/singulator_digital_twin
+python3 tools/validate_project.py
+python3 tools/validate_kty_station.py
+```
+
+Первая команда проверяет основной контур, вторая — структуру, сообщения, Python-синтаксис и SDF станции КТЯ.
+
+## Матрица сингуляризации
+
+### Рабочий сценарий
+
+```bash
+./scripts/run_roller_demo.sh
+```
+
+### Сценарий для внешнего контроллера
+
+Терминал 1:
+
+```bash
 ./scripts/run_scenario.sh
 ```
 
-### Терминал 2 — алгоритм управления
+Терминал 2:
 
 ```bash
-cd ~/singulator_digital_twin
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash
 ros2 run <algorithm_package> <algorithm_executable>
 ```
 
-Алгоритм должен публиковать `/singulator/matrix/command`.
+Алгоритм публикует `/singulator/matrix/command`.
 
-### Терминал 3 — диагностика
+### Диагностика
 
 ```bash
-cd ~/singulator_digital_twin
-source /opt/ros/jazzy/setup.bash
-source install/setup.bash
 ./scripts/check_running.sh
-```
-
-Дополнительно:
-
-```bash
 ros2 topic hz /singulator/matrix/command
 ros2 topic echo /singulator/matrix/state --once
+ros2 topic hz /singulator/boxes
 ```
 
-## Демонстрация без внешнего алгоритма
+## Станция операций с КТЯ
+
+### Стандартный запуск
 
 ```bash
-./scripts/run_demo.sh
+./scripts/run_kty_station.sh
 ```
 
-В демо одна переменная задаёт одинаковую скорость входа, матрицы и выхода:
+### Запуск с параметрами
 
 ```bash
-CONVEYOR_SPEED_MPS=2.0 \
-TARGET_RATE_BOXES_PER_SEC=4.0 \
-SEED=123 \
-./scripts/run_demo.sh
+./scripts/run_kty_station.sh \
+  vibration_frequency_hz:=25.0 \
+  vibration_amplitude_m:=0.001 \
+  product_rate_products_per_s:=1.0 \
+  seed:=42
 ```
 
-## Запуск без коробок
+Допустимые параметры первой версии:
+
+- частота: `20...50 Гц`;
+- амплитуда: `(0...0,003] м`, как отклонение от среднего положения;
+- поток: положительное значение в товарах в секунду;
+- `seed`: целое число для воспроизводимости.
+
+Для стартовой проверки использовать `25 Гц` и `1 мм`. Не начинать runtime-калибровку с сочетания `50 Гц / 3 мм`, поскольку оно задаёт пиковое ускорение порядка `30 g`.
+
+### Наблюдение автомата
 
 ```bash
-./scripts/run_integration.sh
+ros2 topic echo /kty/station/state
+ros2 topic echo /kty/fault
+ros2 topic hz /kty/perception/contours
 ```
 
-После запуска можно проверить одну команду:
+Отладочное изображение:
 
 ```bash
-python3 examples/matrix_command_publisher.py --mode uniform --speed 2.0
+ros2 run rqt_image_view rqt_image_view \
+  /kty/perception/debug_image
+```
+
+Исходные RGB-D топики:
+
+```bash
+ros2 topic hz /kty/camera/image
+ros2 topic hz /kty/camera/depth_image
+ros2 topic echo /kty/camera/camera_info --once
+```
+
+Ручной сброс после аварии:
+
+```bash
+ros2 service call /kty/station/reset std_srvs/srv/Trigger '{}'
 ```
 
 Остановка:
 
 ```bash
-python3 examples/matrix_command_publisher.py --mode stop
+./scripts/stop_kty_station.sh
 ```
+
+### Метрики
+
+```bash
+find /tmp/kty_station_metrics -maxdepth 2 -type f -print
+```
+
+Для воспроизводимого эксперимента сохранять:
+
+- параметры launch;
+- `seed`;
+- `summary.json`;
+- `timeseries.csv`;
+- `product_displacements.csv`;
+- журнал запуска Gazebo и ROS-узлов.
 
 ## Пересборка после изменений
 
-Для Python-пакетов используется `--symlink-install`, поэтому изменения `.py` обычно подхватываются без полной пересборки. После изменения `setup.py`, сообщений, launch-файлов или CMake-пакетов выполнить:
+Для Python-файлов используется `--symlink-install`. После изменения `setup.py`, launch-файлов, YAML или сообщений выполнить:
 
 ```bash
-cd ~/singulator_digital_twin
 source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-Для отдельного пакета:
-
-```bash
-colcon build --symlink-install --packages-select singulator_sim
-```
-
-После изменения `.msg` сначала пересобрать интерфейсы и зависимые пакеты:
+После изменения KTY-сообщений:
 
 ```bash
 colcon build --symlink-install \
-  --packages-select singulator_interfaces singulator_sim singulator_control
+  --packages-select singulator_interfaces kty_station_sim
+source install/setup.bash
 ```
 
-## Изменение геометрии мира
+Для отдельной пересборки станции:
 
-Основной генератор:
+```bash
+colcon build --symlink-install --packages-select kty_station_sim
+```
+
+## Изменение геометрии
+
+Матрица генерируется скриптом:
 
 ```text
 src/singulator_gazebo/scripts/generate_matrix_14x4_stream.py
 ```
 
-После изменения констант запустить из корня проекта:
+После изменения:
 
 ```bash
 python3 src/singulator_gazebo/scripts/generate_matrix_14x4_stream.py
@@ -136,14 +173,27 @@ python3 tools/validate_project.py
 colcon build --symlink-install --packages-select singulator_gazebo
 ```
 
-Генератор изначально записывает файл в `~/singulator_digital_twin`. Поэтому репозиторий рекомендуется хранить именно по этому пути либо предварительно адаптировать путь в `main()`.
+Станция КТЯ пока редактируется непосредственно в:
+
+```text
+src/kty_station_sim/worlds/kty_station.sdf
+src/kty_station_sim/config/station.yaml
+```
+
+После изменения:
+
+```bash
+python3 tools/validate_kty_station.py
+colcon build --symlink-install --packages-select kty_station_sim
+```
 
 ## Проверка перед коммитом
 
 ```bash
 python3 tools/validate_project.py
-git status
+python3 tools/validate_kty_station.py
 git diff --check
+git status
 ```
 
-В `git status` не должны появляться `build/`, `install/`, `log/`, `__pycache__/` и резервные копии.
+В `git status` не должны появляться `build/`, `install/`, `log/`, `__pycache__/`, метрики из `/tmp` или резервные копии.

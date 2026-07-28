@@ -1,43 +1,20 @@
-# ROS-интерфейсы и система координат
+# ROS-интерфейсы и системы координат
 
-## Система координат
+## Матрица сингуляризации
 
-- `+X` — направление движения товара от входа к выходу;
+### Система координат
+
+- `+X` — движение от входа к выходу;
 - `+Y` — поперёк матрицы;
 - `+Z` — вверх;
-- начало координат находится в центре матрицы.
+- начало — центр матрицы.
 
-Строки:
+Строки идут от `r00` на входе до `r13` на выходе. Колонки нумеруются от отрицательного `Y` к положительному.
 
-```text
-r00: X = -2.470 м
-r01: X = -2.090 м
-...
-r13: X = +2.470 м
-```
-
-Колонки:
-
-```text
-c00: Y = -0.2925 м
-c01: Y = -0.0975 м
-c02: Y = +0.0975 м
-c03: Y = +0.2925 м
-```
-
-Положительная скорость TrackController двигает товар вдоль `+X`.
-
-## Общая команда матрицы
-
-### Топик
+### Общая команда
 
 ```text
 /singulator/matrix/command
-```
-
-### Тип
-
-```text
 singulator_interfaces/msg/MatrixCommand
 ```
 
@@ -48,93 +25,28 @@ uint16 cols
 float32[] target_speed_mps
 ```
 
-### Обязательные условия
+Обязательные условия:
 
 - `rows == 14`;
 - `cols == 4`;
-- размер массива равен `rows * cols == 56`;
-- скорость указывается в м/с;
-- допустимый физической моделью диапазон: `−2.0…2.0 м/с`.
+- `len(target_speed_mps) == 56`;
+- индекс: `row * cols + col`;
+- единица скорости: м/с.
 
-### Порядок массива
-
-```python
-index = row * cols + col
-```
-
-То есть сначала идут четыре колонки строки `r00`, затем четыре колонки `r01` и так далее.
-
-```text
-[ r00c00, r00c01, r00c02, r00c03,
-  r01c00, r01c01, r01c02, r01c03,
-  ...,
-  r13c00, r13c01, r13c02, r13c03 ]
-```
-
-## Состояние матрицы
-
-### Топик
+### Состояние
 
 ```text
 /singulator/matrix/state
-```
-
-### Тип
-
-```text
 singulator_interfaces/msg/MatrixState
 ```
 
-```text
-std_msgs/Header header
-uint16 rows
-uint16 cols
-float32[] target_speed_mps
-float32[] actual_speed_mps
-bool[] fault
-```
+`actual_speed_mps` в текущей реализации не является полноценной обратной связью от каждого физического привода.
 
-Текущее ограничение: `actual_speed_mps` копирует целевые значения, а `fault` всегда содержит `false`. Это подтверждение приёма команды, а не реальное измерение приводов.
-
-## Команды отдельных приводов
+### Наблюдения товаров
 
 ```text
-/singulator/cell/rXX_cYY/cmd_vel
-std_msgs/msg/Float64
-```
-
-Эти топики являются внутренним интерфейсом симулятора. Внешнему алгоритму следует публиковать одну общую `MatrixCommand`.
-
-## Входной и выходной конвейеры
-
-```text
-/singulator/infeed/cmd_vel
-/singulator/outfeed/cmd_vel
-std_msgs/msg/Float64
-```
-
-Основной launch-файл поддерживает команды с частотой 10 Гц через `aux_conveyor_controller`.
-
-## Gazebo Transport odometry
-
-Каждый TrackController создаёт транспортный топик:
-
-```text
-/singulator/cell/rXX_cYY/odometry
-/singulator/infeed/odometry
-/singulator/outfeed/odometry
-```
-
-В основном режиме они не мостятся в ROS. Для диагностики:
-
-```bash
-gz topic -e -t /singulator/cell/r00_c00/odometry
-```
-
-## Наблюдение коробки
-
-```text
-singulator_interfaces/msg/BoxObservation
+/singulator/boxes
+singulator_interfaces/msg/BoxObservationArray
 ```
 
 ```text
@@ -148,20 +60,168 @@ float32 yaw_rad
 float32 confidence
 ```
 
-Массив наблюдений:
+## Станция операций с КТЯ
+
+### Системы координат
+
+`kty_station`:
+
+- `+X` — от входной контактной зоны к выходной;
+- `+Y` — поперёк КТЯ;
+- `+Z` — вверх;
+- центр виброплатформы находится около `X=0`, `Y=0`.
+
+`kty_inner`:
+
+- локальная система внутреннего объёма установленного КТЯ;
+- полигон машинного зрения публикуется в плоскости дна;
+- высота задаётся относительно внутреннего дна КТЯ.
+
+### Команды контактных зон и механизмов
 
 ```text
-/singulator/boxes
-singulator_interfaces/msg/BoxObservationArray
+/kty/infeed/cmd_vel       std_msgs/msg/Float64
+/kty/platform/cmd_vel     std_msgs/msg/Float64
+/kty/outfeed/cmd_vel      std_msgs/msg/Float64
+/kty/platform/cmd_pos     std_msgs/msg/Float64
+/kty/shutter/cmd_pos      std_msgs/msg/Float64
 ```
 
-В текущей версии издатель этого топика отсутствует. Тип подготовлен для будущего адаптера Gazebo или машинного зрения.
+`cmd_vel` задаётся в м/с. `platform/cmd_pos` задаёт вертикальное отклонение платформы в метрах. `shutter/cmd_pos` задаёт положение вертикального призматического соединения шторки.
+
+### Состояние станции
+
+```text
+/kty/station/state
+singulator_interfaces/msg/KtyStationState
+```
+
+```text
+std_msgs/Header header
+uint32 cycle_id
+uint8 state
+string state_name
+string reason
+bool kty_expected
+bool shutter_closed
+bool vibration_enabled
+bool product_feed_enabled
+float32 vibration_frequency_hz
+float32 vibration_amplitude_m
+float32 measured_maximum_height_m
+float32 fill_height_threshold_m
+float32 estimated_mass_kg
+```
+
+Состояния:
+
+```text
+WAIT_EMPTY_KTY, POSITION_KTY, CLAMP, LOAD, VIBRATE,
+SETTLE, SCAN, EJECT_PREP, EJECT, FAULT
+```
+
+### RGB-D сенсор
+
+```text
+/kty/camera/image          sensor_msgs/msg/Image
+/kty/camera/depth_image    sensor_msgs/msg/Image
+/kty/camera/camera_info    sensor_msgs/msg/CameraInfo
+```
+
+### Полигональные контуры
+
+```text
+/kty/perception/contours
+singulator_interfaces/msg/KtyProductContourArray
+```
+
+Массив содержит:
+
+```text
+std_msgs/Header header
+uint32 frame_sequence
+bool camera_ok
+float32 valid_depth_fraction
+float32 maximum_height_m
+float32 top_fill_ratio
+KtyProductContour[] products
+```
+
+Один товар:
+
+```text
+uint32 track_id
+geometry_msgs/Polygon polygon
+geometry_msgs/Point32 centroid
+float32 top_height_m
+float32 visible_area_m2
+float32 confidence
+bool side_neg_x_accessible
+bool side_pos_x_accessible
+bool side_neg_y_accessible
+bool side_pos_y_accessible
+float32 clearance_neg_x_m
+float32 clearance_pos_x_m
+float32 clearance_neg_y_m
+float32 clearance_pos_y_m
+```
+
+`track_id` предназначен для сохранения идентичности между последовательными микропаузами. Полигон описывает видимую верхнюю область, а доступность сторон — предварительный интерфейс для будущего манипулятора.
+
+### Ground truth
+
+```text
+/kty/ground_truth/registry
+singulator_interfaces/msg/KtyGroundTruthArray
+```
+
+Реестр содержит размер, массу, профиль и имя Gazebo-модели. Он используется safety/metrics узлами и не должен подключаться к входу `depth_perception`.
+
+### Аварии
+
+```text
+/kty/fault
+singulator_interfaces/msg/KtyFault
+```
+
+Коды:
+
+```text
+product_outside_kty
+product_jammed_on_chute
+kty_not_installed
+mass_exceeded
+camera_lost_view
+product_still_moving
+```
+
+Критическое активное сообщение переводит автомат в `FAULT`.
+
+### Управление сценарием
+
+```text
+/kty/cycle_id                    std_msgs/msg/UInt32
+/kty/product_spawner/enabled     std_msgs/msg/Bool
+/kty/product_spawner/clear       std_msgs/msg/Bool
+/kty/station/reset               std_srvs/srv/Trigger
+```
+
+### Позиции Gazebo
+
+```text
+/kty/world/poses
+tf2_msgs/msg/TFMessage
+```
+
+Топик мостит `/world/kty_station/pose/info` и используется только для safety, ground-truth метрик и проверки качества зрения.
 
 ## Полезные команды
 
 ```bash
 ros2 interface show singulator_interfaces/msg/MatrixCommand
-ros2 interface show singulator_interfaces/msg/BoxObservationArray
-ros2 topic info /singulator/matrix/command
-ros2 topic echo /singulator/matrix/state
+ros2 interface show singulator_interfaces/msg/KtyStationState
+ros2 interface show singulator_interfaces/msg/KtyProductContourArray
+ros2 interface show singulator_interfaces/msg/KtyFault
+ros2 topic echo /kty/station/state
+ros2 topic echo /kty/fault
 ```

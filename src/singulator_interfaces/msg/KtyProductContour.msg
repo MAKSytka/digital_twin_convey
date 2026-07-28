@@ -1,0 +1,14 @@
+uint32 track_id
+geometry_msgs/Polygon polygon
+geometry_msgs/Point32 centroid
+float32 top_height_m
+float32 visible_area_m2
+float32 confidence
+bool side_neg_x_accessible
+bool side_pos_x_accessible
+bool side_neg_y_accessible
+bool side_pos_y_accessible
+float32 clearance_neg_x_m
+float32 clearance_pos_x_m
+float32 clearance_neg_y_m
+float32 clearance_pos_y_m
