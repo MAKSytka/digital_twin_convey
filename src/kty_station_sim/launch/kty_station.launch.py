@@ -2,7 +2,12 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    IncludeLaunchDescription,
+    TimerAction,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -27,6 +32,35 @@ def generate_launch_description() -> LaunchDescription:
         ),
         launch_arguments={"gz_args": f"-r -v 3 {world}"}.items(),
     )
+
+    # Gazebo may still open with the world paused on some installations even
+    # when ``-r`` is passed. Retry the transport control service using wall
+    # time, so ROS nodes which use /clock are never left waiting forever.
+    unpause_world = ExecuteProcess(
+        cmd=[
+            "bash",
+            "-c",
+            (
+                "for attempt in $(seq 1 40); do "
+                "output=$(gz service "
+                "-s /world/kty_station/control "
+                "--reqtype gz.msgs.WorldControl "
+                "--reptype gz.msgs.Boolean "
+                "--timeout 1000 "
+                "--req 'pause: false' 2>&1); "
+                "printf '%s\n' \"$output\"; "
+                "if printf '%s' \"$output\" | grep -qi 'data: true'; then "
+                "echo '[kty-startup] Gazebo world is running'; exit 0; fi; "
+                "sleep 0.25; "
+                "done; "
+                "echo '[kty-startup] failed to unpause Gazebo world' >&2; "
+                "exit 1"
+            ),
+        ],
+        output="screen",
+    )
+
+    delayed_unpause = TimerAction(period=0.5, actions=[unpause_world])
 
     bridge = Node(
         package="ros_gz_bridge",
@@ -116,6 +150,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("product_rate_products_per_s", default_value="1.0"),
             DeclareLaunchArgument("seed", default_value="42"),
             gazebo,
+            delayed_unpause,
             bridge,
             rgb_bridge,
             depth_bridge,

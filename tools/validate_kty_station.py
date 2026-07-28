@@ -38,6 +38,9 @@ def validate_world() -> None:
         "/kty/camera",
         "<mu>0.75</mu>",
         "<upper>0.0032</upper>",
+        '<plugin filename="MinimalScene" name="3D View">',
+        "<start_paused>false</start_paused>",
+        "/world/kty_station/control",
     )
     for fragment in required_fragments:
         require(fragment in text, f"Missing world fragment: {fragment}")
@@ -52,6 +55,14 @@ def validate_world() -> None:
         "kty_vision_station",
     }
     require(required_models <= models, f"Missing models: {required_models - models}")
+
+
+def validate_launch() -> None:
+    launch_file = PACKAGE / "launch" / "kty_station.launch.py"
+    text = launch_file.read_text(encoding="utf-8")
+    require('"-r -v 3' in text, "Gazebo must be launched in running mode")
+    require("pause: false" in text, "Launch file must explicitly unpause the world")
+    require("delayed_unpause" in text, "Unpause retry action is missing")
 
 
 def validate_python() -> None:
@@ -105,6 +116,7 @@ def validate_interfaces() -> None:
 
 def main() -> None:
     validate_world()
+    validate_launch()
     validate_python()
     validate_factories()
     validate_interfaces()
