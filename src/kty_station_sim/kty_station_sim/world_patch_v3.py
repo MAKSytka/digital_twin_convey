@@ -51,6 +51,13 @@ def _fixed_joint(name: str, child: str) -> ET.Element:
     return joint
 
 
+def _set_required_text(parent: ET.Element, path: str, value: str) -> None:
+    element = parent.find(path)
+    if element is None:
+        raise RuntimeError(f"Missing generated SDF element: {path}")
+    element.text = value
+
+
 def _add_zone(plugin: ET.Element, *, name: str, topic: str, min_x: float, max_x: float) -> None:
     zone = ET.SubElement(plugin, "zone")
     ET.SubElement(zone, "name").text = name
@@ -71,6 +78,24 @@ def build_surface_world(source: Path, destination: Path) -> Path:
         raise RuntimeError("Generated SDF has no world")
     world.set("name", "kty_mechatronics_surface")
 
+    # The roller-free world has substantially fewer contacts than the old
+    # 17-roller model. A 4 ms physics step is sufficient for this demonstrator
+    # and prevents the complete simulation from appearing in slow motion.
+    physics = world.find("physics")
+    if physics is None:
+        raise RuntimeError("Generated world has no physics block")
+    _set_required_text(physics, "max_step_size", "0.004")
+    _set_required_text(physics, "real_time_update_rate", "250")
+
+    # Keep RGB-D useful for classical segmentation, but do not let rendering
+    # dominate the real-time factor during transport acceptance tests.
+    sensor = world.find(".//sensor[@name='overhead_rgbd']")
+    if sensor is None:
+        raise RuntimeError("RGB-D sensor is missing")
+    _set_required_text(sensor, "update_rate", "6")
+    _set_required_text(sensor, "camera/image/width", "512")
+    _set_required_text(sensor, "camera/image/height", "384")
+
     machine = world.find("model[@name='kty_mechatronics_machine']")
     if machine is None:
         raise RuntimeError("Machine model is missing")
@@ -89,7 +114,7 @@ def build_surface_world(source: Path, destination: Path) -> Path:
         if "_rollers/cmd_vel" in topic:
             machine.remove(plugin)
 
-    # Flat inlet and outlet plates. Their upper plane is z=0.500 m.
+    # The inlet upper plane is z=0.500 m.
     machine.append(
         _surface_link(
             "infeed_surface",
@@ -99,11 +124,26 @@ def build_surface_world(source: Path, destination: Path) -> Path:
         )
     )
     machine.append(_fixed_joint("infeed_surface_joint", "infeed_surface"))
+
+    # The active deck is nominally z=0.500 m. The transfer bridge and outfeed
+    # form two small downward steps (500 -> 498 -> 496 mm), so the loaded KTY
+    # can never meet an upward vertical face after vibration stops.
+    machine.append(
+        _surface_link(
+            "outfeed_transfer_bridge",
+            "0.435 0 0.492 0 0 0",
+            "0.090 0.620 0.012",
+            "0.18 0.40 0.34 1",
+        )
+    )
+    machine.append(
+        _fixed_joint("outfeed_transfer_bridge_joint", "outfeed_transfer_bridge")
+    )
     machine.append(
         _surface_link(
             "outfeed_surface",
-            "1.200 0 0.460 0 0 0",
-            "1.620 0.620 0.080",
+            "1.250 0 0.456 0 0 0",
+            "1.540 0.620 0.080",
             "0.16 0.30 0.22 1",
         )
     )
@@ -143,10 +183,10 @@ def build_surface_world(source: Path, destination: Path) -> Path:
     )
     ET.SubElement(plugin, "model_prefix").text = "kty_mech_container_"
     ET.SubElement(plugin, "surface_z").text = "0.500"
-    ET.SubElement(plugin, "contact_tolerance").text = "0.085"
-    ET.SubElement(plugin, "velocity_gain").text = "260.0"
-    ET.SubElement(plugin, "max_force").text = "380.0"
-    ET.SubElement(plugin, "velocity_deadband").text = "0.004"
+    ET.SubElement(plugin, "contact_tolerance").text = "0.090"
+    ET.SubElement(plugin, "velocity_gain").text = "360.0"
+    ET.SubElement(plugin, "max_force").text = "650.0"
+    ET.SubElement(plugin, "velocity_deadband").text = "0.006"
     _add_zone(
         plugin,
         name="infeed",
@@ -159,13 +199,13 @@ def build_surface_world(source: Path, destination: Path) -> Path:
         name="active",
         topic="/kty/mech/active_surface/cmd_vel",
         min_x=-0.39,
-        max_x=0.39,
+        max_x=0.44,
     )
     _add_zone(
         plugin,
         name="outfeed",
         topic="/kty/mech/outfeed_surface/cmd_vel",
-        min_x=0.34,
+        min_x=0.39,
         max_x=2.15,
     )
 
