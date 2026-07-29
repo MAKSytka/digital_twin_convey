@@ -199,7 +199,7 @@ def validate_runtime_wiring() -> None:
     safety = read(PACKAGE / "kty_station_sim" / "safety_monitor_v2.py")
     for fragment in (
         "kty_was_observed",
-        "pose-dependent faults",
+        "Pose-dependent faults",
         "KtyFault.WARNING",
         "successful Gazebo create",
     ):
