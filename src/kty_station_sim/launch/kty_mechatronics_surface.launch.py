@@ -175,6 +175,8 @@ def generate_launch_description() -> LaunchDescription:
 
     controller = Node(
         package="kty_station_sim",
+        # The installed v3 entry point is intentionally routed to runtime v10
+        # so existing diagnostics and scripts remain compatible.
         executable="mechatronics_cycle_v3",
         name="kty_mechatronics_cycle_v3",
         output="screen",
@@ -197,12 +199,18 @@ def generate_launch_description() -> LaunchDescription:
                 ),
                 "roller_linear_speed_mps": 0.65,
                 "slow_roller_linear_speed_mps": 0.18,
-                "weak_vibration_frequency_hz": 8.0,
-                "weak_vibration_amplitude_m": 0.0005,
-                "strong_vibration_frequency_hz": 18.0,
-                "strong_vibration_amplitude_m": 0.0030,
-                "strong_vibration_duration_s": 8.0,
-                "strong_vibration_ramp_s": 1.0,
+                # Loading agitation: visible but below lift-off acceleration.
+                "weak_vibration_frequency_hz": 6.0,
+                "weak_vibration_amplitude_m": 0.0012,
+                # Compaction: 8..12 Hz frequency sweep at +/-5 mm.  The peak
+                # theoretical acceleration varies from about 1.3 to 2.9 g.
+                "strong_vibration_frequency_hz": 10.0,
+                "strong_vibration_sweep_hz": 2.0,
+                "strong_vibration_modulation_hz": 0.35,
+                "strong_vibration_amplitude_m": 0.0050,
+                "strong_vibration_duration_s": 12.0,
+                "strong_vibration_ramp_s": 1.5,
+                "vibration_settle_s": 1.0,
             }
         ],
     )
