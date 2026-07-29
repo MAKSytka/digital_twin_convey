@@ -115,8 +115,11 @@ def validate_runtime_wiring() -> None:
         "_spawn_gate_model",
         "_remove_gate_model",
         '"gate_mechanism"] = "spawned_static_slide"',
-        "boosting active/outfeed rollers",
+        "boosting active/outfeed surfaces",
         "max(18.0, timeout_s)",
+        "retract locator and open clamps before energising contact surfaces",
+        "self._interruptible_sleep(2.5)",
+        "restraints clear; moving loaded KTY",
     ):
         require(fragment in controller, f"Missing controller correction: {fragment}")
     require("/set_pose" not in controller, "Runtime v7 must not teleport KTY")
