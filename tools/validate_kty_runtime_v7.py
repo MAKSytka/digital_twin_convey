@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static validation for KTY runtime v7 corrections."""
+"""Static validation for KTY runtime-v7 compatibility and its v8 successor."""
 
 from __future__ import annotations
 
@@ -66,10 +66,12 @@ def validate_generated_world() -> None:
     require(machine.find("link[@name='gate']") is None, "Obsolete hinged gate remains")
     require(machine.find("joint[@name='gate_joint']") is None, "Obsolete gate joint remains")
 
+    # The v7 generator remains in the repository as a reproducible legacy
+    # baseline even though the default runtime now uses flat contact surfaces.
     roller_links = [
         link for link in machine.findall("link") if "_roller_" in link.attrib.get("name", "")
     ]
-    require(len(roller_links) == 17, f"Expected 17 corrected rollers, found {len(roller_links)}")
+    require(len(roller_links) == 17, f"Expected 17 corrected legacy rollers, found {len(roller_links)}")
     for link in roller_links:
         name = link.attrib["name"]
         pose = [float(value) for value in link.findtext("pose", "").split()]
@@ -98,11 +100,11 @@ def validate_generated_world() -> None:
     ]
     require(
         len(roller_plugins) == 17,
-        f"Expected one velocity controller per roller, found {len(roller_plugins)}",
+        f"Expected one velocity controller per legacy roller, found {len(roller_plugins)}",
     )
     require(
         all(len(plugin.findall("joint_name")) == 1 for plugin in roller_plugins),
-        "Grouped roller controller remains",
+        "Grouped legacy roller controller remains",
     )
 
 
@@ -169,9 +171,20 @@ def validate_scripts() -> None:
     ):
         text = read(ROOT / relative)
         require(text.startswith("#!/usr/bin/env bash"), f"Missing shebang: {relative}")
+
+    run_mechatronics = read(ROOT / "scripts/run_kty_mechatronics.sh")
+    run_perception = read(ROOT / "scripts/run_kty_perception_3d.sh")
+    accepted_launches = (
+        "kty_mechatronics_v2.launch.py",
+        "kty_mechatronics_surface.launch.py",
+    )
     require(
-        "kty_mechatronics_v2.launch.py" in read(ROOT / "scripts/run_kty_mechatronics.sh"),
-        "Mechatronics script does not run v7 launch",
+        any(name in run_mechatronics for name in accepted_launches),
+        "Mechatronics script does not run a supported v7/v8 launch",
+    )
+    require(
+        any(name in run_perception for name in accepted_launches),
+        "Perception script does not run a supported v7/v8 launch",
     )
 
 
@@ -180,7 +193,7 @@ def main() -> None:
     validate_generated_world()
     validate_runtime_wiring()
     validate_scripts()
-    print("KTY runtime v7 static validation: OK")
+    print("KTY runtime v7/v8 compatibility validation: OK")
 
 
 if __name__ == "__main__":
