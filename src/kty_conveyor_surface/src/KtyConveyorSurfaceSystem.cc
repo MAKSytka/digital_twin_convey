@@ -62,7 +62,12 @@ public:
     if (!_sdf->HasElement("zone"))
       return;
 
-    auto zoneElement = _sdf->GetElement("zone");
+    // Gazebo passes a shared_ptr<const sdf::Element>, while sdformat14's
+    // repeated-child traversal API (GetElement / GetNextElement) is not const.
+    // This follows the pattern used by Gazebo systems: obtain a non-const view
+    // only for traversal. The plugin never modifies the SDF tree.
+    auto *mutableSdf = const_cast<sdf::Element *>(_sdf.get());
+    auto zoneElement = mutableSdf->GetElement("zone");
     while (zoneElement)
     {
       Zone zone;
