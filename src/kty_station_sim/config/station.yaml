@@ -5,10 +5,11 @@ station_controller:
     kty_spawn_x_m: -1.30
     support_top_z_m: 0.50
     approach_speed_mps: 0.65
-    transport_command_sign: -1.0
     approach_duration_s: 2.0
     positioning_timeout_s: 8.0
     position_tolerance_m: 0.08
+    pose_feedback_timeout_s: 1.0
+    surface_command_sign: -1.0
     clamp_duration_s: 0.20
     vibration_start_delay_s: 0.50
     vibration_frequency_hz: 25.0
@@ -16,6 +17,7 @@ station_controller:
     inspection_period_s: 3.0
     settle_duration_s: 0.50
     scan_timeout_s: 1.50
+    scan_failures_before_fault: 3
     fill_height_threshold_m: 0.34
     eject_preparation_s: 0.50
     eject_speed_mps: 0.80
@@ -60,6 +62,7 @@ kty_safety_monitor:
     use_sim_time: true
     kty_center_tolerance_m: 0.16
     kty_presence_timeout_s: 0.8
+    pose_stream_timeout_s: 1.5
     camera_timeout_s: 1.0
     maximum_mass_kg: 35.0
     chute_jam_timeout_s: 2.5
