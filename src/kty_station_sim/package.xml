@@ -1,13 +1,15 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>kty_station_sim</name>
-  <version>0.3.0</version>
-  <description>Simplified Gazebo digital twin of the KTY handling and vibration-compaction station.</description>
+  <version>0.4.0</version>
+  <description>KTY flow simulation with RGB-D contour perception, polygon persistence and operator dashboard.</description>
   <maintainer email="team@example.com">Singulator Team</maintainer>
   <license>Apache-2.0</license>
 
   <!-- ament_python is the exported build type, not a rosdep key. -->
   <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
