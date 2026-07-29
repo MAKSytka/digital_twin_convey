@@ -26,8 +26,12 @@ def _surface_link(
     surface = ET.SubElement(collision, "surface")
     friction = ET.SubElement(surface, "friction")
     ode = ET.SubElement(friction, "ode")
-    ET.SubElement(ode, "mu").text = "1.20"
-    ET.SubElement(ode, "mu2").text = "1.00"
+    # Longitudinal motion is produced by KtyConveyorSurfaceSystem. Keep X
+    # friction low so a static plate does not fight the commanded conveyor
+    # force, while retaining strong transverse guidance in Y.
+    ET.SubElement(ode, "mu").text = "0.08"
+    ET.SubElement(ode, "mu2").text = "1.15"
+    ET.SubElement(ode, "fdir1").text = "1 0 0"
     contact = ET.SubElement(surface, "contact")
     contact_ode = ET.SubElement(contact, "ode")
     ET.SubElement(contact_ode, "kp").text = "4000000"
@@ -58,7 +62,14 @@ def _set_required_text(parent: ET.Element, path: str, value: str) -> None:
     element.text = value
 
 
-def _add_zone(plugin: ET.Element, *, name: str, topic: str, min_x: float, max_x: float) -> None:
+def _add_zone(
+    plugin: ET.Element,
+    *,
+    name: str,
+    topic: str,
+    min_x: float,
+    max_x: float,
+) -> None:
     zone = ET.SubElement(plugin, "zone")
     ET.SubElement(zone, "name").text = name
     ET.SubElement(zone, "topic").text = topic
@@ -114,6 +125,18 @@ def build_surface_world(source: Path, destination: Path) -> Path:
         if "_rollers/cmd_vel" in topic:
             machine.remove(plugin)
 
+    # The original retracted locator ended only 5 mm below the active surface.
+    # In the recorded runtime it caught the KTY front bottom edge while the
+    # conveyor force was already active, producing the observed forward flip.
+    # Lower and shorten it so the retracted top is z=0.390 m (110 mm clearance),
+    # while the raised top remains z=0.615 m and still provides a 115 mm stop.
+    locator = machine.find("link[@name='locator_stop']")
+    if locator is None:
+        raise RuntimeError("Locator stop link is missing")
+    _set_required_text(locator, "pose", "0.350 0 0.300 0 0 0")
+    _set_required_text(locator, "collision/geometry/box/size", "0.020 0.520 0.180")
+    _set_required_text(locator, "visual/geometry/box/size", "0.020 0.520 0.180")
+
     # The inlet upper plane is z=0.500 m.
     machine.append(
         _surface_link(
@@ -127,7 +150,7 @@ def build_surface_world(source: Path, destination: Path) -> Path:
 
     # The active deck is nominally z=0.500 m. The transfer bridge and outfeed
     # form two small downward steps (500 -> 498 -> 496 mm), so the loaded KTY
-    # can never meet an upward vertical face after vibration stops.
+    # cannot meet an upward vertical face after vibration stops.
     machine.append(
         _surface_link(
             "outfeed_transfer_bridge",
@@ -154,7 +177,11 @@ def build_surface_world(source: Path, destination: Path) -> Path:
     deck = machine.find("link[@name='vibration_deck']")
     if deck is None:
         raise RuntimeError("Vibration deck is missing")
-    active_collision = ET.SubElement(deck, "collision", {"name": "active_contact_surface"})
+    active_collision = ET.SubElement(
+        deck,
+        "collision",
+        {"name": "active_contact_surface"},
+    )
     ET.SubElement(active_collision, "pose").text = "0 0 0.075 0 0 0"
     geometry = ET.SubElement(active_collision, "geometry")
     box = ET.SubElement(geometry, "box")
@@ -162,8 +189,9 @@ def build_surface_world(source: Path, destination: Path) -> Path:
     surface = ET.SubElement(active_collision, "surface")
     friction = ET.SubElement(surface, "friction")
     ode = ET.SubElement(friction, "ode")
-    ET.SubElement(ode, "mu").text = "1.25"
-    ET.SubElement(ode, "mu2").text = "1.05"
+    ET.SubElement(ode, "mu").text = "0.08"
+    ET.SubElement(ode, "mu2").text = "1.15"
+    ET.SubElement(ode, "fdir1").text = "1 0 0"
     active_visual = ET.SubElement(deck, "visual", {"name": "active_surface_visual"})
     ET.SubElement(active_visual, "pose").text = "0 0 0.075 0 0 0"
     visual_geometry = ET.SubElement(active_visual, "geometry")
@@ -184,8 +212,11 @@ def build_surface_world(source: Path, destination: Path) -> Path:
     ET.SubElement(plugin, "model_prefix").text = "kty_mech_container_"
     ET.SubElement(plugin, "surface_z").text = "0.500"
     ET.SubElement(plugin, "contact_tolerance").text = "0.090"
-    ET.SubElement(plugin, "velocity_gain").text = "360.0"
-    ET.SubElement(plugin, "max_force").text = "650.0"
+    # Moderate force is sufficient after longitudinal friction is reduced. This
+    # removes the large impulse that amplified any remaining obstruction into a
+    # flip while still reaching 0.65 m/s quickly with a loaded KTY.
+    ET.SubElement(plugin, "velocity_gain").text = "80.0"
+    ET.SubElement(plugin, "max_force").text = "120.0"
     ET.SubElement(plugin, "velocity_deadband").text = "0.006"
     _add_zone(
         plugin,
