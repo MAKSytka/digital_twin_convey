@@ -7,7 +7,7 @@ package_name = "kty_station_sim"
 
 setup(
     name=package_name,
-    version="0.3.0",
+    version="0.4.0",
     packages=[package_name],
     data_files=[
         (
@@ -36,6 +36,7 @@ setup(
     license="Apache-2.0",
     entry_points={
         "console_scripts": [
+            "clock_gate = kty_station_sim.clock_gate:main",
             "station_controller = kty_station_sim.station_controller_v3:main",
             "vibration_driver = kty_station_sim.vibration_driver:main",
             "product_spawner = kty_station_sim.product_spawner:main",
