@@ -19,6 +19,7 @@ def generate_launch_description() -> LaunchDescription:
     approach_duration = LaunchConfiguration("approach_duration_s")
     spawn_interval = LaunchConfiguration("product_spawn_interval_s")
     outfeed_duration = LaunchConfiguration("outfeed_duration_s")
+    pose_update_hz = LaunchConfiguration("pose_update_hz")
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -50,6 +51,10 @@ def generate_launch_description() -> LaunchDescription:
                     outfeed_duration,
                     value_type=float,
                 ),
+                "pose_update_hz": ParameterValue(
+                    pose_update_hz,
+                    value_type=float,
+                ),
             }
         ],
     )
@@ -64,6 +69,7 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="0.9",
             ),
             DeclareLaunchArgument("outfeed_duration_s", default_value="3.0"),
+            DeclareLaunchArgument("pose_update_hz", default_value="20.0"),
             gazebo,
             controller,
         ]
