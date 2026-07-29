@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>kty_station_sim</name>
-  <version>0.5.1</version>
+  <version>0.5.0</version>
   <description>Balanced physical KTY rollers, service-managed chute gate, vibration platform, RGB-D perception and dashboard.</description>
   <maintainer email="team@example.com">Singulator Team</maintainer>
   <license>Apache-2.0</license>
