@@ -41,6 +41,16 @@ check_topic() {
   fi
 }
 
+check_gz_service() {
+  local service="$1"
+  if gz service -l 2>/dev/null | grep -Fxq "$service"; then
+    echo "OK Gazebo service: $service"
+  else
+    echo "FAIL Gazebo service: $service" >&2
+    failures=$((failures + 1))
+  fi
+}
+
 check_interface singulator_interfaces/msg/KtyGroundTruthArray
 check_interface singulator_interfaces/msg/KtyStationState
 
@@ -49,16 +59,34 @@ check_node /kty_vibration_driver
 check_node /product_spawner
 check_node /kty_registry_json_mirror
 
+check_topic /clock
 check_topic /kty/station/state
+check_topic /kty/product_spawner/enabled
 check_topic /kty/ground_truth/registry
 check_topic /kty/ground_truth/registry_json
-check_topic /kty/carrier/cmd_vel
-check_topic /kty/carrier/cmd_vel_filtered
 check_topic /kty/platform/cmd_pos_filtered
+
+printf '\nGazebo services:\n'
+if command -v gz >/dev/null 2>&1; then
+  check_gz_service /world/kty_station/control
+  check_gz_service /world/kty_station/create
+  check_gz_service /world/kty_station/remove
+  check_gz_service /world/kty_station/set_pose
+  check_gz_service /gui/camera/view_control
+else
+  echo "FAIL: gz command is unavailable" >&2
+  failures=$((failures + 1))
+fi
 
 printf '\nStation state:\n'
 timeout 5 ros2 topic echo /kty/station/state --once || {
   echo "FAIL: no station state received in 5 s" >&2
+  failures=$((failures + 1))
+}
+
+printf '\nProduct feeder command:\n'
+timeout 5 ros2 topic echo /kty/product_spawner/enabled --once || {
+  echo "FAIL: no feeder-enable command received in 5 s" >&2
   failures=$((failures + 1))
 }
 
@@ -68,18 +96,27 @@ timeout 5 ros2 topic echo /kty/ground_truth/registry_json --once || {
   failures=$((failures + 1))
 }
 
-printf '\nFiltered carrier command rate:\n'
-timeout 5 ros2 topic hz /kty/carrier/cmd_vel_filtered --window 100 || true
+printf '\nPlatform command rate:\n'
+timeout 5 ros2 topic hz /kty/platform/cmd_pos_filtered --window 100 || true
 
 printf '\nGazebo KTY entities:\n'
 if command -v gz >/dev/null 2>&1; then
   gz model --list 2>/dev/null | grep -E '(^|/)(kty_[0-9]{6}|kty_product_)' || true
-else
-  echo "WARN: gz command is unavailable"
 fi
 
-printf '\nProduct spawn log check:\n'
-echo "A healthy loading cycle creates names matching kty_product_cNNNNNN_pNNNNNN."
+printf '\nManual world-control smoke test commands:\n'
+cat <<'EOF'
+Pause:
+  gz service -s /world/kty_station/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: true'
+Resume:
+  gz service -s /world/kty_station/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: false'
+Reset:
+  gz service -s /world/kty_station/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'reset { all: true }'
+EOF
+
+printf '\nExpected cycle:\n'
+echo "WAIT_EMPTY_KTY -> POSITION_KTY -> CLAMP -> LOAD -> VIBRATE"
+echo "During LOAD/VIBRATE names matching kty_product_cNNNNNN_pNNNNNN must appear."
 
 if (( failures > 0 )); then
   echo "KTY runtime diagnostics failed: ${failures} problem(s)." >&2
