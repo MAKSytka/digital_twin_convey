@@ -10,6 +10,10 @@ station_controller:
     position_tolerance_m: 0.08
     pose_feedback_timeout_s: 1.0
     surface_command_sign: -1.0
+    transport_update_period_s: 0.05
+    transport_position_tolerance_m: 0.005
+    transport_failure_limit: 8
+    world_reset_jump_threshold_s: 0.10
     clamp_duration_s: 0.20
     vibration_start_delay_s: 0.50
     vibration_frequency_hz: 25.0
