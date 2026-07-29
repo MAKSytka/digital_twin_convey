@@ -2,13 +2,7 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (
-    DeclareLaunchArgument,
-    ExecuteProcess,
-    IncludeLaunchDescription,
-    TimerAction,
-)
-from launch.conditions import IfCondition
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -26,7 +20,6 @@ def generate_launch_description() -> LaunchDescription:
     amplitude = LaunchConfiguration("vibration_amplitude_m")
     product_rate = LaunchConfiguration("product_rate_products_per_s")
     seed = LaunchConfiguration("seed")
-    vision_gui_enabled = LaunchConfiguration("vision_gui")
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -35,33 +28,6 @@ def generate_launch_description() -> LaunchDescription:
         launch_arguments={"gz_args": f"-r -v 3 {world}"}.items(),
     )
 
-    # Gazebo can expose the world before its control service is ready. Retry
-    # with wall time so use_sim_time nodes are not left on a paused clock.
-    unpause_world = ExecuteProcess(
-        cmd=[
-            "bash",
-            "-c",
-            (
-                "for attempt in $(seq 1 40); do "
-                "output=$(gz service "
-                "-s /world/kty_station/control "
-                "--reqtype gz.msgs.WorldControl "
-                "--reptype gz.msgs.Boolean "
-                "--timeout 1000 "
-                "--req 'pause: false' 2>&1); "
-                "printf '%s\n' \"$output\"; "
-                "if printf '%s' \"$output\" | grep -qi 'data: true'; then "
-                "echo '[kty-startup] Gazebo world is running'; exit 0; fi; "
-                "sleep 0.25; "
-                "done; "
-                "echo '[kty-startup] failed to unpause Gazebo world' >&2; "
-                "exit 1"
-            ),
-        ],
-        output="screen",
-    )
-    delayed_unpause = TimerAction(period=0.5, actions=[unpause_world])
-
     bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
@@ -69,6 +35,7 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[{"config_file": str(bridge_config)}],
     )
+
     rgb_bridge = Node(
         package="ros_gz_image",
         executable="image_bridge",
@@ -121,13 +88,6 @@ def generate_launch_description() -> LaunchDescription:
             },
         ],
     )
-    vibration_driver = Node(
-        package="kty_station_sim",
-        executable="vibration_driver",
-        name="kty_vibration_driver",
-        output="screen",
-        parameters=[{"use_sim_time": True}],
-    )
     safety = Node(
         package="kty_station_sim",
         executable="safety_monitor",
@@ -142,34 +102,11 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[str(station_config)],
     )
-    registry_json_mirror = Node(
-        package="kty_station_sim",
-        executable="registry_json_mirror",
-        name="kty_registry_json_mirror",
-        output="screen",
-        parameters=[{"use_sim_time": True}],
-    )
-    vision_gui = Node(
-        package="rqt_image_view",
-        executable="rqt_image_view",
-        name="kty_vision_view",
-        output="screen",
-        arguments=["/kty/perception/debug_image"],
-        condition=IfCondition(vision_gui_enabled),
-    )
 
+    # Give Gazebo and bridges enough time to advertise services and sensor topics.
     delayed_nodes = TimerAction(
         period=2.0,
-        actions=[
-            registry_json_mirror,
-            perception,
-            product_spawner,
-            vibration_driver,
-            safety,
-            metrics,
-            controller,
-            vision_gui,
-        ],
+        actions=[perception, product_spawner, safety, metrics, controller],
     )
 
     return LaunchDescription(
@@ -178,13 +115,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("vibration_amplitude_m", default_value="0.001"),
             DeclareLaunchArgument("product_rate_products_per_s", default_value="1.0"),
             DeclareLaunchArgument("seed", default_value="42"),
-            DeclareLaunchArgument(
-                "vision_gui",
-                default_value="false",
-                description="Open rqt_image_view with the machine-vision debug feed",
-            ),
             gazebo,
-            delayed_unpause,
             bridge,
             rgb_bridge,
             depth_bridge,

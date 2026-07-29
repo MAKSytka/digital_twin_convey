@@ -538,11 +538,7 @@ class KtyDepthPerception(Node):
                     1,
                     cv2.LINE_AA,
                 )
-        # Report the same filtered detections as KtyProductContourArray.  The
-        # raw height map also contains station structure outside the KTY ROI;
-        # displaying its global maximum produced misleading values (for
-        # example 0.567 m for an empty 0.400 m-high KTY).
-        maximum = max((item.top_height for item in detections), default=0.0)
+        maximum = float(np.max(height_map)) if height_map.size else 0.0
         cv2.putText(
             debug,
             f"max height={maximum:.3f} m",

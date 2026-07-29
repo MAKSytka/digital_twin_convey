@@ -1,10 +1,4 @@
-"""Safety monitor for KTY runtime v2.
-
-The Gazebo pose bridge is optional diagnostic feedback.  Pose-dependent faults
-are evaluated only after the relevant entity has actually been observed.  This
-prevents an absent or differently-scoped Pose_V bridge from stopping the
-transport and product feeder.
-"""
+"""Fault detection for the requested KTY simulation scenarios."""
 
 from __future__ import annotations
 
@@ -14,7 +8,6 @@ import re
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from tf2_msgs.msg import TFMessage
 
 from singulator_interfaces.msg import (
@@ -38,13 +31,12 @@ class PoseSample:
     speed: float = 0.0
 
 
-class KtySafetyMonitorV2(Node):
+class KtySafetyMonitor(Node):
     def __init__(self) -> None:
         super().__init__("kty_safety_monitor")
         defaults = {
             "kty_center_tolerance_m": 0.16,
             "kty_presence_timeout_s": 0.8,
-            "pose_stream_timeout_s": 1.5,
             "camera_timeout_s": 1.0,
             "maximum_mass_kg": 35.0,
             "chute_jam_timeout_s": 2.5,
@@ -60,9 +52,6 @@ class KtySafetyMonitorV2(Node):
         self.kty_presence_timeout = float(
             self.get_parameter("kty_presence_timeout_s").value
         )
-        self.pose_stream_timeout = float(
-            self.get_parameter("pose_stream_timeout_s").value
-        )
         self.camera_timeout = float(self.get_parameter("camera_timeout_s").value)
         self.maximum_mass = float(self.get_parameter("maximum_mass_kg").value)
         self.chute_jam_timeout = float(
@@ -77,33 +66,25 @@ class KtySafetyMonitorV2(Node):
 
         self.state: KtyStationState | None = None
         self.poses: dict[str, PoseSample] = {}
-        self.observed_entities: set[str] = set()
         self.products = {}
-        self.last_pose_message_s = -math.inf
-        self.last_camera_s = -math.inf
+        self.last_camera_s = 0.0
         self.last_camera_ok = False
         self.stationary_since: dict[str, float] = {}
         self.moving_since: dict[str, float] = {}
         self.fault_states: dict[str, bool] = {}
-        self.pose_warning_emitted = False
 
         self.fault_pub = self.create_publisher(KtyFault, "/kty/fault", 10)
-        self.create_subscription(TFMessage, "/kty/world/poses", self._on_poses, 20)
-
-        transient_qos = QoSProfile(depth=1)
-        transient_qos.reliability = ReliabilityPolicy.RELIABLE
-        transient_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
         self.create_subscription(
-            KtyStationState,
-            "/kty/station/state",
-            self._on_state,
-            transient_qos,
+            TFMessage, "/kty/world/poses", self._on_poses, 20
+        )
+        self.create_subscription(
+            KtyStationState, "/kty/station/state", self._on_state, 10
         )
         self.create_subscription(
             KtyGroundTruthArray,
             "/kty/ground_truth/registry",
             self._on_registry,
-            transient_qos,
+            10,
         )
         self.create_subscription(
             KtyProductContourArray,
@@ -116,8 +97,7 @@ class KtySafetyMonitorV2(Node):
     def _now_s(self) -> float:
         return self.get_clock().now().nanoseconds * 1.0e-9
 
-    @staticmethod
-    def _normalise_name(frame: str) -> str | None:
+    def _normalise_name(self, frame: str) -> str | None:
         product = PRODUCT_PATTERN.search(frame)
         if product:
             return product.group(1)
@@ -128,14 +108,10 @@ class KtySafetyMonitorV2(Node):
 
     def _on_poses(self, message: TFMessage) -> None:
         now = self._now_s()
-        self.last_pose_message_s = now
         for transform in message.transforms:
             name = self._normalise_name(transform.child_frame_id)
             if name is None:
-                name = self._normalise_name(transform.header.frame_id)
-            if name is None:
                 continue
-
             translation = transform.transform.translation
             previous = self.poses.get(name)
             speed = 0.0
@@ -154,7 +130,6 @@ class KtySafetyMonitorV2(Node):
                 stamp_s=now,
                 speed=speed,
             )
-            self.observed_entities.add(name)
 
     def _on_state(self, message: KtyStationState) -> None:
         self.state = message
@@ -199,38 +174,20 @@ class KtySafetyMonitorV2(Node):
             KtyStationState.EJECT_PREP,
         )
 
+    def _current_kty_pose(self) -> PoseSample | None:
+        if self.state is None:
+            return None
+        return self.poses.get(f"kty_{self.state.cycle_id:06d}")
+
     def _evaluate(self) -> None:
         if self.state is None:
             return
-
         now = self._now_s()
         active = self._active_loading_state()
-        pose_stream_alive = (
-            now - self.last_pose_message_s <= self.pose_stream_timeout
-        )
-        current_kty = f"kty_{self.state.cycle_id:06d}"
-        kty_was_observed = current_kty in self.observed_entities
-        kty_pose = self.poses.get(current_kty)
 
-        if active and (not pose_stream_alive or not kty_was_observed):
-            if not self.pose_warning_emitted:
-                self.get_logger().warning(
-                    "No verified pose for the active KTY; pose-dependent "
-                    "safety checks are disabled, carrier transport continues."
-                )
-                self.pose_warning_emitted = True
-        else:
-            self.pose_warning_emitted = False
-
-        # A missing pose becomes a critical fault only after this exact KTY was
-        # observed at least once.  Before that, the successful Gazebo create
-        # response and deterministic carrier drive remain authoritative.
+        kty_pose = self._current_kty_pose()
         missing_or_misplaced = False
-        if (
-            active
-            and kty_was_observed
-            and self.state.state != KtyStationState.CLAMP
-        ):
+        if active and self.state.state != KtyStationState.CLAMP:
             missing_or_misplaced = (
                 kty_pose is None
                 or now - kty_pose.stamp_s > self.kty_presence_timeout
@@ -241,7 +198,7 @@ class KtySafetyMonitorV2(Node):
             KtyFault.KTY_NOT_INSTALLED,
             missing_or_misplaced,
             KtyFault.CRITICAL,
-            "Previously observed KTY is missing or outside platform tolerance",
+            "KTY pose is missing or outside the active platform tolerance",
         )
 
         total_mass = sum(float(item.mass_kg) for item in self.products.values())
@@ -249,8 +206,7 @@ class KtySafetyMonitorV2(Node):
             KtyFault.MASS_EXCEEDED,
             active and total_mass > self.maximum_mass,
             KtyFault.CRITICAL,
-            f"Estimated product mass {total_mass:.3f} kg exceeds "
-            f"{self.maximum_mass:.3f} kg",
+            f"Estimated product mass {total_mass:.3f} kg exceeds {self.maximum_mass:.3f} kg",
         )
 
         camera_lost = (
@@ -264,23 +220,27 @@ class KtySafetyMonitorV2(Node):
         self._publish_fault(
             KtyFault.CAMERA_LOST_VIEW,
             camera_lost,
-            KtyFault.WARNING,
-            "No recent valid depth frame; controller retry counter is active",
+            KtyFault.CRITICAL,
+            "No recent valid depth frame for the KTY ROI",
         )
 
         outside_names: list[str] = []
         if active and kty_pose is not None:
             for name, truth in self.products.items():
                 pose = self.poses.get(name)
-                if pose is None or pose.z > 0.95:
+                if pose is None:
+                    continue
+                # Products above the 0.9 m rim may still be on the chute.
+                if pose.z > 0.95:
                     continue
                 half_x = float(truth.size_m.x) / 2.0
                 half_y = float(truth.size_m.y) / 2.0
-                if (
+                outside = (
                     abs(pose.x - kty_pose.x) + half_x > 0.315
                     or abs(pose.y - kty_pose.y) + half_y > 0.215
                     or pose.z < 0.42
-                ):
+                )
+                if outside:
                     outside_names.append(name)
         self._publish_fault(
             KtyFault.PRODUCT_OUTSIDE_KTY,
@@ -336,7 +296,7 @@ class KtySafetyMonitorV2(Node):
 
 def main(args=None) -> None:
     rclpy.init(args=args)
-    node = KtySafetyMonitorV2()
+    node = KtySafetyMonitor()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

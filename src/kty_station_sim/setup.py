@@ -7,7 +7,7 @@ package_name = "kty_station_sim"
 
 setup(
     name=package_name,
-    version="0.3.0",
+    version="0.2.0",
     packages=[package_name],
     data_files=[
         (
@@ -36,13 +36,12 @@ setup(
     license="Apache-2.0",
     entry_points={
         "console_scripts": [
-            "station_controller = kty_station_sim.station_controller_v3:main",
-            "vibration_driver = kty_station_sim.vibration_driver:main",
+            "smoke_heartbeat = kty_station_sim.smoke_heartbeat:main",
+            "station_controller = kty_station_sim.station_controller:main",
             "product_spawner = kty_station_sim.product_spawner:main",
             "depth_perception = kty_station_sim.depth_perception:main",
-            "safety_monitor = kty_station_sim.safety_monitor_v2:main",
+            "safety_monitor = kty_station_sim.safety_monitor:main",
             "metrics_node = kty_station_sim.metrics_node:main",
-            "registry_json_mirror = kty_station_sim.registry_json_mirror:main",
         ]
     },
 )
