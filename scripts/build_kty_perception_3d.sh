@@ -3,6 +3,34 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# A previous failed build can leave the current shell pointing at package
+# prefixes which have already been removed.  Strip only this workspace's stale
+# install entries before sourcing the clean ROS underlay.
+strip_workspace_install_entries() {
+  local variable_name="$1"
+  local current_value="${!variable_name-}"
+  local filtered=""
+  local entry
+  local -a entries=()
+
+  IFS=':' read -r -a entries <<< "$current_value"
+  for entry in "${entries[@]}"; do
+    [[ -z "$entry" ]] && continue
+    [[ "$entry" == "$ROOT/install"* ]] && continue
+    if [[ -n "$filtered" ]]; then
+      filtered+=":"
+    fi
+    filtered+="$entry"
+  done
+
+  printf -v "$variable_name" '%s' "$filtered"
+  export "$variable_name"
+}
+
+for variable_name in AMENT_PREFIX_PATH CMAKE_PREFIX_PATH COLCON_PREFIX_PATH; do
+  strip_workspace_install_entries "$variable_name"
+done
+
 set +u
 source /opt/ros/jazzy/setup.bash
 set -u
