@@ -38,7 +38,9 @@ slow positioning: 0.12 m/s
 ```
 
 A command of `0.0` is normal during `LOAD`, `COMPACT` and idle phases. The
-outfeed command becomes positive in `EJECT_ACTIVE`.
+outfeed command becomes positive only in `EJECT_ACTIVE`; the diagnostic script
+observes the state and command together instead of treating an idle zero as a
+failure.
 
 ## Active zone
 
