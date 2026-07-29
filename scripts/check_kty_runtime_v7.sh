@@ -24,9 +24,9 @@ wait_node() {
   return 1
 }
 
-printf 'Runtime-v7 nodes:\n'
+printf 'Contact-surface runtime nodes:\n'
 for node in \
-  /kty_mechatronics_cycle_v2 \
+  /kty_mechatronics_cycle_v3 \
   /kty_fill_estimator_v2 \
   /kty_classical_3d_perception_v2 \
   /kty_contour_recorder_3d \
@@ -35,17 +35,33 @@ for node in \
   wait_node "$node" || true
 done
 
-printf '\nCore samples:\n'
-timeout 8 ros2 topic echo /kty/fill/state --once || {
-  echo 'FAIL: no corrected fill estimate' >&2
-  failures=$((failures + 1))
-}
-timeout 8 ros2 topic echo /kty/flow/state --once || {
-  echo 'FAIL: no mechatronics state' >&2
-  failures=$((failures + 1))
-}
+printf '\nSurface command topics:\n'
+for topic in \
+  /kty/mech/infeed_surface/cmd_vel \
+  /kty/mech/active_surface/cmd_vel \
+  /kty/mech/outfeed_surface/cmd_vel; do
+  if ros2 topic list 2>/dev/null | grep -Fxq "$topic"; then
+    echo "OK topic: $topic"
+  else
+    echo "FAIL topic: $topic" >&2
+    failures=$((failures + 1))
+  fi
+done
 
-printf '\nWaiting for slide-gate changeover and outfeed progress:\n'
+printf '\nGazebo lifecycle services:\n'
+for service in \
+  /world/kty_mechatronics_surface/control \
+  /world/kty_mechatronics_surface/create \
+  /world/kty_mechatronics_surface/remove; do
+  if gz service -l 2>/dev/null | grep -Fxq "$service"; then
+    echo "OK Gazebo service: $service"
+  else
+    echo "FAIL Gazebo service: $service" >&2
+    failures=$((failures + 1))
+  fi
+done
+
+printf '\nWaiting for slide-gate changeover and surface-driven outfeed:\n'
 if ! python3 - <<'PY'
 import json
 import subprocess
@@ -55,12 +71,12 @@ import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from std_msgs.msg import String
+from std_msgs.msg import Float64, String
 
 
 class Observer(Node):
     def __init__(self):
-        super().__init__('kty_runtime_v7_observer')
+        super().__init__('kty_contact_surface_acceptance_observer')
         qos = QoSProfile(depth=10)
         qos.reliability = ReliabilityPolicy.RELIABLE
         qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
@@ -68,9 +84,17 @@ class Observer(Node):
         self.gate_closed_seen = False
         self.gate_open_after_closed = False
         self.second_load = False
+        self.outfeed_nonzero = False
+        self.transport_seen = False
         self.error = ''
-        self.last_cycle = 0
+        self.latest_outfeed = 0.0
         self.create_subscription(String, '/kty/flow/state', self.on_state, qos)
+        self.create_subscription(
+            Float64,
+            '/kty/mech/outfeed_surface/cmd_vel',
+            self.on_outfeed,
+            10,
+        )
 
     @staticmethod
     def gate_exists():
@@ -83,6 +107,11 @@ class Observer(Node):
         )
         return 'kty_mech_chute_gate' in result.stdout
 
+    def on_outfeed(self, message):
+        self.latest_outfeed = float(message.data)
+        if abs(self.latest_outfeed) >= 0.05:
+            self.outfeed_nonzero = True
+
     def on_state(self, message):
         try:
             data = json.loads(message.data)
@@ -90,8 +119,8 @@ class Observer(Node):
             return
         state = str(data.get('state', ''))
         cycle = int(data.get('cycle_id', 0) or 0)
-        self.last_cycle = max(self.last_cycle, cycle)
         self.seen.add(state)
+        self.transport_seen = self.transport_seen or data.get('transport') == 'flat_contact_surface'
         if state == 'ERROR':
             self.error = str(data.get('detail', 'unknown error'))
         exists = self.gate_exists()
@@ -103,8 +132,8 @@ class Observer(Node):
             self.second_load = True
         print(
             f"cycle={cycle} state={state} gate_model={exists} "
-            f"fill={float(data.get('estimated_fill_ratio', 0.0) or 0.0):.3f} "
-            f"height={float(data.get('maximum_height_m', 0.0) or 0.0):.3f}",
+            f"outfeed={self.latest_outfeed:.3f} transport={data.get('transport')} "
+            f"fill={float(data.get('estimated_fill_ratio', 0.0) or 0.0):.3f}",
             flush=True,
         )
 
@@ -123,9 +152,16 @@ try:
             'LOAD', 'CLOSE_GATE', 'COMPACT', 'EJECT_ACTIVE',
             'POSITION_NEXT', 'VERIFY_READY', 'OPEN_GATE'
         }
-        if required <= node.seen and node.gate_closed_seen and node.gate_open_after_closed and node.second_load:
+        if (
+            required <= node.seen
+            and node.transport_seen
+            and node.outfeed_nonzero
+            and node.gate_closed_seen
+            and node.gate_open_after_closed
+            and node.second_load
+        ):
             success = True
-            print('OK: slide gate closed, loaded KTY exited and second KTY entered LOAD')
+            print('OK: flat surfaces moved the loaded KTY and completed a two-KTY changeover')
             break
 except ExternalShutdownException:
     pass
@@ -135,7 +171,7 @@ finally:
 raise SystemExit(0 if success else 1)
 PY
 then
-  echo 'FAIL: corrected physical changeover was not observed' >&2
+  echo 'FAIL: contact-surface changeover was not observed' >&2
   failures=$((failures + 1))
 fi
 
@@ -143,17 +179,17 @@ printf '\nCurrent KTY / gate models:\n'
 gz model --list 2>/dev/null | grep -E 'kty_mech_container_|kty_mech_chute_gate' || true
 
 printf '\n3-D perception heartbeat:\n'
-if timeout 15 ros2 topic echo /kty/perception/contours --once >/tmp/kty_v7_contours.txt; then
-  sed -n '1,45p' /tmp/kty_v7_contours.txt
+if timeout 15 ros2 topic echo /kty/perception/contours --once >/tmp/kty_surface_contours.txt; then
+  sed -n '1,45p' /tmp/kty_surface_contours.txt
   echo 'OK: 3-D contour frame received'
 else
-  echo 'FAIL: no 3-D contour frame; inspect /kty/perception/fault and launch terminal' >&2
+  echo 'FAIL: no 3-D contour frame; inspect /kty/perception/fault' >&2
   timeout 3 ros2 topic echo /kty/perception/fault --once || true
   failures=$((failures + 1))
 fi
 
 printf '\nGazebo real-time factor:\n'
-stats="$(timeout 5 gz topic -e -t /world/kty_mechatronics_v2/stats -n 1 2>/dev/null || true)"
+stats="$(timeout 5 gz topic -e -t /world/kty_mechatronics_surface/stats -n 1 2>/dev/null || true)"
 printf '%s\n' "$stats" | sed -n '1,25p'
 python3 - "$stats" <<'PY'
 import re
@@ -163,23 +199,23 @@ if match:
     value = float(match.group(1))
     print(f'Measured RTF: {value:.3f}')
     if value < 0.45:
-        print('WARNING: RTF remains below 0.45; keep show_dashboard:=false for mechanics tests.')
+        print('WARNING: RTF remains below 0.45; keep show_dashboard:=false.')
 PY
 
 cat <<'EOF'
 
-Runtime-v7 expected changes:
-  - roller axles stay parallel to Y and no roller orbits around the machine origin;
-  - every roller has its own JointController on the shared group topic;
-  - product interval is 1.15 s by default (1.77x slower than 0.65 s);
-  - kty_mech_chute_gate exists while closed and is absent while open;
-  - camera is 640x480 at 8 Hz; 3-D processing is throttled to 4 Hz;
-  - show_dashboard defaults to false for the first transport acceptance run.
+Expected runtime:
+  - the generated world contains no roller links or roller joints;
+  - three flat plates carry KTY containers through contact-surface force control;
+  - /kty/mech/outfeed_surface/cmd_vel becomes positive only in EJECT_ACTIVE;
+  - kty_mech_chute_gate exists while closed and disappears in OPEN_GATE;
+  - products remain physical bodies inside the moving KTY;
+  - vibration_deck still moves vertically at 8 / 18 Hz.
 EOF
 
 if (( failures > 0 )); then
-  echo "KTY runtime v7 diagnostics failed: ${failures} problem(s)." >&2
+  echo "KTY contact-surface diagnostics failed: ${failures} problem(s)." >&2
   exit 1
 fi
 
-echo 'KTY runtime v7 diagnostics: OK'
+echo 'KTY contact-surface diagnostics: OK'
