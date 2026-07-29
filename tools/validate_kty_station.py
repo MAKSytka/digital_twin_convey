@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Static and cross-file checks for the KTY station runtime v3.
+"""Static and cross-file checks for the KTY station runtime v4.
 
-These checks do not replace a Gazebo runtime test.  They prevent regressions in
-SDF, Python entry points, model factories, bridges, GUI plugins and scripts.
+These checks do not replace a Gazebo runtime test. They prevent regressions in
+SDF, Python entry points, model factories, bridges, GUI plugins, simulation
+clock startup and shell scripts.
 """
 
 from __future__ import annotations
@@ -98,12 +99,21 @@ def validate_launch() -> None:
         '"-r -v 3',
         "pause: false",
         "delayed_unpause",
+        'name="kty_clock_bridge"',
+        'executable="clock_gate"',
+        "RegisterEventHandler",
+        "OnProcessExit",
+        "start_runtime_when_clock_ready",
         'executable="registry_json_mirror"',
         'executable="vibration_driver"',
         'LaunchConfiguration("vision_gui")',
         'default_value="false"',
     ):
         require(fragment in text, f"Launch wiring is missing: {fragment}")
+    require(
+        "delayed_nodes" not in text,
+        "ROS-time runtime nodes must be clock-gated, not started by wall delay",
+    )
 
 
 def validate_python() -> None:
@@ -170,17 +180,32 @@ def validate_interfaces() -> None:
         "<buildtool_depend>ament_python</buildtool_depend>" not in package_xml,
         "ament_python must not be declared as a rosdep/buildtool dependency",
     )
+    require(
+        "<exec_depend>rosgraph_msgs</exec_depend>" in package_xml,
+        "Clock gate dependency rosgraph_msgs is missing",
+    )
 
 
 def validate_runtime_wiring() -> None:
     setup = read(PACKAGE / "setup.py")
     for fragment in (
+        "clock_gate = kty_station_sim.clock_gate:main",
         "station_controller = kty_station_sim.station_controller_v3:main",
         "vibration_driver = kty_station_sim.vibration_driver:main",
         "safety_monitor = kty_station_sim.safety_monitor_v2:main",
         "registry_json_mirror = kty_station_sim.registry_json_mirror:main",
     ):
         require(fragment in setup, f"Missing console entry point: {fragment}")
+
+    clock_gate = read(PACKAGE / "kty_station_sim" / "clock_gate.py")
+    for fragment in (
+        'self.create_subscription(Clock, "/clock"',
+        "ReliabilityPolicy.BEST_EFFORT",
+        "DurabilityPolicy.VOLATILE",
+        "stamp_ns > self.first_stamp_ns",
+        "time.monotonic()",
+    ):
+        require(fragment in clock_gate, f"Clock gate is missing: {fragment}")
 
     controller = read(PACKAGE / "kty_station_sim" / "station_controller_v3.py")
     for fragment in (
@@ -221,9 +246,25 @@ def validate_runtime_wiring() -> None:
         "Filtered platform command bridge is missing",
     )
     require(
+        "rosgraph_msgs/msg/Clock" not in bridge and "gz.msgs.Clock" not in bridge,
+        "Clock must not share the general parameter bridge",
+    )
+    require(
         "/kty/carrier/cmd_vel" not in bridge and "gz.msgs.Twist" not in bridge,
         "Obsolete carrier velocity bridge remains configured",
     )
+
+    clock_bridge = read(PACKAGE / "config" / "clock_bridge.yaml")
+    for fragment in (
+        "ros_topic_name: /clock",
+        "gz_topic_name: /clock",
+        "rosgraph_msgs/msg/Clock",
+        "gz.msgs.Clock",
+        "direction: GZ_TO_ROS",
+        "qos_profile: CLOCK",
+        "lazy: false",
+    ):
+        require(fragment in clock_bridge, f"Dedicated clock bridge is missing: {fragment}")
 
     station_config = read(PACKAGE / "config" / "station.yaml")
     for fragment in (
@@ -236,6 +277,7 @@ def validate_runtime_wiring() -> None:
 
     run_script = read(ROOT / "scripts" / "run_kty_station.sh")
     for fragment in (
+        "clock_gate",
         "vibration_driver",
         "registry_json_mirror",
         "KtyGroundTruthArray",
@@ -264,8 +306,14 @@ def validate_runtime_wiring() -> None:
         "/gui/camera/view_control",
         "/kty/product_spawner/enabled",
         "/kty/platform/cmd_pos_filtered",
+        "ros2 run kty_station_sim clock_gate",
+        "reset: {all: true}",
     ):
         require(fragment in diagnostic, f"Diagnostic check is missing: {fragment}")
+    require(
+        "reset { all: true }" not in diagnostic,
+        "Diagnostic reset command uses invalid protobuf syntax",
+    )
     require(
         "/kty/carrier/cmd_vel_filtered" not in diagnostic,
         "Diagnostic script still expects the removed carrier bridge",
