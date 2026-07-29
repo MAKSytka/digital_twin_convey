@@ -1,13 +1,15 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>kty_station_sim</name>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
   <description>Gazebo digital twin of the KTY handling and vibration-compaction station.</description>
   <maintainer email="team@example.com">Singulator Team</maintainer>
   <license>Apache-2.0</license>
 
-  <buildtool_depend>ament_python</buildtool_depend>
-
+  <!--
+    ament_python is the exported colcon build type, not a rosdep dependency.
+    Declaring it as buildtool_depend makes rosdep search for a non-existent key.
+  -->
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>

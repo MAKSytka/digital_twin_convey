@@ -8,13 +8,7 @@ set +u
 source /opt/ros/jazzy/setup.bash
 set -u
 
-if ! ros2 pkg prefix ament_python >/dev/null 2>&1; then
-  echo "ERROR: ROS package ament_python is not installed." >&2
-  echo "Install it with: sudo apt install ros-jazzy-ament-python" >&2
-  exit 2
-fi
-
-# These two packages must be rebuilt together.  Otherwise the Python nodes can
+# These two packages must be rebuilt together. Otherwise the Python nodes can
 # be new while the shell still sees an old rosidl type-support installation.
 rm -rf \
   build/singulator_interfaces \
@@ -26,7 +20,6 @@ rosdep install \
   --from-paths src \
   --ignore-src \
   --rosdistro jazzy \
-  --skip-keys ament_python \
   -y
 
 colcon build \

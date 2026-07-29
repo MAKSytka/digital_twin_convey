@@ -161,8 +161,12 @@ def validate_interfaces() -> None:
 
     package_xml = read(PACKAGE / "package.xml")
     require(
-        "<buildtool_depend>ament_python</buildtool_depend>" in package_xml,
-        "ament_python build dependency was incorrectly removed",
+        "<build_type>ament_python</build_type>" in package_xml,
+        "ament_python build type is missing from package export",
+    )
+    require(
+        "<buildtool_depend>ament_python</buildtool_depend>" not in package_xml,
+        "ament_python must not be declared as a rosdep/buildtool dependency",
     )
 
 
@@ -230,9 +234,24 @@ def validate_runtime_wiring() -> None:
         "install/singulator_interfaces",
         "--packages-select singulator_interfaces kty_station_sim",
         "ros2 interface show",
-        "--skip-keys ament_python",
     ):
         require(fragment in targeted_build, f"Targeted build is missing: {fragment}")
+    require(
+        "ament_python" not in targeted_build,
+        "Targeted build must not require or skip an ament_python rosdep key",
+    )
+
+    general_build = read(ROOT / "scripts" / "build.sh")
+    require(
+        "ament_python" not in general_build,
+        "General build must not require or skip an ament_python rosdep key",
+    )
+
+    setup_dependencies = read(ROOT / "scripts" / "setup_dependencies.sh")
+    require(
+        "ros-jazzy-ament-python" not in setup_dependencies,
+        "Dependency installer references a non-existent ros-jazzy-ament-python package",
+    )
 
     diagnostic = read(ROOT / "scripts" / "check_kty_station.sh")
     for fragment in (
