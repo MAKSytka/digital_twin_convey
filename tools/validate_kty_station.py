@@ -171,6 +171,7 @@ def validate_runtime_wiring() -> None:
     for fragment in (
         "station_controller = kty_station_sim.station_controller_v2:main",
         "vibration_driver = kty_station_sim.vibration_driver:main",
+        "safety_monitor = kty_station_sim.safety_monitor_v2:main",
         "registry_json_mirror = kty_station_sim.registry_json_mirror:main",
     ):
         require(fragment in setup, f"Missing console entry point: {fragment}")
@@ -195,14 +196,14 @@ def validate_runtime_wiring() -> None:
     ):
         require(fragment in vibration, f"High-rate vibration driver is missing: {fragment}")
 
-    safety = read(PACKAGE / "kty_station_sim" / "safety_monitor.py")
+    safety = read(PACKAGE / "kty_station_sim" / "safety_monitor_v2.py")
     for fragment in (
-        "pose_stream_alive",
-        "pose-dependent safety",
+        "kty_was_observed",
+        "pose-dependent faults",
         "KtyFault.WARNING",
-        "StationControllerV2 owns the retry counter",
+        "successful Gazebo create",
     ):
-        require(fragment in safety, f"Safety fallback is missing: {fragment}")
+        require(fragment in safety, f"Conditional safety fallback is missing: {fragment}")
 
     bridge = read(PACKAGE / "config" / "bridge.yaml")
     for fragment in (
