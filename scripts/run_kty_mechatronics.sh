@@ -9,12 +9,17 @@ source /opt/ros/jazzy/setup.bash
 source install/setup.bash
 set -u
 
-for executable in mechatronics_cycle fill_estimator depth_perception contour_recorder vision_dashboard; do
+for executable in \
+  mechatronics_cycle_v2 \
+  fill_estimator_v2 \
+  depth_perception_3d_v2 \
+  contour_recorder_3d \
+  vision_dashboard_3d; do
   if ! ros2 pkg executables kty_station_sim | awk '{print $2}' | grep -Fxq "$executable"; then
     echo "ERROR: missing kty_station_sim executable: $executable" >&2
-    echo "Run: bash ./scripts/build_kty_mechatronics.sh" >&2
+    echo "Run: bash ./scripts/build_kty_perception_3d.sh" >&2
     exit 1
   fi
 done
 
-exec ros2 launch kty_station_sim kty_mechatronics.launch.py "$@"
+exec ros2 launch kty_station_sim kty_mechatronics_v2.launch.py "$@"
