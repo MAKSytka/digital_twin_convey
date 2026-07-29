@@ -131,7 +131,14 @@ def validate_package_and_scripts() -> None:
     )
 
     package_xml = read(PACKAGE / "package.xml")
-    require("<version>0.3.0</version>" in package_xml, "Expected package version 0.3.0")
+    supported_versions = (
+        "<version>0.3.0</version>",
+        "<version>0.4.0</version>",
+    )
+    require(
+        any(version in package_xml for version in supported_versions),
+        "Expected flow package version 0.3.0 or vision extension 0.4.0",
+    )
     require(
         "<buildtool_depend>ament_python</buildtool_depend>" not in package_xml,
         "ament_python must remain a build type only",
