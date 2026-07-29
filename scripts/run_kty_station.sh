@@ -11,6 +11,7 @@ set -u
 
 required_executables=(
   station_controller
+  vibration_driver
   product_spawner
   depth_perception
   safety_monitor
