@@ -16,7 +16,6 @@ fi
 
 sudo apt update
 sudo apt install -y \
-  ros-jazzy-ament-python \
   ros-jazzy-ros-gz \
   ros-jazzy-ros-gz-sim \
   ros-jazzy-ros-gz-bridge \
@@ -43,5 +42,4 @@ rosdep install \
   --from-paths src \
   --ignore-src \
   --rosdistro jazzy \
-  --skip-keys ament_python \
   -y
