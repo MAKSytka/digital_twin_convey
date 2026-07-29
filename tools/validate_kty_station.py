@@ -114,12 +114,27 @@ def validate_interfaces() -> None:
         require(f'"msg/{name}"' in cmake, f"{name} is not registered in CMake")
 
 
+def validate_launcher() -> None:
+    run_script = (ROOT / "scripts" / "run_kty_station.sh").read_text(
+        encoding="utf-8"
+    )
+    for executable in (
+        "station_controller",
+        "product_spawner",
+        "depth_perception",
+        "safety_monitor",
+        "metrics_node",
+    ):
+        require(executable in run_script, f"Launcher does not check {executable}")
+
+
 def main() -> None:
     validate_world()
     validate_launch()
     validate_python()
     validate_factories()
     validate_interfaces()
+    validate_launcher()
     print("KTY station static validation: OK")
 
 
