@@ -13,6 +13,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Bool, Float64, UInt32
 from std_srvs.srv import Trigger
+from tf2_msgs.msg import TFMessage
 
 from singulator_interfaces.msg import (
     KtyFault,
@@ -46,7 +47,10 @@ class StationController(Node):
             "kty_spawn_x_m": -1.30,
             "support_top_z_m": 0.50,
             "approach_speed_mps": 0.65,
+            "transport_command_sign": -1.0,
             "approach_duration_s": 2.0,
+            "positioning_timeout_s": 8.0,
+            "position_tolerance_m": 0.08,
             "clamp_duration_s": 0.20,
             "vibration_start_delay_s": 0.50,
             "vibration_frequency_hz": 25.0,
@@ -69,7 +73,16 @@ class StationController(Node):
         self.kty_spawn_x = float(self.get_parameter("kty_spawn_x_m").value)
         self.support_top_z = float(self.get_parameter("support_top_z_m").value)
         self.approach_speed = float(self.get_parameter("approach_speed_mps").value)
+        self.transport_command_sign = float(
+            self.get_parameter("transport_command_sign").value
+        )
         self.approach_duration = float(self.get_parameter("approach_duration_s").value)
+        self.positioning_timeout = float(
+            self.get_parameter("positioning_timeout_s").value
+        )
+        self.position_tolerance = float(
+            self.get_parameter("position_tolerance_m").value
+        )
         self.clamp_duration = float(self.get_parameter("clamp_duration_s").value)
         self.vibration_start_delay = float(
             self.get_parameter("vibration_start_delay_s").value
@@ -166,6 +179,7 @@ class StationController(Node):
             10,
         )
         self.create_subscription(KtyFault, "/kty/fault", self._on_fault, 10)
+        self.create_subscription(TFMessage, "/kty/world/poses", self._on_poses, 20)
         self.create_service(Trigger, "/kty/station/reset", self._on_reset)
 
         self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="kty_entity")
@@ -174,6 +188,7 @@ class StationController(Node):
 
         self.cycle_id = 0
         self.active_kty_name = ""
+        self.active_kty_x: float | None = None
         self.state = KtyStationState.WAIT_EMPTY_KTY
         self.state_reason = "startup"
         self.state_started_s = self._now_s()
@@ -233,9 +248,15 @@ class StationController(Node):
             platform = self.eject_speed
             outfeed = self.eject_speed
 
-        self._publish_float(self.infeed_pub, infeed)
-        self._publish_float(self.platform_speed_pub, platform)
-        self._publish_float(self.outfeed_pub, outfeed)
+        self._publish_float(
+            self.infeed_pub, self.transport_command_sign * infeed
+        )
+        self._publish_float(
+            self.platform_speed_pub, self.transport_command_sign * platform
+        )
+        self._publish_float(
+            self.outfeed_pub, self.transport_command_sign * outfeed
+        )
         self._publish_float(self.shutter_pub, 0.0 if shutter_closed else 0.22)
 
         enabled = Bool()
@@ -279,8 +300,25 @@ class StationController(Node):
             return
 
         if self.state == KtyStationState.POSITION_KTY:
-            if self._elapsed() >= self.approach_duration:
-                self._transition(KtyStationState.CLAMP, "KTY positioned by contact zones")
+            if (
+                self.active_kty_x is not None
+                and abs(self.active_kty_x) <= self.position_tolerance
+            ):
+                self._transition(
+                    KtyStationState.CLAMP,
+                    f"KTY centered at x={self.active_kty_x:.3f} m",
+                )
+            elif self._elapsed() >= self.positioning_timeout:
+                self.fault_latched = True
+                position = (
+                    "unknown"
+                    if self.active_kty_x is None
+                    else f"{self.active_kty_x:.3f} m"
+                )
+                self._transition(
+                    KtyStationState.FAULT,
+                    f"KTY positioning timeout; x={position}",
+                )
             return
 
         if self.state == KtyStationState.CLAMP:
@@ -356,6 +394,7 @@ class StationController(Node):
                     self._transition(KtyStationState.FAULT, "KTY spawn failed")
                     return
                 self.active_kty_name = model_name
+                self.active_kty_x = None
                 self.cycle_started_s = self._now_s()
                 self._transition(KtyStationState.POSITION_KTY, "empty KTY spawned")
                 return
@@ -427,6 +466,7 @@ class StationController(Node):
         if self.active_kty_name:
             self.pool.submit(self._remove_model, self.active_kty_name)
         self.active_kty_name = ""
+        self.active_kty_x = None
         self.estimated_mass = 0.0
         self.latest_perception = None
         self.wait_after_delete_until_s = self._now_s() + 0.5
@@ -434,6 +474,14 @@ class StationController(Node):
 
     def _on_perception(self, message: KtyProductContourArray) -> None:
         self.latest_perception = message
+
+    def _on_poses(self, message: TFMessage) -> None:
+        if not self.active_kty_name:
+            return
+        for transform in message.transforms:
+            if self.active_kty_name in transform.child_frame_id:
+                self.active_kty_x = float(transform.transform.translation.x)
+                return
 
     def _on_ground_truth(self, message: KtyGroundTruthArray) -> None:
         if message.cycle_id != self.cycle_id:
@@ -457,6 +505,7 @@ class StationController(Node):
         if self.active_kty_name:
             self.pool.submit(self._remove_model, self.active_kty_name)
             self.active_kty_name = ""
+            self.active_kty_x = None
         self.wait_after_delete_until_s = self._now_s() + 0.5
         self._transition(KtyStationState.WAIT_EMPTY_KTY, "manual reset")
         response.success = True

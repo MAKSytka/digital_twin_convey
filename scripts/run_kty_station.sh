@@ -9,4 +9,29 @@ source /opt/ros/jazzy/setup.bash
 source install/setup.bash
 set -u
 
+# Gazebo by itself only renders the passive station.  The cycle starts in the
+# ROS controller, so fail loudly instead of opening a world which looks healthy
+# (and whose simulation clock advances) while none of the KTY nodes are usable.
+required_executables=(
+  station_controller
+  product_spawner
+  depth_perception
+  safety_monitor
+  metrics_node
+)
+installed_executables="$(ros2 pkg executables kty_station_sim 2>/dev/null || true)"
+for executable in "${required_executables[@]}"; do
+  if ! grep -Eq "^kty_station_sim[[:space:]]+${executable}$" <<<"$installed_executables"; then
+    echo "ERROR: kty_station_sim/${executable} is not installed." >&2
+    echo "Run ./scripts/build.sh, source install/setup.bash, then retry." >&2
+    exit 2
+  fi
+done
+
+if ! ros2 interface show singulator_interfaces/msg/KtyStationState >/dev/null 2>&1; then
+  echo "ERROR: singulator_interfaces/msg/KtyStationState is not installed." >&2
+  echo "Remove stale build/install directories and run ./scripts/build.sh." >&2
+  exit 2
+fi
+
 ros2 launch kty_station_sim kty_station.launch.py "$@"
