@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>kty_station_sim</name>
-  <version>0.6.0</version>
+  <version>0.5.0</version>
   <description>Flat contact-surface KTY transport, physical vibration, slide gate and RGB-D planning.</description>
   <maintainer email="team@example.com">Singulator Team</maintainer>
   <license>Apache-2.0</license>
