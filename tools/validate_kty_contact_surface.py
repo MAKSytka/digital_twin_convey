@@ -51,8 +51,14 @@ def validate_plugin_package() -> None:
         "targetVelocity - velocity->X()",
         "modelPrefix",
         "GZ_ADD_PLUGIN",
+        "const_cast<sdf::Element *>(_sdf.get())",
+        'mutableSdf->GetElement("zone")',
     ):
         require(fragment in source, f"Missing contact-surface behavior: {fragment}")
+    require(
+        '_sdf->GetElement("zone")' not in source,
+        "sdformat14 repeated-child traversal must not call non-const GetElement through _sdf",
+    )
     require("LinearVelocityCmd" not in source, "Transport must preserve vertical physics")
 
 
