@@ -7,7 +7,7 @@ package_name = "kty_station_sim"
 
 setup(
     name=package_name,
-    version="0.6.0",
+    version="0.5.0",
     packages=[package_name],
     data_files=[
         (
