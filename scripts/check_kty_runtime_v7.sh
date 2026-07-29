@@ -61,7 +61,7 @@ for service in \
   fi
 done
 
-printf '\nWaiting for staged release, slide-gate changeover and surface-driven outfeed:\n'
+printf '\nWaiting for lifecycle-locator changeover and deterministic surface outfeed:\n'
 if ! python3 - <<'PY'
 import json
 import subprocess
@@ -86,26 +86,19 @@ class Observer(Node):
         self.second_load = False
         self.outfeed_nonzero = False
         self.release_zero_seen = False
+        self.locator_removed_seen = False
+        self.locator_recreated_seen = False
         self.transport_seen = False
         self.error = ''
         self.latest_active = 0.0
         self.latest_outfeed = 0.0
+        self.last_nonzero_outfeed = 0.0
         self.create_subscription(String, '/kty/flow/state', self.on_state, qos)
-        self.create_subscription(
-            Float64,
-            '/kty/mech/active_surface/cmd_vel',
-            self.on_active,
-            10,
-        )
-        self.create_subscription(
-            Float64,
-            '/kty/mech/outfeed_surface/cmd_vel',
-            self.on_outfeed,
-            10,
-        )
+        self.create_subscription(Float64, '/kty/mech/active_surface/cmd_vel', self.on_active, 10)
+        self.create_subscription(Float64, '/kty/mech/outfeed_surface/cmd_vel', self.on_outfeed, 10)
 
     @staticmethod
-    def gate_exists():
+    def model_exists(name):
         result = subprocess.run(
             ['gz', 'model', '--list'],
             capture_output=True,
@@ -113,7 +106,7 @@ class Observer(Node):
             timeout=4,
             check=False,
         )
-        return 'kty_mech_chute_gate' in result.stdout
+        return name in result.stdout
 
     def on_active(self, message):
         self.latest_active = float(message.data)
@@ -122,6 +115,7 @@ class Observer(Node):
         self.latest_outfeed = float(message.data)
         if abs(self.latest_outfeed) >= 0.05:
             self.outfeed_nonzero = True
+            self.last_nonzero_outfeed = self.latest_outfeed
 
     def on_state(self, message):
         try:
@@ -132,26 +126,39 @@ class Observer(Node):
         detail = str(data.get('detail', ''))
         cycle = int(data.get('cycle_id', 0) or 0)
         self.seen.add(state)
-        self.transport_seen = self.transport_seen or data.get('transport') == 'flat_contact_surface'
+        self.transport_seen = self.transport_seen or str(data.get('transport', '')).startswith(
+            'flat_contact_surface'
+        )
+        self.last_nonzero_outfeed = max(
+            self.last_nonzero_outfeed,
+            float(data.get('last_nonzero_outfeed_mps', 0.0) or 0.0),
+        )
         if state == 'ERROR':
             self.error = str(data.get('detail', 'unknown error'))
+        locator_exists = self.model_exists('kty_mech_runtime_locator')
         if (
             state == 'EJECT_ACTIVE'
-            and 'retract locator' in detail
+            and 'remove locator' in detail
             and abs(self.latest_active) < 0.01
             and abs(self.latest_outfeed) < 0.01
         ):
             self.release_zero_seen = True
-        exists = self.gate_exists()
-        if state in {'CLOSE_GATE', 'COMPACT', 'EJECT_ACTIVE', 'POSITION_NEXT', 'VERIFY_READY'} and exists:
+        if state == 'EJECT_ACTIVE' and 'locator absent' in detail and not locator_exists:
+            self.locator_removed_seen = True
+        if state in {'POSITION_NEXT', 'VERIFY_READY'} and locator_exists:
+            self.locator_recreated_seen = True
+        gate_exists = self.model_exists('kty_mech_chute_gate')
+        if state in {'CLOSE_GATE', 'COMPACT', 'EJECT_ACTIVE', 'POSITION_NEXT', 'VERIFY_READY'} and gate_exists:
             self.gate_closed_seen = True
-        if self.gate_closed_seen and state in {'OPEN_GATE', 'LOAD'} and not exists:
+        if self.gate_closed_seen and state in {'OPEN_GATE', 'LOAD'} and not gate_exists:
             self.gate_open_after_closed = True
         if state == 'LOAD' and cycle >= 2:
             self.second_load = True
         print(
-            f"cycle={cycle} state={state} detail={detail!r} gate_model={exists} "
+            f"cycle={cycle} state={state} detail={detail!r} "
+            f"locator={locator_exists} gate={gate_exists} "
             f"active={self.latest_active:.3f} outfeed={self.latest_outfeed:.3f} "
+            f"last_nonzero={self.last_nonzero_outfeed:.3f} "
             f"transport={data.get('transport')} "
             f"fill={float(data.get('estimated_fill_ratio', 0.0) or 0.0):.3f}",
             flush=True,
@@ -166,7 +173,7 @@ try:
     while rclpy.ok() and time.monotonic() < deadline:
         rclpy.spin_once(node, timeout_sec=0.5)
         if node.error:
-            print(f"ERROR state: {node.error}")
+            print(f"ERROR state: {node.error}; retained outfeed={node.last_nonzero_outfeed:.3f}")
             break
         required = {
             'LOAD', 'CLOSE_GATE', 'COMPACT', 'EJECT_ACTIVE',
@@ -176,13 +183,15 @@ try:
             required <= node.seen
             and node.transport_seen
             and node.release_zero_seen
+            and node.locator_removed_seen
+            and node.locator_recreated_seen
             and node.outfeed_nonzero
             and node.gate_closed_seen
             and node.gate_open_after_closed
             and node.second_load
         ):
             success = True
-            print('OK: staged release cleared the locator before flat surfaces moved the loaded KTY')
+            print('OK: lifecycle locator disappeared, KTY exited and locator returned')
             break
 except ExternalShutdownException:
     pass
@@ -192,12 +201,12 @@ finally:
 raise SystemExit(0 if success else 1)
 PY
 then
-  echo 'FAIL: contact-surface changeover was not observed' >&2
+  echo 'FAIL: deterministic contact-surface changeover was not observed' >&2
   failures=$((failures + 1))
 fi
 
-printf '\nCurrent KTY / gate models:\n'
-gz model --list 2>/dev/null | grep -E 'kty_mech_container_|kty_mech_chute_gate' || true
+printf '\nCurrent KTY / gate / locator models:\n'
+gz model --list 2>/dev/null | grep -E 'kty_mech_container_|kty_mech_chute_gate|kty_mech_runtime_locator' || true
 
 printf '\n3-D perception heartbeat:\n'
 if timeout 15 ros2 topic echo /kty/perception/contours --once >/tmp/kty_surface_contours.txt; then
@@ -226,13 +235,12 @@ PY
 cat <<'EOF'
 
 Expected runtime:
-  - generated world contains no roller links or roller joints;
-  - locator and clamps release while active/outfeed commands remain zero;
-  - after 2.5 s, the three flat plates carry the KTY through force control;
-  - /kty/mech/outfeed_surface/cmd_vel becomes positive only after clearance;
-  - kty_mech_chute_gate exists while closed and disappears in OPEN_GATE;
-  - products remain physical bodies inside the moving KTY;
-  - vibration_deck still moves vertically at 8 / 18 Hz.
+  - generated world contains no roller links and no joint-driven locator;
+  - kty_mech_runtime_locator is deleted before active/outfeed command becomes nonzero;
+  - nonzero surface commands impose horizontal KTY velocity and suppress overturning;
+  - zero surface commands leave normal vertical vibration and collision physics active;
+  - the runtime locator is recreated before positioning the queued KTY;
+  - kty_mech_chute_gate exists while closed and disappears in OPEN_GATE.
 EOF
 
 if (( failures > 0 )); then
@@ -240,4 +248,4 @@ if (( failures > 0 )); then
   exit 1
 fi
 
-echo 'KTY contact-surface diagnostics: OK'
+echo 'KTY deterministic contact-surface diagnostics: OK'
