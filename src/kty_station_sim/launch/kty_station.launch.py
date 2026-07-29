@@ -9,6 +9,7 @@ from launch.actions import (
     TimerAction,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -25,6 +26,7 @@ def generate_launch_description() -> LaunchDescription:
     amplitude = LaunchConfiguration("vibration_amplitude_m")
     product_rate = LaunchConfiguration("product_rate_products_per_s")
     seed = LaunchConfiguration("seed")
+    vision_gui_enabled = LaunchConfiguration("vision_gui")
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -136,11 +138,26 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[str(station_config)],
     )
+    vision_gui = Node(
+        package="rqt_image_view",
+        executable="rqt_image_view",
+        name="kty_vision_view",
+        output="screen",
+        arguments=["/kty/perception/debug_image"],
+        condition=IfCondition(vision_gui_enabled),
+    )
 
     # Give Gazebo and bridges enough time to advertise services and sensor topics.
     delayed_nodes = TimerAction(
         period=2.0,
-        actions=[perception, product_spawner, safety, metrics, controller],
+        actions=[
+            perception,
+            product_spawner,
+            safety,
+            metrics,
+            controller,
+            vision_gui,
+        ],
     )
 
     return LaunchDescription(
@@ -149,6 +166,11 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("vibration_amplitude_m", default_value="0.001"),
             DeclareLaunchArgument("product_rate_products_per_s", default_value="1.0"),
             DeclareLaunchArgument("seed", default_value="42"),
+            DeclareLaunchArgument(
+                "vision_gui",
+                default_value="true",
+                description="Open rqt_image_view with the machine-vision debug feed",
+            ),
             gazebo,
             delayed_unpause,
             bridge,
