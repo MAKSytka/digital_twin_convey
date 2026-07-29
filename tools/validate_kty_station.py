@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Static and cross-file checks for the KTY station.
 
-The validator does not pretend to replace a Gazebo runtime test.  It verifies
-that the generated models, ROS interfaces, entry points, bridges and fallback
-controller are wired consistently before the user starts the simulator.
+The validator does not replace a Gazebo runtime test. It verifies that models,
+ROS interfaces, entry points, bridges and fallback controls are wired
+consistently before the simulator starts.
 """
 
 from __future__ import annotations
@@ -95,6 +95,7 @@ def validate_launch() -> None:
         "pause: false",
         "delayed_unpause",
         'executable="registry_json_mirror"',
+        'executable="vibration_driver"',
         'LaunchConfiguration("vision_gui")',
         'default_value="false"',
     ):
@@ -126,7 +127,7 @@ def validate_factories() -> None:
     )
     require(
         "/kty/carrier/cmd_vel" in kty_sdf,
-        "Spawned KTY listens on the wrong carrier command topic",
+        "Spawned KTY listens on the wrong Gazebo carrier topic",
     )
     plugin = kty_root.find(".//plugin[@filename='gz-sim-velocity-control-system']")
     require(plugin is not None, "VelocityControl plugin is missing from KTY SDF")
@@ -167,14 +168,12 @@ def validate_interfaces() -> None:
 
 def validate_runtime_wiring() -> None:
     setup = read(PACKAGE / "setup.py")
-    require(
-        "station_controller = kty_station_sim.station_controller_v2:main" in setup,
-        "station_controller entry point does not use runtime v2",
-    )
-    require(
-        "registry_json_mirror = kty_station_sim.registry_json_mirror:main" in setup,
-        "JSON registry mirror entry point is missing",
-    )
+    for fragment in (
+        "station_controller = kty_station_sim.station_controller_v2:main",
+        "vibration_driver = kty_station_sim.vibration_driver:main",
+        "registry_json_mirror = kty_station_sim.registry_json_mirror:main",
+    ):
+        require(fragment in setup, f"Missing console entry point: {fragment}")
 
     controller = read(PACKAGE / "kty_station_sim" / "station_controller_v2.py")
     for fragment in (
@@ -187,6 +186,15 @@ def validate_runtime_wiring() -> None:
     ):
         require(fragment in controller, f"Controller v2 is missing: {fragment}")
 
+    vibration = read(PACKAGE / "kty_station_sim" / "vibration_driver.py")
+    for fragment in (
+        "self.create_timer(0.002, self._tick)",
+        '"/kty/carrier/cmd_vel_filtered"',
+        '"/kty/platform/cmd_pos_filtered"',
+        "amplitude * omega * math.cos(phase)",
+    ):
+        require(fragment in vibration, f"High-rate vibration driver is missing: {fragment}")
+
     safety = read(PACKAGE / "kty_station_sim" / "safety_monitor.py")
     for fragment in (
         "pose_stream_alive",
@@ -198,14 +206,16 @@ def validate_runtime_wiring() -> None:
 
     bridge = read(PACKAGE / "config" / "bridge.yaml")
     for fragment in (
-        "/kty/carrier/cmd_vel",
+        "/kty/carrier/cmd_vel_filtered",
+        "/kty/platform/cmd_pos_filtered",
         "geometry_msgs/msg/Twist",
         "gz.msgs.Twist",
     ):
-        require(fragment in bridge, f"Carrier bridge is missing: {fragment}")
+        require(fragment in bridge, f"Filtered command bridge is missing: {fragment}")
 
     run_script = read(ROOT / "scripts" / "run_kty_station.sh")
     for fragment in (
+        "vibration_driver",
         "registry_json_mirror",
         "KtyGroundTruthArray",
         "KtyStationState",
@@ -224,10 +234,12 @@ def validate_runtime_wiring() -> None:
         require(fragment in targeted_build, f"Targeted build is missing: {fragment}")
 
     diagnostic = read(ROOT / "scripts" / "check_kty_station.sh")
-    require(
-        "/kty/ground_truth/registry_json" in diagnostic,
-        "Diagnostic script does not use the standard-message JSON mirror",
-    )
+    for fragment in (
+        "/kty/ground_truth/registry_json",
+        "/kty/carrier/cmd_vel_filtered",
+        "/kty/platform/cmd_pos_filtered",
+    ):
+        require(fragment in diagnostic, f"Diagnostic check is missing: {fragment}")
 
 
 def main() -> None:
