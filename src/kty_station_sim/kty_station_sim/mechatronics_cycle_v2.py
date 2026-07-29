@@ -12,14 +12,16 @@ import time
 
 import rclpy
 
-from .mechatronics_cycle import KtyMechatronicsCycle, RestartRequested
+from .mechatronics_cycle import KtyMechatronicsCycle
 
 
 class KtyMechatronicsCycleV2(KtyMechatronicsCycle):
     GATE_NAME = "kty_mech_chute_gate"
     GATE_X = -0.295
     GATE_Y = 0.0
-    GATE_Z = 0.995
+    # The lower edge is 0.925 m: above the 0.903 m KTY wall top, but still
+    # overlapping the chute surface and any supported 10 mm product.
+    GATE_Z = 1.055
 
     def __init__(self) -> None:
         # These fields must exist before the base class starts its worker.
