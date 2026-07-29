@@ -2,8 +2,8 @@
 
 The transport state machine from stage 4 is retained, but the unreliable
 hinged gate is replaced by an idempotent static slide gate created and removed
-through Gazebo lifecycle services.  Ejection monitoring also boosts the roller
-command when a loaded KTY stalls before the outfeed.
+through Gazebo lifecycle services. Ejection monitoring also boosts the active
+and outfeed command when a loaded KTY stalls.
 """
 
 from __future__ import annotations
@@ -28,12 +28,12 @@ class KtyMechatronicsCycleV2(KtyMechatronicsCycle):
         self._gate_model_spawned = False
         super().__init__()
         self.get_logger().info(
-            "Runtime v7: static slide gate, anchored roller joints and slower feeder"
+            "Runtime v7: static slide gate, staged release and slower feeder"
         )
 
     @staticmethod
     def _gate_sdf() -> str:
-        # A vertical plate at the physical end of the inclined chute.  Its
+        # A vertical plate at the physical end of the inclined chute. Its
         # lower edge overlaps the chute surface, so small flat products cannot
         # pass underneath it while the next KTY is being positioned.
         return """<?xml version="1.0"?>
@@ -112,11 +112,89 @@ class KtyMechatronicsCycleV2(KtyMechatronicsCycle):
         self._gate_model_spawned = False
         self._known_models.discard(self.GATE_NAME)
 
+    def _changeover(self) -> None:
+        """Release restraints completely before applying conveyor traction.
+
+        The previous implementation commanded locator retraction, clamp release
+        and full outfeed speed in the same update. The recorded run showed the
+        KTY front lower edge still resting on the locator when the drive force
+        arrived, which converted translation into a forward flip.
+        """
+        old_kty = self._active_kty
+        next_kty = self._queue_kty
+        old_products = self._products_inside(old_kty)
+
+        self._transition(
+            "EJECT_ACTIVE",
+            "retract locator and open clamps before energising contact surfaces",
+        )
+        self._set_commands(
+            clamps=0.0,
+            locator=0.0,
+            active=0.0,
+            outfeed=0.0,
+        )
+        # The locator stroke is 225 mm. This wall-clock dwell is deliberately
+        # longer than its nominal simulated travel so it remains safe at an RTF
+        # below one. Products continue to accumulate behind the closed gate.
+        self._interruptible_sleep(2.5)
+
+        self._transition(
+            "EJECT_ACTIVE",
+            "restraints clear; moving loaded KTY over active and outfeed surfaces",
+        )
+        self._set_commands(
+            active=self.roller_speed,
+            outfeed=self.roller_speed,
+        )
+        self._wait_for_x(old_kty, minimum_x=1.25, timeout_s=7.0)
+
+        self._transition(
+            "POSITION_NEXT",
+            "raise locator, extend pusher and move queued KTY to active position",
+        )
+        self._set_commands(
+            locator=self.locator_up,
+            pusher=self.pusher_extended,
+            infeed=self.roller_speed,
+            active=self.roller_speed,
+        )
+
+        self._approach_locator(next_kty, timeout_s=8.0)
+        self._set_commands(infeed=0.0, active=0.0, pusher=0.0)
+        self._set_commands(clamps=self.clamp_closed)
+        self._set_vibration("weak")
+
+        self._transition(
+            "VERIFY_READY",
+            "checking position, velocity, clamps, camera and previous-KTY clearance",
+        )
+        self._wait_until_ready(next_kty, old_kty, timeout_s=8.0)
+
+        self._remove_model(old_kty)
+        self._known_models.discard(old_kty)
+        for name in sorted(old_products):
+            self._remove_model(name)
+            self._known_models.discard(name)
+            self._active_product_names.discard(name)
+        self._set_commands(outfeed=0.0)
+
+        self._active_kty = next_kty
+        self._queue_kty = self._new_kty_name(self._cycle_id + 2)
+        self._spawn_kty(self._queue_kty, self.queue_spawn_x)
+
+        self._transition(
+            "OPEN_GATE",
+            "new KTY ready; opening gate and releasing accumulated products",
+        )
+        self._set_commands(gate=self.gate_open)
+        self._interruptible_sleep(0.5)
+
     def _wait_for_x(self, name: str, minimum_x: float, timeout_s: float) -> None:
-        # The original seven-second timeout was too short at low RTF.  The
+        # The original seven-second timeout was too short at low RTF. The
         # timeout is wall-clock based, while the physical system advances in
         # simulation time, so runtime v7 permits a longer interval and boosts
-        # roller speed only after a genuine lack of positional progress.
+        # surface speed only after a genuine lack of positional progress.
         deadline = time.monotonic() + max(18.0, timeout_s)
         last_progress_at = time.monotonic()
         best_x = -1.0e9
@@ -132,11 +210,11 @@ class KtyMechatronicsCycleV2(KtyMechatronicsCycle):
                     last_progress_at = time.monotonic()
                 elif time.monotonic() - last_progress_at >= 3.0 and not boosted:
                     self.get_logger().warning(
-                        f"{name} stalled at x={pose.x:.3f}; boosting active/outfeed rollers"
+                        f"{name} stalled at x={pose.x:.3f}; boosting active/outfeed surfaces"
                     )
                     self._set_commands(
-                        active=1.45 * self.roller_speed,
-                        outfeed=1.45 * self.roller_speed,
+                        active=1.20 * self.roller_speed,
+                        outfeed=1.20 * self.roller_speed,
                     )
                     boosted = True
             self._interruptible_sleep(0.18)
