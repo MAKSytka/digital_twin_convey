@@ -10,6 +10,7 @@ source install/setup.bash
 set -u
 
 required_executables=(
+  clock_gate
   station_controller
   vibration_driver
   product_spawner
