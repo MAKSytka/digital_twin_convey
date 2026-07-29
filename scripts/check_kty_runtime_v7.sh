@@ -61,7 +61,7 @@ for service in \
   fi
 done
 
-printf '\nWaiting for slide-gate changeover and surface-driven outfeed:\n'
+printf '\nWaiting for staged release, slide-gate changeover and surface-driven outfeed:\n'
 if ! python3 - <<'PY'
 import json
 import subprocess
@@ -85,10 +85,18 @@ class Observer(Node):
         self.gate_open_after_closed = False
         self.second_load = False
         self.outfeed_nonzero = False
+        self.release_zero_seen = False
         self.transport_seen = False
         self.error = ''
+        self.latest_active = 0.0
         self.latest_outfeed = 0.0
         self.create_subscription(String, '/kty/flow/state', self.on_state, qos)
+        self.create_subscription(
+            Float64,
+            '/kty/mech/active_surface/cmd_vel',
+            self.on_active,
+            10,
+        )
         self.create_subscription(
             Float64,
             '/kty/mech/outfeed_surface/cmd_vel',
@@ -107,6 +115,9 @@ class Observer(Node):
         )
         return 'kty_mech_chute_gate' in result.stdout
 
+    def on_active(self, message):
+        self.latest_active = float(message.data)
+
     def on_outfeed(self, message):
         self.latest_outfeed = float(message.data)
         if abs(self.latest_outfeed) >= 0.05:
@@ -118,11 +129,19 @@ class Observer(Node):
         except json.JSONDecodeError:
             return
         state = str(data.get('state', ''))
+        detail = str(data.get('detail', ''))
         cycle = int(data.get('cycle_id', 0) or 0)
         self.seen.add(state)
         self.transport_seen = self.transport_seen or data.get('transport') == 'flat_contact_surface'
         if state == 'ERROR':
             self.error = str(data.get('detail', 'unknown error'))
+        if (
+            state == 'EJECT_ACTIVE'
+            and 'retract locator' in detail
+            and abs(self.latest_active) < 0.01
+            and abs(self.latest_outfeed) < 0.01
+        ):
+            self.release_zero_seen = True
         exists = self.gate_exists()
         if state in {'CLOSE_GATE', 'COMPACT', 'EJECT_ACTIVE', 'POSITION_NEXT', 'VERIFY_READY'} and exists:
             self.gate_closed_seen = True
@@ -131,8 +150,9 @@ class Observer(Node):
         if state == 'LOAD' and cycle >= 2:
             self.second_load = True
         print(
-            f"cycle={cycle} state={state} gate_model={exists} "
-            f"outfeed={self.latest_outfeed:.3f} transport={data.get('transport')} "
+            f"cycle={cycle} state={state} detail={detail!r} gate_model={exists} "
+            f"active={self.latest_active:.3f} outfeed={self.latest_outfeed:.3f} "
+            f"transport={data.get('transport')} "
             f"fill={float(data.get('estimated_fill_ratio', 0.0) or 0.0):.3f}",
             flush=True,
         )
@@ -155,13 +175,14 @@ try:
         if (
             required <= node.seen
             and node.transport_seen
+            and node.release_zero_seen
             and node.outfeed_nonzero
             and node.gate_closed_seen
             and node.gate_open_after_closed
             and node.second_load
         ):
             success = True
-            print('OK: flat surfaces moved the loaded KTY and completed a two-KTY changeover')
+            print('OK: staged release cleared the locator before flat surfaces moved the loaded KTY')
             break
 except ExternalShutdownException:
     pass
@@ -205,9 +226,10 @@ PY
 cat <<'EOF'
 
 Expected runtime:
-  - the generated world contains no roller links or roller joints;
-  - three flat plates carry KTY containers through contact-surface force control;
-  - /kty/mech/outfeed_surface/cmd_vel becomes positive only in EJECT_ACTIVE;
+  - generated world contains no roller links or roller joints;
+  - locator and clamps release while active/outfeed commands remain zero;
+  - after 2.5 s, the three flat plates carry the KTY through force control;
+  - /kty/mech/outfeed_surface/cmd_vel becomes positive only after clearance;
   - kty_mech_chute_gate exists while closed and disappears in OPEN_GATE;
   - products remain physical bodies inside the moving KTY;
   - vibration_deck still moves vertically at 8 / 18 Hz.
