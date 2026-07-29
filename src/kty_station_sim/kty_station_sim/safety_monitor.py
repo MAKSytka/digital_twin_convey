@@ -1,4 +1,9 @@
-"""Fault detection for the requested KTY simulation scenarios."""
+"""Fault detection for the KTY simulation.
+
+Pose feedback and RGB-D perception are diagnostic inputs, not transport
+actuators.  Missing optional diagnostics must not stop the carrier before the
+controller has had a chance to perform its configured retries.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +13,7 @@ import re
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from tf2_msgs.msg import TFMessage
 
 from singulator_interfaces.msg import (
@@ -37,6 +43,7 @@ class KtySafetyMonitor(Node):
         defaults = {
             "kty_center_tolerance_m": 0.16,
             "kty_presence_timeout_s": 0.8,
+            "pose_stream_timeout_s": 1.5,
             "camera_timeout_s": 1.0,
             "maximum_mass_kg": 35.0,
             "chute_jam_timeout_s": 2.5,
@@ -51,6 +58,9 @@ class KtySafetyMonitor(Node):
         )
         self.kty_presence_timeout = float(
             self.get_parameter("kty_presence_timeout_s").value
+        )
+        self.pose_stream_timeout = float(
+            self.get_parameter("pose_stream_timeout_s").value
         )
         self.camera_timeout = float(self.get_parameter("camera_timeout_s").value)
         self.maximum_mass = float(self.get_parameter("maximum_mass_kg").value)
@@ -67,24 +77,31 @@ class KtySafetyMonitor(Node):
         self.state: KtyStationState | None = None
         self.poses: dict[str, PoseSample] = {}
         self.products = {}
-        self.last_camera_s = 0.0
+        self.last_pose_message_s = -math.inf
+        self.last_camera_s = -math.inf
         self.last_camera_ok = False
         self.stationary_since: dict[str, float] = {}
         self.moving_since: dict[str, float] = {}
         self.fault_states: dict[str, bool] = {}
+        self.pose_warning_emitted = False
 
         self.fault_pub = self.create_publisher(KtyFault, "/kty/fault", 10)
+        self.create_subscription(TFMessage, "/kty/world/poses", self._on_poses, 20)
+
+        transient_qos = QoSProfile(depth=1)
+        transient_qos.reliability = ReliabilityPolicy.RELIABLE
+        transient_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
         self.create_subscription(
-            TFMessage, "/kty/world/poses", self._on_poses, 20
-        )
-        self.create_subscription(
-            KtyStationState, "/kty/station/state", self._on_state, 10
+            KtyStationState,
+            "/kty/station/state",
+            self._on_state,
+            transient_qos,
         )
         self.create_subscription(
             KtyGroundTruthArray,
             "/kty/ground_truth/registry",
             self._on_registry,
-            10,
+            transient_qos,
         )
         self.create_subscription(
             KtyProductContourArray,
@@ -97,7 +114,8 @@ class KtySafetyMonitor(Node):
     def _now_s(self) -> float:
         return self.get_clock().now().nanoseconds * 1.0e-9
 
-    def _normalise_name(self, frame: str) -> str | None:
+    @staticmethod
+    def _normalise_name(frame: str) -> str | None:
         product = PRODUCT_PATTERN.search(frame)
         if product:
             return product.group(1)
@@ -108,8 +126,13 @@ class KtySafetyMonitor(Node):
 
     def _on_poses(self, message: TFMessage) -> None:
         now = self._now_s()
+        self.last_pose_message_s = now
         for transform in message.transforms:
+            # Depending on the bridge version the scoped model name can occur
+            # in either frame field.
             name = self._normalise_name(transform.child_frame_id)
+            if name is None:
+                name = self._normalise_name(transform.header.frame_id)
             if name is None:
                 continue
             translation = transform.transform.translation
@@ -182,12 +205,25 @@ class KtySafetyMonitor(Node):
     def _evaluate(self) -> None:
         if self.state is None:
             return
+
         now = self._now_s()
         active = self._active_loading_state()
+        pose_stream_alive = (
+            now - self.last_pose_message_s <= self.pose_stream_timeout
+        )
+
+        if active and not pose_stream_alive and not self.pose_warning_emitted:
+            self.get_logger().warning(
+                "Gazebo pose feedback is unavailable; pose-dependent safety "
+                "checks are temporarily disabled. Carrier transport continues."
+            )
+            self.pose_warning_emitted = True
+        elif pose_stream_alive:
+            self.pose_warning_emitted = False
 
         kty_pose = self._current_kty_pose()
         missing_or_misplaced = False
-        if active and self.state.state != KtyStationState.CLAMP:
+        if active and pose_stream_alive and self.state.state != KtyStationState.CLAMP:
             missing_or_misplaced = (
                 kty_pose is None
                 or now - kty_pose.stamp_s > self.kty_presence_timeout
@@ -206,7 +242,8 @@ class KtySafetyMonitor(Node):
             KtyFault.MASS_EXCEEDED,
             active and total_mass > self.maximum_mass,
             KtyFault.CRITICAL,
-            f"Estimated product mass {total_mass:.3f} kg exceeds {self.maximum_mass:.3f} kg",
+            f"Estimated product mass {total_mass:.3f} kg exceeds "
+            f"{self.maximum_mass:.3f} kg",
         )
 
         camera_lost = (
@@ -217,20 +254,23 @@ class KtySafetyMonitor(Node):
                 or not self.last_camera_ok
             )
         )
+        # Warning only: StationControllerV2 owns the retry counter and promotes
+        # repeated timeouts to a latched FAULT.  A single dropped frame must not
+        # abort the loading cycle.
         self._publish_fault(
             KtyFault.CAMERA_LOST_VIEW,
             camera_lost,
-            KtyFault.CRITICAL,
+            KtyFault.WARNING,
             "No recent valid depth frame for the KTY ROI",
         )
 
         outside_names: list[str] = []
-        if active and kty_pose is not None:
+        if active and pose_stream_alive and kty_pose is not None:
             for name, truth in self.products.items():
                 pose = self.poses.get(name)
                 if pose is None:
                     continue
-                # Products above the 0.9 m rim may still be on the chute.
+                # Products above the rim may still be on the chute.
                 if pose.z > 0.95:
                     continue
                 half_x = float(truth.size_m.x) / 2.0
@@ -254,17 +294,18 @@ class KtySafetyMonitor(Node):
             KtyStationState.LOAD,
             KtyStationState.VIBRATE,
         )
-        for name in self.products:
-            pose = self.poses.get(name)
-            if pose is None:
-                continue
-            on_chute = -1.30 <= pose.x <= -0.23 and 0.88 <= pose.z <= 1.70
-            if shutter_open and on_chute and pose.speed < 0.02:
-                self.stationary_since.setdefault(name, now)
-                if now - self.stationary_since[name] >= self.chute_jam_timeout:
-                    jammed_names.append(name)
-            else:
-                self.stationary_since.pop(name, None)
+        if pose_stream_alive:
+            for name in self.products:
+                pose = self.poses.get(name)
+                if pose is None:
+                    continue
+                on_chute = -1.30 <= pose.x <= -0.23 and 0.88 <= pose.z <= 1.70
+                if shutter_open and on_chute and pose.speed < 0.02:
+                    self.stationary_since.setdefault(name, now)
+                    if now - self.stationary_since[name] >= self.chute_jam_timeout:
+                        jammed_names.append(name)
+                else:
+                    self.stationary_since.pop(name, None)
         self._publish_fault(
             KtyFault.PRODUCT_JAMMED_ON_CHUTE,
             bool(jammed_names),
@@ -273,7 +314,7 @@ class KtySafetyMonitor(Node):
         )
 
         moving_names: list[str] = []
-        if self.state.state == KtyStationState.SCAN:
+        if pose_stream_alive and self.state.state == KtyStationState.SCAN:
             for name in self.products:
                 pose = self.poses.get(name)
                 if pose is None or pose.z > 0.95:
