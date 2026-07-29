@@ -8,8 +8,8 @@ from launch.actions import (
     IncludeLaunchDescription,
     TimerAction,
 )
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -35,9 +35,9 @@ def generate_launch_description() -> LaunchDescription:
         launch_arguments={"gz_args": f"-r -v 3 {world}"}.items(),
     )
 
-    # Gazebo may still open with the world paused on some installations even
-    # when ``-r`` is passed. Retry the transport control service using wall
-    # time, so ROS nodes which use /clock are never left waiting forever.
+    # Gazebo can expose the world before its control service is ready.  Retry
+    # with wall time so use_sim_time nodes are not left waiting on a paused
+    # simulation clock.
     unpause_world = ExecuteProcess(
         cmd=[
             "bash",
@@ -138,6 +138,13 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[str(station_config)],
     )
+    registry_json_mirror = Node(
+        package="kty_station_sim",
+        executable="registry_json_mirror",
+        name="kty_registry_json_mirror",
+        output="screen",
+        parameters=[{"use_sim_time": True}],
+    )
     vision_gui = Node(
         package="rqt_image_view",
         executable="rqt_image_view",
@@ -147,10 +154,12 @@ def generate_launch_description() -> LaunchDescription:
         condition=IfCondition(vision_gui_enabled),
     )
 
-    # Give Gazebo and bridges enough time to advertise services and sensor topics.
+    # The control nodes start after Gazebo and transport bridges have had time
+    # to advertise the create/remove and sensor endpoints.
     delayed_nodes = TimerAction(
         period=2.0,
         actions=[
+            registry_json_mirror,
             perception,
             product_spawner,
             safety,
@@ -168,7 +177,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("seed", default_value="42"),
             DeclareLaunchArgument(
                 "vision_gui",
-                default_value="true",
+                default_value="false",
                 description="Open rqt_image_view with the machine-vision debug feed",
             ),
             gazebo,
