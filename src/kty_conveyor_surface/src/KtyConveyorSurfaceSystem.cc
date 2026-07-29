@@ -62,10 +62,8 @@ public:
     if (!_sdf->HasElement("zone"))
       return;
 
-    // Gazebo passes a shared_ptr<const sdf::Element>, while sdformat14's
-    // repeated-child traversal API (GetElement / GetNextElement) is not const.
-    // This follows the pattern used by Gazebo systems: obtain a non-const view
-    // only for traversal. The plugin never modifies the SDF tree.
+    // sdformat14 exposes repeated-child traversal through a non-const API.
+    // The tree is only traversed and is never modified here.
     auto *mutableSdf = const_cast<sdf::Element *>(_sdf.get());
     auto zoneElement = mutableSdf->GetElement("zone");
     while (zoneElement)
@@ -141,6 +139,8 @@ public:
 
         bool insideZone = false;
         double targetVelocity = 0.0;
+        // Later zones have priority in overlap regions, so an exiting KTY
+        // cannot remain bound to a zero-speed active zone at the hand-off.
         for (std::size_t index = 0; index < this->zones.size(); ++index)
         {
           const auto &zone = this->zones[index];
@@ -149,23 +149,35 @@ public:
           {
             insideZone = true;
             targetVelocity = commands[index];
-            break;
           }
         }
         if (!insideZone)
           return true;
 
-        const double error = targetVelocity - velocity->X();
+        if (std::abs(targetVelocity) > this->velocityDeadband)
+        {
+          // The flat conveyor is an abstract velocity-imposing contact surface.
+          // Apply only horizontal transport; preserve current Y/Z velocity so
+          // gravity and the loaded products remain physical. Suppressing angular
+          // velocity while driven prevents a lower edge contact from overturning
+          // the complete KTY. When the command is zero, no velocity command is
+          // issued and normal vibration / collision physics is untouched.
+          link.SetLinearVelocity(
+            _ecm,
+            gz::math::Vector3d(targetVelocity, velocity->Y(), velocity->Z()));
+          link.SetAngularVelocity(_ecm, gz::math::Vector3d::Zero);
+          return true;
+        }
+
+        // With the conveyor stopped, use only a mild longitudinal brake. This
+        // avoids freezing vertical dynamics during loading and compaction.
+        const double error = -velocity->X();
         double force = std::clamp(
           this->velocityGain * error,
           -this->maxForce,
           this->maxForce);
-        if (std::abs(targetVelocity) <= this->velocityDeadband &&
-            std::abs(velocity->X()) <= this->velocityDeadband)
-        {
+        if (std::abs(velocity->X()) <= this->velocityDeadband)
           force = 0.0;
-        }
-
         link.AddWorldForce(_ecm, gz::math::Vector3d(force, 0.0, 0.0));
         return true;
       });
@@ -175,8 +187,8 @@ private:
   std::string modelPrefix{"kty_mech_container_"};
   double surfaceZ{0.50};
   double contactTolerance{0.075};
-  double velocityGain{240.0};
-  double maxForce{320.0};
+  double velocityGain{80.0};
+  double maxForce{120.0};
   double velocityDeadband{0.005};
   std::vector<Zone> zones;
   std::mutex commandMutex;
