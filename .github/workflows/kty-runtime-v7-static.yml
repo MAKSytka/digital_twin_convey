@@ -1,0 +1,29 @@
+name: KTY runtime v7 static validation
+
+on:
+  pull_request:
+    paths:
+      - 'src/kty_station_sim/**'
+      - 'scripts/**kty**'
+      - 'tools/validate_kty_runtime_v7.py'
+      - '.github/workflows/kty-runtime-v7-static.yml'
+  push:
+    branches:
+      - fix/kty-mechatronics-runtime-v7
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate corrected roller world and runtime wiring
+        run: python3 tools/validate_kty_runtime_v7.py
+      - name: Validate shell syntax
+        run: |
+          bash -n scripts/run_kty_mechatronics.sh
+          bash -n scripts/run_kty_perception_3d.sh
+          bash -n scripts/build_kty_perception_3d.sh
+          bash -n scripts/check_kty_runtime_v7.sh
