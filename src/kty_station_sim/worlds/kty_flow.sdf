@@ -1,0 +1,152 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <world name="kty_flow">
+    <gravity>0 0 -9.81</gravity>
+    <physics name="kty_flow_physics" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+
+    <scene>
+      <ambient>0.48 0.48 0.48</ambient>
+      <background>0.16 0.18 0.22</background>
+      <grid>true</grid>
+    </scene>
+
+    <light type="directional" name="sun">
+      <pose>-3 -4 8 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <diffuse>0.95 0.95 0.95 1</diffuse>
+      <specular>0.25 0.25 0.25 1</specular>
+      <direction>0.3 0.4 -1.0</direction>
+    </light>
+
+    <model name="floor">
+      <static>true</static>
+      <pose>0 0 -0.05 0 0 0</pose>
+      <link name="floor_link">
+        <collision name="floor_collision">
+          <geometry><box><size>5.0 3.0 0.10</size></box></geometry>
+        </collision>
+        <visual name="floor_visual">
+          <geometry><box><size>5.0 3.0 0.10</size></box></geometry>
+          <material><ambient>0.18 0.18 0.18 1</ambient><diffuse>0.26 0.26 0.28 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="kty_flow_infeed">
+      <static>true</static>
+      <pose>-1.15 0 0.46 0 0 0</pose>
+      <link name="bed">
+        <collision name="bed_collision">
+          <geometry><box><size>1.60 0.55 0.08</size></box></geometry>
+          <surface><friction><ode><mu>0.75</mu><mu2>0.75</mu2></ode></friction></surface>
+        </collision>
+        <visual name="bed_visual">
+          <geometry><box><size>1.60 0.55 0.08</size></box></geometry>
+          <material><ambient>0.30 0.31 0.33 1</ambient><diffuse>0.43 0.44 0.47 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="kty_flow_platform">
+      <static>true</static>
+      <link name="base">
+        <pose>0 0 0.35 0 0 0</pose>
+        <collision name="base_collision"><geometry><box><size>0.76 0.62 0.20</size></box></geometry></collision>
+        <visual name="base_visual"><geometry><box><size>0.76 0.62 0.20</size></box></geometry><material><ambient>0.14 0.16 0.19 1</ambient><diffuse>0.22 0.25 0.30 1</diffuse></material></visual>
+      </link>
+      <link name="table">
+        <pose>0 0 0.475 0 0 0</pose>
+        <collision name="table_collision">
+          <geometry><box><size>0.70 0.50 0.05</size></box></geometry>
+          <surface><friction><ode><mu>0.75</mu><mu2>0.75</mu2></ode></friction></surface>
+        </collision>
+        <visual name="table_visual"><geometry><box><size>0.70 0.50 0.05</size></box></geometry><material><ambient>0.07 0.08 0.09 1</ambient><diffuse>0.12 0.14 0.16 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="kty_flow_outfeed">
+      <static>true</static>
+      <pose>1.15 0 0.46 0 0 0</pose>
+      <link name="bed">
+        <collision name="bed_collision">
+          <geometry><box><size>1.60 0.55 0.08</size></box></geometry>
+          <surface><friction><ode><mu>0.75</mu><mu2>0.75</mu2></ode></friction></surface>
+        </collision>
+        <visual name="bed_visual"><geometry><box><size>1.60 0.55 0.08</size></box></geometry><material><ambient>0.30 0.31 0.33 1</ambient><diffuse>0.43 0.44 0.47 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="kty_flow_side_guides">
+      <static>true</static>
+      <link name="guides">
+        <collision name="guide_neg_y_collision"><pose>0 -0.218 0.70 0 0 0</pose><geometry><box><size>0.72 0.018 0.40</size></box></geometry></collision>
+        <visual name="guide_neg_y_visual"><pose>0 -0.218 0.70 0 0 0</pose><geometry><box><size>0.72 0.018 0.40</size></box></geometry><material><ambient>0.40 0.42 0.45 1</ambient><diffuse>0.55 0.57 0.61 1</diffuse></material></visual>
+        <collision name="guide_pos_y_collision"><pose>0 0.218 0.70 0 0 0</pose><geometry><box><size>0.72 0.018 0.40</size></box></geometry></collision>
+        <visual name="guide_pos_y_visual"><pose>0 0.218 0.70 0 0 0</pose><geometry><box><size>0.72 0.018 0.40</size></box></geometry><material><ambient>0.40 0.42 0.45 1</ambient><diffuse>0.55 0.57 0.61 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- Low-friction chute for the deterministic product-fall test. -->
+    <model name="kty_flow_product_chute">
+      <static>true</static>
+      <pose>-0.730 0 1.185 0 0.5585053606 0</pose>
+      <link name="chute">
+        <collision name="bed_collision">
+          <geometry><box><size>1.000 0.600 0.020</size></box></geometry>
+          <surface>
+            <friction><ode><mu>0.20</mu><mu2>0.20</mu2><fdir1>1 0 0</fdir1></ode></friction>
+            <bounce><restitution_coefficient>0.01</restitution_coefficient><threshold>0.2</threshold></bounce>
+          </surface>
+        </collision>
+        <visual name="bed_visual"><geometry><box><size>1.000 0.600 0.020</size></box></geometry><material><ambient>0.22 0.23 0.25 1</ambient><diffuse>0.36 0.37 0.40 1</diffuse></material></visual>
+        <collision name="rail_neg_y_collision"><pose>0 -0.310 0.055 0 0 0</pose><geometry><box><size>1.000 0.020 0.130</size></box></geometry></collision>
+        <visual name="rail_neg_y_visual"><pose>0 -0.310 0.055 0 0 0</pose><geometry><box><size>1.000 0.020 0.130</size></box></geometry><material><ambient>0.12 0.12 0.13 1</ambient><diffuse>0.20 0.20 0.22 1</diffuse></material></visual>
+        <collision name="rail_pos_y_collision"><pose>0 0.310 0.055 0 0 0</pose><geometry><box><size>1.000 0.020 0.130</size></box></geometry></collision>
+        <visual name="rail_pos_y_visual"><pose>0 0.310 0.055 0 0 0</pose><geometry><box><size>1.000 0.020 0.130</size></box></geometry><material><ambient>0.12 0.12 0.13 1</ambient><diffuse>0.20 0.20 0.22 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <gui fullscreen="0">
+      <plugin filename="MinimalScene" name="3D View">
+        <gz-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+        <engine>ogre</engine>
+        <scene>scene</scene>
+        <ambient_light>0.48 0.48 0.48</ambient_light>
+        <background_color>0.16 0.18 0.22</background_color>
+        <camera_pose>-3.8 -3.2 2.9 0 0.42 0.72</camera_pose>
+      </plugin>
+      <plugin filename="EntityContextMenuPlugin" name="Entity context menu">
+        <gz-gui><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui>
+      </plugin>
+      <plugin filename="GzSceneManager" name="Scene Manager">
+        <gz-gui><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui>
+      </plugin>
+      <plugin filename="InteractiveViewControl" name="Interactive view control">
+        <gz-gui><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui>
+      </plugin>
+      <plugin filename="CameraTracking" name="Camera Tracking">
+        <gz-gui><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui>
+      </plugin>
+      <plugin name="World control" filename="WorldControl">
+        <gz-gui><title>World control</title><property type="bool" key="showTitleBar">0</property><property type="string" key="state">floating</property></gz-gui>
+        <play_pause>1</play_pause>
+        <step>1</step>
+        <start_paused>0</start_paused>
+      </plugin>
+      <plugin filename="WorldStats" name="World stats"/>
+      <plugin filename="EntityTree" name="Entity tree"/>
+    </gui>
+  </world>
+</sdf>
