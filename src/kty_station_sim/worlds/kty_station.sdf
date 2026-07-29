@@ -17,7 +17,9 @@
       <render_engine>ogre2</render_engine>
     </plugin>
 
-    <!-- Explicit GUI layout: starts running and exposes a mouse-controlled orbit camera. -->
+    <!-- Dedicated Harmonic GUI layout. InteractiveViewControl is required for
+         mouse pan / orbit / zoom. WorldControl talks directly to the world
+         service; event-only mode is intentionally not used. -->
     <gui fullscreen="0">
       <plugin filename="MinimalScene" name="3D View">
         <gz-gui>
@@ -43,13 +45,33 @@
         </gz-gui>
       </plugin>
 
+      <plugin filename="InteractiveViewControl" name="Interactive view control">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="CameraTracking" name="Camera tracking">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
       <plugin filename="WorldControl" name="World control">
         <gz-gui>
           <title>World control</title>
           <property type="bool" key="showTitleBar">false</property>
           <property type="bool" key="resizable">false</property>
           <property type="double" key="height">72</property>
-          <property type="double" key="width">180</property>
+          <property type="double" key="width">300</property>
           <property type="double" key="z">1</property>
           <property type="string" key="state">floating</property>
           <anchors target="3D View">
@@ -62,7 +84,6 @@
         <start_paused>false</start_paused>
         <service>/world/kty_station/control</service>
         <stats_topic>/world/kty_station/stats</stats_topic>
-        <use_event>true</use_event>
       </plugin>
 
       <plugin filename="WorldStats" name="World stats">
@@ -110,7 +131,6 @@
       </link>
     </model>
 
-    <!-- Input contact zone. The visible roller bed is simplified as a moving surface. -->
     <model name="kty_infeed">
       <static>true</static>
       <pose>-1.15 0 0 0 0 0</pose>
@@ -135,7 +155,6 @@
       </plugin>
     </model>
 
-    <!-- Active vibration table. The same top link provides vertical motion and surface velocity. -->
     <model name="kty_vibration_platform">
       <link name="base">
         <pose>0 0 0.34 0 0 0</pose>
@@ -152,7 +171,6 @@
         </collision>
         <visual name="table_visual">
           <geometry><box><size>0.70 0.50 0.05</size></box></geometry>
-          <!-- TPU-95A pad represented as a dark polyurethane top. -->
           <material><ambient>0.08 0.09 0.10 1</ambient><diffuse>0.14 0.15 0.17 1</diffuse></material>
         </visual>
       </link>
@@ -181,7 +199,6 @@
       </plugin>
     </model>
 
-    <!-- Four visible spring supports. Collision is omitted because the prismatic joint is the physical model. -->
     <model name="spring_visuals"><static>true</static><link name="springs">
       <visual name="s1"><pose>-0.27 -0.18 0.415 0 0 0</pose><geometry><cylinder><radius>0.035</radius><length>0.10</length></cylinder></geometry><material><ambient>0.10 0.35 0.80 1</ambient><diffuse>0.10 0.45 0.95 1</diffuse></material></visual>
       <visual name="s2"><pose>-0.27 0.18 0.415 0 0 0</pose><geometry><cylinder><radius>0.035</radius><length>0.10</length></cylinder></geometry><material><ambient>0.10 0.35 0.80 1</ambient><diffuse>0.10 0.45 0.95 1</diffuse></material></visual>
@@ -189,7 +206,6 @@
       <visual name="s4"><pose>0.27 0.18 0.415 0 0 0</pose><geometry><cylinder><radius>0.035</radius><length>0.10</length></cylinder></geometry><material><ambient>0.10 0.35 0.80 1</ambient><diffuse>0.10 0.45 0.95 1</diffuse></material></visual>
     </link></model>
 
-    <!-- Side guides model the clamp as lateral constraints, without clamping downwards. -->
     <model name="kty_side_guides"><static>true</static><link name="guides">
       <collision name="guide_neg_y_collision"><pose>0 -0.218 0.64 0 0 0</pose><geometry><box><size>0.72 0.018 0.28</size></box></geometry></collision>
       <visual name="guide_neg_y_visual"><pose>0 -0.218 0.64 0 0 0</pose><geometry><box><size>0.72 0.018 0.28</size></box></geometry><material><ambient>0.40 0.42 0.45 1</ambient><diffuse>0.52 0.54 0.58 1</diffuse></material></visual>
@@ -217,7 +233,6 @@
       </plugin>
     </model>
 
-    <!-- 1000 x 600 mm chute, 32 degrees, low edge 420 mm above the KTY bottom. -->
     <model name="product_chute"><static>true</static><pose>-0.730 0 1.185 0 0.5585053606 0</pose><link name="chute">
       <collision name="bed_collision"><geometry><box><size>1.000 0.600 0.020</size></box></geometry><surface><friction><ode><mu>0.75</mu><mu2>0.75</mu2><fdir1>1 0 0</fdir1></ode></friction></surface></collision>
       <visual name="bed_visual"><geometry><box><size>1.000 0.600 0.020</size></box></geometry><material><ambient>0.22 0.23 0.25 1</ambient><diffuse>0.34 0.35 0.38 1</diffuse></material></visual>
@@ -227,7 +242,6 @@
       <visual name="rail_pos_y_visual"><pose>0 0.310 0.055 0 0 0</pose><geometry><box><size>1.000 0.020 0.130</size></box></geometry><material><ambient>0.12 0.12 0.13 1</ambient><diffuse>0.18 0.18 0.20 1</diffuse></material></visual>
     </link></model>
 
-    <!-- Sliding shutter: z=0 is closed, z=0.22 m is open. -->
     <model name="product_shutter">
       <link name="anchor"><pose>-0.285 0 0.98 0 0 0</pose><inertial><mass>20</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial></link>
       <link name="plate"><pose>-0.285 0 0.98 0 0 0</pose><inertial><mass>3</mass><inertia><ixx>0.10</ixx><iyy>0.04</iyy><izz>0.12</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
@@ -242,9 +256,7 @@
       </plugin>
     </model>
 
-    <!-- Fixed overhead RGB-D camera. The chute ends before the optical axis. -->
     <model name="kty_vision_station"><static>true</static><link name="camera_link">
-      <!-- Camera optical +X points down; image right approximately follows world +X. -->
       <pose>0 0 1.75 0 1.57079632679 1.57079632679</pose>
       <sensor name="overhead_rgbd" type="rgbd_camera">
         <always_on>true</always_on><update_rate>15</update_rate><topic>/kty/camera</topic>
