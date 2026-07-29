@@ -163,13 +163,13 @@ def make_kty_sdf(
     wall: float = 0.003,
     mass: float = 1.600,
 ) -> str:
-    """Create an open, flapless, thin-walled KTY model.
+    """Create an open, flapless, thin-walled dynamic KTY model.
 
-    The model origin is at the outer bottom surface, which makes the spawn Z
-    equal to the supporting conveyor / platform top Z.  A VelocityControl
-    system is embedded in the spawned model.  It provides a deterministic
-    transport actuator on ``/kty/carrier/cmd_vel`` while the visible conveyor
-    zones continue to receive their contact-surface commands.
+    The model origin is at the outer bottom surface, so the spawn Z equals the
+    supporting conveyor or platform top Z.  Infeed and outfeed motion is applied
+    only through the Gazebo ``set_pose`` service.  No persistent velocity plugin
+    is attached: after positioning the KTY remains a normal dynamic rigid body
+    and can react to gravity, products and vertical platform vibration.
     """
 
     outer_x = internal_x + 2.0 * wall
@@ -243,12 +243,6 @@ def make_kty_sdf(
       <velocity_decay><linear>0.02</linear><angular>0.08</angular></velocity_decay>
       {''.join(parts)}
     </link>
-    <plugin filename="gz-sim-velocity-control-system"
-            name="gz::sim::systems::VelocityControl">
-      <topic>/kty/carrier/cmd_vel</topic>
-      <initial_linear>0 0 0</initial_linear>
-      <initial_angular>0 0 0</initial_angular>
-    </plugin>
   </model>
 </sdf>
 """
