@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static validation for the roller-free deterministic KTY runtime."""
+"""Static validation for deterministic KTY transport and effective vibration."""
 
 from __future__ import annotations
 
@@ -108,6 +108,29 @@ def validate_generated_world() -> None:
     for expected in ("infeed_surface", "outfeed_transfer_bridge", "outfeed_surface"):
         require(expected in names, f"Missing surface: {expected}")
 
+    vibration_joint = machine.find("joint[@name='vibration_joint']")
+    require(vibration_joint is not None, "Vibration joint missing")
+    require(vibration_joint.findtext("axis/limit/lower") == "-0.006", "Wrong lower stroke")
+    require(vibration_joint.findtext("axis/limit/upper") == "0.006", "Wrong upper stroke")
+    require(vibration_joint.findtext("axis/limit/effort") == "12000", "Wrong effort limit")
+    require(vibration_joint.findtext("axis/limit/velocity") == "2.0", "Wrong velocity limit")
+    require(vibration_joint.findtext("axis/dynamics/damping") == "80", "Wrong deck damping")
+    require(vibration_joint.findtext("axis/dynamics/friction") == "3", "Wrong deck friction")
+
+    vibration_controller = next(
+        (
+            plugin
+            for plugin in machine.findall("plugin")
+            if plugin.findtext("joint_name", default="") == "vibration_joint"
+        ),
+        None,
+    )
+    require(vibration_controller is not None, "Vibration controller missing")
+    require(vibration_controller.findtext("p_gain") == "320000", "Wrong vibration p_gain")
+    require(vibration_controller.findtext("d_gain") == "2400", "Wrong vibration d_gain")
+    require(vibration_controller.findtext("cmd_max") == "12000", "Wrong positive force cap")
+    require(vibration_controller.findtext("cmd_min") == "-12000", "Wrong negative force cap")
+
     bridge = machine.find("link[@name='outfeed_transfer_bridge']")
     outfeed = machine.find("link[@name='outfeed_surface']")
     active = machine.find("link[@name='vibration_deck']/collision[@name='active_contact_surface']")
@@ -146,12 +169,13 @@ def validate_python_and_launch() -> None:
     paths = (
         SIM / "kty_station_sim" / "world_patch_v3.py",
         SIM / "kty_station_sim" / "mechatronics_cycle_v3.py",
+        SIM / "kty_station_sim" / "mechatronics_cycle_v10.py",
         SIM / "launch" / "kty_mechatronics_surface.launch.py",
     )
     for path in paths:
         py_compile.compile(str(path), doraise=True)
 
-    controller = read(paths[1])
+    transport = read(paths[1])
     for fragment in (
         "self._v3_ready.wait()",
         'LOCATOR_NAME = "kty_mech_runtime_locator"',
@@ -163,9 +187,22 @@ def validate_python_and_launch() -> None:
         'payload["transport"] = "flat_contact_surface_velocity"',
         'payload["last_nonzero_outfeed_mps"]',
     ):
-        require(fragment in controller, f"Missing v9 controller behavior: {fragment}")
+        require(fragment in transport, f"Missing v9 transport behavior: {fragment}")
 
-    launch = read(paths[2])
+    vibration = read(paths[2])
+    for fragment in (
+        "class KtyMechatronicsCycleV10",
+        'self.declare_parameter("strong_vibration_sweep_hz", 2.0)',
+        'self.declare_parameter("strong_vibration_modulation_hz", 0.35)',
+        '"vibration_profile": "vertical_frequency_sweep_v10"',
+        '"last_compaction": dict(self._last_compaction)',
+        "2.0 * math.pi * self.strong_frequency * elapsed",
+        "self.strong_amplitude * envelope * math.sin(phase)",
+        "height_before - height_after",
+    ):
+        require(fragment in vibration, f"Missing v10 vibration behavior: {fragment}")
+
+    launch = read(paths[3])
     for fragment in (
         "build_surface_world",
         'get_package_prefix("kty_conveyor_surface")',
@@ -174,7 +211,14 @@ def validate_python_and_launch() -> None:
         '"world_name": "kty_mechatronics_surface"',
         'default_value="1.15"',
         '"roller_linear_speed_mps": 0.65',
-        '"slow_roller_linear_speed_mps": 0.18',
+        '"weak_vibration_frequency_hz": 6.0',
+        '"weak_vibration_amplitude_m": 0.0012',
+        '"strong_vibration_frequency_hz": 10.0',
+        '"strong_vibration_sweep_hz": 2.0',
+        '"strong_vibration_modulation_hz": 0.35',
+        '"strong_vibration_amplitude_m": 0.0050',
+        '"strong_vibration_duration_s": 12.0',
+        '"strong_vibration_ramp_s": 1.5',
         '"processing_hz": 3.0',
         '"refresh_hz": 4.0',
     ):
@@ -187,8 +231,12 @@ def validate_package_and_scripts() -> None:
     package_xml = read(SIM / "package.xml")
     require('version="0.5.0"' in setup, "Expected version 0.5.0")
     require(
-        "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v3:main" in setup,
-        "Missing v3 entry point",
+        "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v10:main" in setup,
+        "Accepted v3 executable must route to the v10 vibration runtime",
+    )
+    require(
+        "mechatronics_cycle_v10 = kty_station_sim.mechatronics_cycle_v10:main" in setup,
+        "Missing explicit v10 entry point",
     )
     require("<version>0.5.0</version>" in package_xml, "package.xml mismatch")
     require("<exec_depend>kty_conveyor_surface</exec_depend>" in package_xml, "Missing dependency")
@@ -210,7 +258,7 @@ def main() -> None:
     validate_generated_world()
     validate_python_and_launch()
     validate_package_and_scripts()
-    print("KTY deterministic contact-surface static validation: OK")
+    print("KTY deterministic transport and effective vibration validation: OK")
 
 
 if __name__ == "__main__":
