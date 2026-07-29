@@ -26,6 +26,26 @@ wait_for_node() {
   return 1
 }
 
+wait_for_any_node() {
+  local label="$1"
+  shift
+  local deadline=$((SECONDS + 25))
+  while (( SECONDS < deadline )); do
+    local nodes
+    nodes="$(ros2 node list 2>/dev/null || true)"
+    for candidate in "$@"; do
+      if printf '%s\n' "$nodes" | grep -Fxq "$candidate"; then
+        echo "OK ${label}: $candidate"
+        return 0
+      fi
+    done
+    sleep 1
+  done
+  echo "FAIL ${label}: expected one of $*" >&2
+  failures=$((failures + 1))
+  return 1
+}
+
 wait_for_topic() {
   local topic="$1"
   local deadline=$((SECONDS + 25))
@@ -42,15 +62,18 @@ wait_for_topic() {
 }
 
 printf 'ROS nodes:\n'
-for node in \
-  /kty_mechatronics_cycle \
-  /kty_fill_estimator \
+wait_for_node /kty_mechatronics_cycle || true
+wait_for_node /kty_fill_estimator || true
+wait_for_any_node perception \
   /kty_depth_perception \
+  /kty_classical_3d_perception || true
+wait_for_any_node recorder \
   /kty_contour_recorder \
+  /kty_contour_recorder_3d || true
+wait_for_any_node dashboard \
   /kty_vision_dashboard \
-  /kty_mechatronics_command_bridge; do
-  wait_for_node "$node" || true
-done
+  /kty_vision_dashboard_3d || true
+wait_for_node /kty_mechatronics_command_bridge || true
 
 printf '\nROS topics:\n'
 for topic in \
@@ -144,7 +167,9 @@ class Observer(Node):
         )
         active = str(payload.get("active_kty", ""))
         queue = str(payload.get("queue_kty", ""))
-        self.two_kty_seen = self.two_kty_seen or bool(active and queue and active != queue)
+        self.two_kty_seen = self.two_kty_seen or bool(
+            active and queue and active != queue
+        )
         if state == "LOAD" and int(payload.get("cycle_id", 0) or 0) >= 2:
             self.second_load_seen = True
         print(
@@ -217,13 +242,17 @@ printf '%s\n' "$stats" | sed -n '1,24p'
 python3 - "$stats" <<'PY' || true
 import re
 import sys
+
 text = sys.argv[1]
 match = re.search(r"real_time_factor:\s*([0-9.]+)", text)
 if match:
     value = float(match.group(1))
     print(f"Measured RTF: {value:.3f}")
     if value < 0.70:
-        print("WARNING: RTF is below 0.70; reduce camera resolution before adding more rollers.")
+        print(
+            "WARNING: RTF is below 0.70; first test with "
+            "show_dashboard:=false before reducing sensor quality."
+        )
 PY
 
 cat <<'EOF'
@@ -233,9 +262,9 @@ Expected repeating state sequence:
   -> POSITION_NEXT -> VERIFY_READY -> OPEN_GATE -> LOAD
 
 Physical settings:
-  weak vibration:   8 Hz, ±0.5 mm
+  weak vibration:     8 Hz, ±0.5 mm
   compact vibration: 18 Hz, ±3 mm, 8 s
-  gate threshold:   fill >= 70% OR maximum height >= 280 mm
+  gate threshold:     fill >= 70% OR maximum height >= 280 mm
 EOF
 
 if (( failures > 0 )); then
