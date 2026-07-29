@@ -25,9 +25,14 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _floats(text: str | None) -> list[float]:
+    require(bool(text), "Expected numeric SDF text")
+    return [float(value) for value in str(text).split()]
+
+
 def _top_z(link: ET.Element) -> float:
-    pose = [float(value) for value in link.findtext("pose", "").split()]
-    size = [float(value) for value in link.findtext("collision/geometry/box/size", "").split()]
+    pose = _floats(link.findtext("pose"))
+    size = _floats(link.findtext("collision/geometry/box/size"))
     require(len(pose) == 6 and len(size) == 3, f"Invalid surface geometry: {link.attrib}")
     return pose[2] + 0.5 * size[2]
 
@@ -111,24 +116,49 @@ def validate_generated_world() -> None:
     ):
         require(expected in names, f"Missing contact / transfer surface: {expected}")
 
+    locator = machine.find("link[@name='locator_stop']")
+    require(locator is not None, "Locator stop is missing")
+    require(
+        _floats(locator.findtext("pose"))[:3] == [0.35, 0.0, 0.3],
+        "Locator was not moved to its safe retracted geometry",
+    )
+    require(
+        _floats(locator.findtext("collision/geometry/box/size")) == [0.02, 0.52, 0.18],
+        "Locator blade size does not provide retracted clearance",
+    )
+
     bridge = machine.find("link[@name='outfeed_transfer_bridge']")
     outfeed = machine.find("link[@name='outfeed_surface']")
+    active = machine.find(
+        "link[@name='vibration_deck']/collision[@name='active_contact_surface']"
+    )
     require(bridge is not None and outfeed is not None, "Outfeed transfer geometry missing")
+    require(active is not None, "Active contact plate is missing from vibration deck")
     require(abs(_top_z(bridge) - 0.498) < 1.0e-9, "Bridge top must be 498 mm")
     require(abs(_top_z(outfeed) - 0.496) < 1.0e-9, "Outfeed top must be 496 mm")
     require(_top_z(bridge) > _top_z(outfeed), "Transfer must descend towards outfeed")
 
-    require(
-        machine.find("link[@name='vibration_deck']/collision[@name='active_contact_surface']")
-        is not None,
-        "Active contact plate is missing from vibration deck",
+    collisions = (
+        machine.find("link[@name='infeed_surface']/collision"),
+        active,
+        machine.find("link[@name='outfeed_transfer_bridge']/collision"),
+        machine.find("link[@name='outfeed_surface']/collision"),
     )
+    for collision in collisions:
+        require(collision is not None, "A transport collision is missing")
+        require(collision.findtext("surface/friction/ode/mu") == "0.08", "X friction must be low")
+        require(collision.findtext("surface/friction/ode/mu2") == "1.15", "Y friction must remain high")
+        require(
+            collision.findtext("surface/friction/ode/fdir1") == "1 0 0",
+            "Longitudinal friction direction is missing",
+        )
+
     plugin = world.find(
         "plugin[@name='kty_conveyor_surface::KtyConveyorSurfaceSystem']"
     )
     require(plugin is not None, "Contact-surface Gazebo plugin is missing")
-    require(plugin.findtext("velocity_gain") == "360.0", "Expected stronger velocity loop")
-    require(plugin.findtext("max_force") == "650.0", "Expected loaded-KTY force limit")
+    require(plugin.findtext("velocity_gain") == "80.0", "Unexpected velocity gain")
+    require(plugin.findtext("max_force") == "120.0", "Unexpected force limit")
     topics = {zone.findtext("topic") for zone in plugin.findall("zone")}
     require(
         topics
@@ -144,13 +174,14 @@ def validate_generated_world() -> None:
 def validate_python_and_launch() -> None:
     paths = (
         SIM / "kty_station_sim" / "world_patch_v3.py",
+        SIM / "kty_station_sim" / "mechatronics_cycle_v2.py",
         SIM / "kty_station_sim" / "mechatronics_cycle_v3.py",
         SIM / "launch" / "kty_mechatronics_surface.launch.py",
     )
     for path in paths:
         py_compile.compile(str(path), doraise=True)
 
-    controller = read(paths[1])
+    controller = read(paths[2])
     for fragment in (
         "super().__init__()",
         '"/kty/mech/infeed_surface/cmd_vel"',
@@ -160,7 +191,17 @@ def validate_python_and_launch() -> None:
     ):
         require(fragment in controller, f"Missing surface controller behavior: {fragment}")
 
-    launch = read(paths[2])
+    staged = read(paths[1])
+    for fragment in (
+        "retract locator and open clamps before energising contact surfaces",
+        "self._interruptible_sleep(2.5)",
+        "restraints clear; moving loaded KTY",
+        "active=0.0",
+        "outfeed=0.0",
+    ):
+        require(fragment in staged, f"Missing staged-release behavior: {fragment}")
+
+    launch = read(paths[3])
     for fragment in (
         "build_surface_world",
         'get_package_prefix("kty_conveyor_surface")',
