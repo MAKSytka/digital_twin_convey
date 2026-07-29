@@ -141,6 +141,10 @@ def validate_launcher() -> None:
         "metrics_node",
     ):
         require(executable in run_script, f"Launcher does not check {executable}")
+    require(
+        "ros2 interface show singulator_interfaces/msg/KtyStationState" in run_script,
+        "Launcher does not reject a stale interface install",
+    )
 
     controller = (
         PACKAGE / "kty_station_sim" / "station_controller.py"
@@ -149,8 +153,26 @@ def validate_launcher() -> None:
         '"/kty/world/poses"',
         "abs(self.active_kty_x) <= self.position_tolerance",
         "KTY positioning timeout; x=",
+        "self.transport_command_sign * infeed",
     ):
         require(fragment in controller, f"Missing pose-driven positioning: {fragment}")
+
+    spawner = (
+        PACKAGE / "kty_station_sim" / "product_spawner.py"
+    ).read_text(encoding="utf-8")
+    require(
+        'UInt32, "/kty/cycle_id", self._on_cycle, qos' in spawner,
+        "Product spawner cycle subscription must use transient-local QoS",
+    )
+
+    perception = (
+        PACKAGE / "kty_station_sim" / "depth_perception.py"
+    ).read_text(encoding="utf-8")
+    require(
+        "maximum = max((item.top_height for item in detections), default=0.0)"
+        in perception,
+        "Debug height must be computed from filtered KTY detections",
+    )
 
 
 def main() -> None:

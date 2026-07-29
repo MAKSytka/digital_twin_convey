@@ -47,6 +47,7 @@ class StationController(Node):
             "kty_spawn_x_m": -1.30,
             "support_top_z_m": 0.50,
             "approach_speed_mps": 0.65,
+            "transport_command_sign": -1.0,
             "approach_duration_s": 2.0,
             "positioning_timeout_s": 8.0,
             "position_tolerance_m": 0.08,
@@ -72,6 +73,9 @@ class StationController(Node):
         self.kty_spawn_x = float(self.get_parameter("kty_spawn_x_m").value)
         self.support_top_z = float(self.get_parameter("support_top_z_m").value)
         self.approach_speed = float(self.get_parameter("approach_speed_mps").value)
+        self.transport_command_sign = float(
+            self.get_parameter("transport_command_sign").value
+        )
         self.approach_duration = float(self.get_parameter("approach_duration_s").value)
         self.positioning_timeout = float(
             self.get_parameter("positioning_timeout_s").value
@@ -244,9 +248,15 @@ class StationController(Node):
             platform = self.eject_speed
             outfeed = self.eject_speed
 
-        self._publish_float(self.infeed_pub, infeed)
-        self._publish_float(self.platform_speed_pub, platform)
-        self._publish_float(self.outfeed_pub, outfeed)
+        self._publish_float(
+            self.infeed_pub, self.transport_command_sign * infeed
+        )
+        self._publish_float(
+            self.platform_speed_pub, self.transport_command_sign * platform
+        )
+        self._publish_float(
+            self.outfeed_pub, self.transport_command_sign * outfeed
+        )
         self._publish_float(self.shutter_pub, 0.0 if shutter_closed else 0.22)
 
         enabled = Bool()

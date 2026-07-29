@@ -5,6 +5,7 @@ station_controller:
     kty_spawn_x_m: -1.30
     support_top_z_m: 0.50
     approach_speed_mps: 0.65
+    transport_command_sign: -1.0
     approach_duration_s: 2.0
     positioning_timeout_s: 8.0
     position_tolerance_m: 0.08

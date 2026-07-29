@@ -81,7 +81,7 @@ class ProductSpawner(Node):
             self._on_clear,
             10,
         )
-        self.create_subscription(UInt32, "/kty/cycle_id", self._on_cycle, 10)
+        self.create_subscription(UInt32, "/kty/cycle_id", self._on_cycle, qos)
         self.timer = self.create_timer(1.0 / self.rate, self._on_timer)
 
     def _on_enabled(self, message: Bool) -> None:

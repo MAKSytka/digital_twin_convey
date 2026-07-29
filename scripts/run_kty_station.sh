@@ -28,4 +28,10 @@ for executable in "${required_executables[@]}"; do
   fi
 done
 
+if ! ros2 interface show singulator_interfaces/msg/KtyStationState >/dev/null 2>&1; then
+  echo "ERROR: singulator_interfaces/msg/KtyStationState is not installed." >&2
+  echo "Remove stale build/install directories and run ./scripts/build.sh." >&2
+  exit 2
+fi
+
 ros2 launch kty_station_sim kty_station.launch.py "$@"
