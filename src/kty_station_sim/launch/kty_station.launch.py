@@ -35,9 +35,8 @@ def generate_launch_description() -> LaunchDescription:
         launch_arguments={"gz_args": f"-r -v 3 {world}"}.items(),
     )
 
-    # Gazebo can expose the world before its control service is ready.  Retry
-    # with wall time so use_sim_time nodes are not left waiting on a paused
-    # simulation clock.
+    # Gazebo can expose the world before its control service is ready. Retry
+    # with wall time so use_sim_time nodes are not left on a paused clock.
     unpause_world = ExecuteProcess(
         cmd=[
             "bash",
@@ -61,7 +60,6 @@ def generate_launch_description() -> LaunchDescription:
         ],
         output="screen",
     )
-
     delayed_unpause = TimerAction(period=0.5, actions=[unpause_world])
 
     bridge = Node(
@@ -71,7 +69,6 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[{"config_file": str(bridge_config)}],
     )
-
     rgb_bridge = Node(
         package="ros_gz_image",
         executable="image_bridge",
@@ -124,6 +121,13 @@ def generate_launch_description() -> LaunchDescription:
             },
         ],
     )
+    vibration_driver = Node(
+        package="kty_station_sim",
+        executable="vibration_driver",
+        name="kty_vibration_driver",
+        output="screen",
+        parameters=[{"use_sim_time": True}],
+    )
     safety = Node(
         package="kty_station_sim",
         executable="safety_monitor",
@@ -154,14 +158,13 @@ def generate_launch_description() -> LaunchDescription:
         condition=IfCondition(vision_gui_enabled),
     )
 
-    # The control nodes start after Gazebo and transport bridges have had time
-    # to advertise the create/remove and sensor endpoints.
     delayed_nodes = TimerAction(
         period=2.0,
         actions=[
             registry_json_mirror,
             perception,
             product_spawner,
+            vibration_driver,
             safety,
             metrics,
             controller,
