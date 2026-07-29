@@ -97,7 +97,7 @@ def generate_launch_description() -> LaunchDescription:
                 "internal_height_m": 0.40,
                 "wall_exclusion_margin_m": 0.040,
                 "maximum_product_height_m": 0.360,
-                "processing_hz": 4.0,
+                "processing_hz": 3.0,
             }
         ],
     )
@@ -120,10 +120,10 @@ def generate_launch_description() -> LaunchDescription:
                 "internal_width_m": 0.40,
                 "internal_height_m": 0.40,
                 "minimum_product_height_m": 0.008,
-                "minimum_contour_area_px": 42.0,
+                "minimum_contour_area_px": 32.0,
                 "depth_edge_threshold_m": 0.010,
                 "normal_edge_threshold": 0.12,
-                "seed_min_distance_px": 14,
+                "seed_min_distance_px": 12,
                 "seed_height_prominence_m": 0.010,
                 "track_max_distance_m": 0.14,
                 "track_max_height_delta_m": 0.18,
@@ -132,7 +132,7 @@ def generate_launch_description() -> LaunchDescription:
                 "top_occlusion_max": 0.48,
                 "simulated_depth_noise_std_m": 0.0008,
                 "simulated_dropout_probability": 0.001,
-                "processing_hz": 4.0,
+                "processing_hz": 3.0,
             }
         ],
     )
@@ -168,7 +168,7 @@ def generate_launch_description() -> LaunchDescription:
                 "flow_state_topic": "/kty/flow/state",
                 "dashboard_topic": "/kty/vision/dashboard",
                 "show_window": ParameterValue(show_dashboard, value_type=bool),
-                "refresh_hz": 5.0,
+                "refresh_hz": 4.0,
             }
         ],
     )
@@ -195,8 +195,8 @@ def generate_launch_description() -> LaunchDescription:
                     height_threshold,
                     value_type=float,
                 ),
-                "roller_linear_speed_mps": 0.34,
-                "slow_roller_linear_speed_mps": 0.12,
+                "roller_linear_speed_mps": 0.65,
+                "slow_roller_linear_speed_mps": 0.18,
                 "weak_vibration_frequency_hz": 8.0,
                 "weak_vibration_amplitude_m": 0.0005,
                 "strong_vibration_frequency_hz": 18.0,
