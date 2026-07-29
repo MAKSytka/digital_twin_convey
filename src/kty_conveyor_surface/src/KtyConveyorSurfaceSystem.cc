@@ -1,12 +1,14 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
+#include <gz/math/Vector3.hh>
 #include <gz/msgs/double.pb.h>
 #include <gz/plugin/Register.hh>
 #include <gz/sim/Entity.hh>
@@ -79,7 +81,7 @@ public:
     for (std::size_t index = 0; index < this->zones.size(); ++index)
     {
       const auto topic = this->zones[index].topic;
-      this->transport.Subscribe(
+      this->transport.Subscribe<gz::msgs::Double>(
         topic,
         [this, index](const gz::msgs::Double &_message)
         {
@@ -132,7 +134,7 @@ public:
         if (std::abs(position.Z() - this->surfaceZ) > this->contactTolerance)
           return true;
 
-        const Zone *activeZone = nullptr;
+        bool insideZone = false;
         double targetVelocity = 0.0;
         for (std::size_t index = 0; index < this->zones.size(); ++index)
         {
@@ -140,12 +142,12 @@ public:
           if (position.X() >= zone.minX && position.X() <= zone.maxX &&
               position.Y() >= zone.minY && position.Y() <= zone.maxY)
           {
-            activeZone = &zone;
+            insideZone = true;
             targetVelocity = commands[index];
             break;
           }
         }
-        if (!activeZone)
+        if (!insideZone)
           return true;
 
         const double error = targetVelocity - velocity->X();
@@ -181,8 +183,8 @@ private:
 GZ_ADD_PLUGIN(
   kty_conveyor_surface::KtyConveyorSurfaceSystem,
   gz::sim::System,
-  kty_conveyor_surface::KtyConveyorSurfaceSystem::ISystemConfigure,
-  kty_conveyor_surface::KtyConveyorSurfaceSystem::ISystemPreUpdate)
+  gz::sim::ISystemConfigure,
+  gz::sim::ISystemPreUpdate)
 
 GZ_ADD_PLUGIN_ALIAS(
   kty_conveyor_surface::KtyConveyorSurfaceSystem,
