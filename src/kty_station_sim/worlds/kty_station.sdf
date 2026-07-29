@@ -6,7 +6,7 @@
     <!-- 0.5 ms resolves the 20-50 Hz platform command and dense contacts. -->
     <physics name="kty_physics" type="ignored">
       <max_step_size>0.0005</max_step_size>
-      <real_time_factor>0.5</real_time_factor>
+      <real_time_factor>1.0</real_time_factor>
       <real_time_update_rate>2000</real_time_update_rate>
     </physics>
 
@@ -126,7 +126,10 @@
       </link>
       <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
         <link>belt</link>
-        <track_orientation>0 0 0</track_orientation>
+        <!-- TrackController models a vehicle track: with identity orientation
+             its top contact surface travels toward -X for a positive command.
+             Rotate the virtual track by pi so station commands move KTYs +X. -->
+        <track_orientation>0 0 3.14159265359</track_orientation>
         <velocity_topic>/kty/infeed/cmd_vel</velocity_topic>
         <min_velocity>-1.5</min_velocity><max_velocity>1.5</max_velocity>
         <min_acceleration>-4.0</min_acceleration><max_acceleration>4.0</max_acceleration>
@@ -172,7 +175,7 @@
       </plugin>
       <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
         <link>table</link>
-        <track_orientation>0 0 0</track_orientation>
+        <track_orientation>0 0 3.14159265359</track_orientation>
         <velocity_topic>/kty/platform/cmd_vel</velocity_topic>
         <min_velocity>-1.5</min_velocity><max_velocity>1.5</max_velocity>
         <min_acceleration>-4.0</min_acceleration><max_acceleration>4.0</max_acceleration>
@@ -208,7 +211,7 @@
         <visual name="belt_visual"><geometry><box><size>1.60 0.55 0.08</size></box></geometry><material><ambient>0.30 0.31 0.33 1</ambient><diffuse>0.42 0.43 0.45 1</diffuse></material></visual>
       </link>
       <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
-        <link>belt</link><track_orientation>0 0 0</track_orientation>
+        <link>belt</link><track_orientation>0 0 3.14159265359</track_orientation>
         <velocity_topic>/kty/outfeed/cmd_vel</velocity_topic>
         <min_velocity>-1.5</min_velocity><max_velocity>1.5</max_velocity>
         <min_acceleration>-4.0</min_acceleration><max_acceleration>4.0</max_acceleration>
