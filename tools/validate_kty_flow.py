@@ -51,17 +51,17 @@ def validate_world() -> None:
     text = read(WORLD)
     for fragment in (
         'name="kty_flow"',
-        'gz-sim-user-commands-system',
-        'gz-sim-scene-broadcaster-system',
-        '<max_step_size>0.001</max_step_size>',
-        '<real_time_factor>1.0</real_time_factor>',
-        '<pose>-0.730 0 1.185 0 0.5585053606 0</pose>',
-        '<mu>0.20</mu>',
+        "gz-sim-user-commands-system",
+        "gz-sim-scene-broadcaster-system",
+        "<max_step_size>0.001</max_step_size>",
+        "<real_time_factor>1.0</real_time_factor>",
+        "<pose>-0.730 0 1.185 0 0.5585053606 0</pose>",
+        "<mu>0.20</mu>",
         '<plugin filename="MinimalScene" name="3D View">',
         '<plugin filename="InteractiveViewControl" name="Interactive view control">',
         '<plugin filename="CameraTracking" name="Camera Tracking">',
         '<plugin name="World control" filename="WorldControl">',
-        '<start_paused>0</start_paused>',
+        "<start_paused>0</start_paused>",
     ):
         require(fragment in text, f"Missing world fragment: {fragment}")
 
@@ -76,25 +76,25 @@ def validate_python() -> None:
         '"/kty/flow/state"',
         '"/kty/flow/heartbeat"',
         '"/kty/flow/restart"',
-        'make_kty_sdf(kty_name)',
-        'make_flow_product_sdf(name, profile)',
-        'self._create_service',
-        'self._set_pose_service',
-        'self._remove_service',
-        'self._pose_topic',
-        'inside == self.product_count',
-        'time.monotonic()',
+        "make_kty_sdf(kty_name)",
+        "make_flow_product_sdf(name, profile)",
+        "self._create_service",
+        "self._set_pose_service",
+        "self._remove_service",
+        "self._pose_topic",
+        "inside == self.product_count",
+        "time.monotonic()",
     ):
         require(fragment in base, f"Missing base controller behavior: {fragment}")
 
     smooth = read(SMOOTH_CONTROLLER)
     for fragment in (
-        'class SmoothKtyFlowCycle(KtyFlowCycle)',
-        'VIBRATION_DURATION_S = 5.0',
-        'VIBRATION_FREQUENCY_HZ = 5.0',
-        'VIBRATION_AMPLITUDE_M = 0.0020',
-        'PRODUCT_UPDATE_HZ = 8.0',
-        '6.0 * ratio**5 - 15.0 * ratio**4 + 10.0 * ratio**3',
+        "class SmoothKtyFlowCycle(KtyFlowCycle)",
+        "VIBRATION_DURATION_S = 5.0",
+        "VIBRATION_FREQUENCY_HZ = 5.0",
+        "VIBRATION_AMPLITUDE_M = 0.0020",
+        "PRODUCT_UPDATE_HZ = 8.0",
+        "6.0 * ratio**5 - 15.0 * ratio**4 + 10.0 * ratio**3",
         '"APPROACH"',
         '"LOAD"',
         '"SETTLE"',
@@ -102,8 +102,8 @@ def validate_python() -> None:
         '"OUTFEED"',
         '"DESPAWN"',
         '"COMPLETE"',
-        'self._vibrate_kty(kty_name, captured_poses[kty_name])',
-        'removed_total=self._removed_models',
+        "self._vibrate_kty(kty_name, captured_poses[kty_name])",
+        "removed_total=self._removed_models",
     ):
         require(fragment in smooth, f"Missing smooth controller behavior: {fragment}")
 
@@ -134,10 +134,11 @@ def validate_package_and_scripts() -> None:
     supported_versions = (
         "<version>0.3.0</version>",
         "<version>0.4.0</version>",
+        "<version>0.5.0</version>",
     )
     require(
         any(version in package_xml for version in supported_versions),
-        "Expected flow package version 0.3.0 or vision extension 0.4.0",
+        "Expected compatible KTY package version 0.3.0, 0.4.0 or 0.5.0",
     )
     require(
         "<buildtool_depend>ament_python</buildtool_depend>" not in package_xml,
