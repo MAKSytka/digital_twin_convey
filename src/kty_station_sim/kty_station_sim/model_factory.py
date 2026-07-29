@@ -147,7 +147,6 @@ class ProductSpec:
         <material>
           <ambient>{r:.4f} {g:.4f} {b:.4f} 1</ambient>
           <diffuse>{r:.4f} {g:.4f} {b:.4f} 1</diffuse>
-          
         </material>
       </visual>
     </link>
@@ -167,14 +166,16 @@ def make_kty_sdf(
     """Create an open, flapless, thin-walled KTY model.
 
     The model origin is at the outer bottom surface, which makes the spawn Z
-    equal to the supporting conveyor / platform top Z.
+    equal to the supporting conveyor / platform top Z.  A VelocityControl
+    system is embedded in the spawned model.  It provides a deterministic
+    transport actuator on ``/kty/carrier/cmd_vel`` while the visible conveyor
+    zones continue to receive their contact-surface commands.
     """
 
     outer_x = internal_x + 2.0 * wall
     outer_y = internal_y + 2.0 * wall
     outer_z = internal_z + wall
     ixx, iyy, izz = _box_inertia(mass, outer_x, outer_y, outer_z)
-    wall_z = wall + internal_z / 2.0
     side_z = wall + internal_z / 2.0
     cardboard = "0.63 0.36 0.12 1"
 
@@ -242,6 +243,12 @@ def make_kty_sdf(
       <velocity_decay><linear>0.02</linear><angular>0.08</angular></velocity_decay>
       {''.join(parts)}
     </link>
+    <plugin filename="gz-sim-velocity-control-system"
+            name="gz::sim::systems::VelocityControl">
+      <topic>/kty/carrier/cmd_vel</topic>
+      <initial_linear>0 0 0</initial_linear>
+      <initial_angular>0 0 0</initial_angular>
+    </plugin>
   </model>
 </sdf>
 """
