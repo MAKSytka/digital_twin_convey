@@ -6,7 +6,7 @@
     <!-- 0.5 ms resolves the 20-50 Hz platform command and dense contacts. -->
     <physics name="kty_physics" type="ignored">
       <max_step_size>0.0005</max_step_size>
-      <real_time_factor>0.5</real_time_factor>
+      <real_time_factor>1.0</real_time_factor>
       <real_time_update_rate>2000</real_time_update_rate>
     </physics>
 
@@ -62,6 +62,7 @@
         <start_paused>false</start_paused>
         <service>/world/kty_station/control</service>
         <stats_topic>/world/kty_station/stats</stats_topic>
+        <use_event>true</use_event>
       </plugin>
 
       <plugin filename="WorldStats" name="World stats">

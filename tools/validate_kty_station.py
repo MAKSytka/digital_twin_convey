@@ -31,6 +31,7 @@ def validate_world() -> None:
     text = WORLD.read_text(encoding="utf-8")
     required_fragments = (
         "<max_step_size>0.0005</max_step_size>",
+        "<real_time_factor>1.0</real_time_factor>",
         "<size>1.000 0.600 0.020</size>",
         "0.5585053606",
         "/kty/platform/cmd_pos",
@@ -40,10 +41,22 @@ def validate_world() -> None:
         "<upper>0.0032</upper>",
         '<plugin filename="MinimalScene" name="3D View">',
         "<start_paused>false</start_paused>",
+        "<use_event>true</use_event>",
         "/world/kty_station/control",
     )
     for fragment in required_fragments:
         require(fragment in text, f"Missing world fragment: {fragment}")
+
+    track_controllers = world.findall(
+        ".//plugin[@filename='gz-sim-track-controller-system']"
+    )
+    require(len(track_controllers) == 3, "Expected three driven contact surfaces")
+    for controller in track_controllers:
+        orientation = controller.findtext("track_orientation", "").split()
+        require(
+            orientation == ["0", "0", "0"],
+            "Positive contact-surface commands must transport payloads toward +X",
+        )
 
     models = {model.attrib["name"] for model in world.findall("model")}
     required_models = {
@@ -114,12 +127,37 @@ def validate_interfaces() -> None:
         require(f'"msg/{name}"' in cmake, f"{name} is not registered in CMake")
 
 
+def validate_launcher() -> None:
+    run_script = (ROOT / "scripts" / "run_kty_station.sh").read_text(
+        encoding="utf-8"
+    )
+    for executable in (
+        "station_controller",
+        "product_spawner",
+        "depth_perception",
+        "safety_monitor",
+        "metrics_node",
+    ):
+        require(executable in run_script, f"Launcher does not check {executable}")
+
+    controller = (
+        PACKAGE / "kty_station_sim" / "station_controller.py"
+    ).read_text(encoding="utf-8")
+    for fragment in (
+        '"/kty/world/poses"',
+        "abs(self.active_kty_x) <= self.position_tolerance",
+        "KTY positioning timeout; x=",
+    ):
+        require(fragment in controller, f"Missing pose-driven positioning: {fragment}")
+
+
 def main() -> None:
     validate_world()
     validate_launch()
     validate_python()
     validate_factories()
     validate_interfaces()
+    validate_launcher()
     print("KTY station static validation: OK")
 
 
