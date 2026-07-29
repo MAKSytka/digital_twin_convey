@@ -123,8 +123,17 @@ def validate_scripts() -> None:
         "/gui/camera/view_control",
         "kty_smoke_container",
         "/kty/smoke/heartbeat",
+        "check_gz_model()",
+        "sed -E",
+        "/world/kty_station_smoke/pose/info",
+        "Raw output of 'gz model --list'",
     ):
         require(fragment in diagnostic, f"Smoke diagnostic is missing: {fragment}")
+
+    require(
+        "grep -Fxq 'kty_smoke_container'" not in diagnostic,
+        "Smoke diagnostic must not depend on undecorated exact CLI output",
+    )
 
 
 def main() -> None:
