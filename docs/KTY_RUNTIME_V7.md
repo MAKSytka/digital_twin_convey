@@ -1,92 +1,100 @@
-# KTY runtime v7
+# KTY roller-free contact-surface runtime
 
-This stage corrects the first physical mechatronics runtime after target-machine testing.
+This runtime replaces the experimental roller mechanism with three flat physical
+contact zones. The goal is a robust digital-twin transport abstraction while
+preserving gravity, collisions, physical vibration and product motion inside the
+KTY.
 
-## Confirmed stage-6 failures
-
-- the hinged chute gate did not block products;
-- roller links rotated around an incorrect joint frame and became skewed;
-- a grouped `JointController` did not reliably drive all outfeed rollers;
-- the loaded KTY failed with `did not clear active zone`;
-- the 0.65 s feeder interval produced an uncontrolled pile;
-- RGB-D plus dashboard load reduced RTF to about 0.15;
-- the classical 3-D node disappeared after an unhandled image callback exception.
-
-## Runtime-v7 changes
-
-### Roller geometry
-
-The source SDF is patched before Gazebo starts:
-
-- complete roller links are no longer rotated;
-- only cylinder collision and visual geometry is rotated onto the Y axle;
-- each revolute joint is placed at the matching roller centre;
-- each roller has its own `JointController` subscribing to the shared group topic;
-- each clamp has its own position controller.
-
-This removes orbital / diagonal roller motion and makes all contact surfaces receive a velocity command.
-
-### Slide gate
-
-The hinged mechanism is removed from the generated world.  The controller creates a static model named:
+## Transport layout
 
 ```text
-kty_mech_chute_gate
+infeed contact surface
+        -> vibrating active contact surface
+        -> outfeed contact surface
 ```
 
-when the chute must close and removes it when a verified empty KTY is ready.  The plate is 35 x 620 x 260 mm and overlaps the chute surface so small products cannot pass below it.
+The generated Gazebo world contains no `*_roller_*` links, joints or velocity
+controllers.
 
-### Feeder and load reduction
+A Gazebo system plugin named `KtyConveyorSurfaceSystem` subscribes to:
 
 ```text
-old interval: 0.65 s
-new interval: 1.15 s
+/kty/mech/infeed_surface/cmd_vel
+/kty/mech/active_surface/cmd_vel
+/kty/mech/outfeed_surface/cmd_vel
 ```
 
-The default flow is 1.77 times slower.
+Commands are target linear velocities in metres per second. The plugin measures
+the current X velocity of every `kty_mech_container_*` model located above a
+surface zone and applies a bounded X force to its canonical link. It does not set
+world pose and does not overwrite vertical velocity, so vibration, gravity and
+contact physics remain active.
 
-Balanced sensor settings:
+The default transport speeds are:
 
 ```text
-RGB-D:       640 x 480 at 8 Hz
-3-D process: 4 Hz
-fill:        4 Hz
-dashboard:   5 Hz
-physics:     2 ms step / 500 Hz target
+normal: 0.34 m/s
+slow positioning: 0.12 m/s
 ```
 
-The dashboard window defaults to disabled for the first mechanics acceptance test.  Its ROS image topic remains available.
+A command of `0.0` is normal during `LOAD`, `COMPACT` and idle phases. The
+outfeed command becomes positive in `EJECT_ACTIVE`.
 
-### Fill estimate
+## Active zone
 
-A 40 mm border is excluded from every KTY side.  Samples near the 400 mm wall top are rejected and the measured core volume is extrapolated to the complete 600 x 400 mm floor.  Output schema:
+The central contact plate is attached to `vibration_deck`. Therefore the same
+KTY receives:
+
+- longitudinal transport force from the contact-surface plugin;
+- weak 8 Hz loading vibration at ±0.5 mm;
+- strong 18 Hz compaction vibration at ±3 mm;
+- side-clamp and locator interactions.
+
+## Chute gate
+
+The slide gate remains lifecycle-managed:
+
+- closing creates static model `kty_mech_chute_gate`;
+- opening removes that model;
+- the plate blocks products while the loaded KTY exits and the queued KTY is
+  positioned.
+
+## Runtime load
+
+Default test settings remain balanced:
 
 ```text
-kty_fill_state/v2
+product spawn interval: 1.15 s
+physics step:           2 ms
+RGB-D:                  640 x 480 at 8 Hz
+fill estimation:        4 Hz
+3-D perception:         4 Hz
+dashboard window:       disabled by default
 ```
-
-### 3-D process fault containment
-
-`kty_classical_3d_perception_v2` processes at 4 Hz.  A bad frame no longer terminates the node.  Details are published in:
-
-```text
-/kty/perception/fault
-```
-
-Message fields are assigned explicitly for compatibility with Jazzy-generated Python interfaces.  OCCLUDED objects remain non-actionable.
 
 ## Build
 
 ```bash
 cd ~/singulator_digital_twin
-git fetch origin
-git switch --track origin/fix/kty-mechatronics-runtime-v7
-chmod +x scripts/check_kty_runtime_v7.sh
-python3 tools/validate_kty_runtime_v7.py
+source /opt/ros/jazzy/setup.bash
 bash ./scripts/build_kty_perception_3d.sh
 ```
 
-## First launch
+The build compiles:
+
+```text
+singulator_interfaces
+kty_conveyor_surface
+kty_station_sim
+```
+
+The Gazebo plugin must be installed as:
+
+```text
+install/kty_conveyor_surface/lib/libKtyConveyorSurfaceSystem.so
+```
+
+## Run
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -94,27 +102,48 @@ source install/setup.bash
 bash ./scripts/run_kty_perception_3d.sh
 ```
 
-The first run is headless by default.  After transport works:
-
-```bash
-bash ./scripts/run_kty_perception_3d.sh show_dashboard:=true
-```
+The launch file sets `GZ_SIM_SYSTEM_PLUGIN_PATH` automatically.
 
 ## Diagnostics
 
 ```bash
-source /opt/ros/jazzy/setup.bash
-source install/setup.bash
 bash ./scripts/check_kty_runtime_v7.sh
 ```
 
-Acceptance requires:
+Expected acceptance sequence:
 
-1. all rollers remain parallel;
-2. the KTY exits on active / outfeed rollers;
-3. the static gate model appears during CLOSE_GATE / COMPACT;
-4. products remain on the chute while the gate exists;
-5. the gate disappears only after the next KTY passes readiness checks;
-6. a second LOAD state is reached;
-7. the classical 3-D node stays present and publishes contours;
-8. RTF improves over the previous 0.15 baseline.
+```text
+LOAD
+-> CLOSE_GATE
+-> COMPACT
+-> EJECT_ACTIVE
+-> POSITION_NEXT
+-> VERIFY_READY
+-> OPEN_GATE
+-> LOAD (cycle 2)
+```
+
+Manual command observation:
+
+```bash
+ros2 topic echo /kty/mech/outfeed_surface/cmd_vel
+```
+
+Expected values:
+
+```text
+0.0 during loading and compaction
+approximately 0.34 during EJECT_ACTIVE
+```
+
+## Runtime acceptance
+
+The stage is accepted only after target-machine testing confirms:
+
+1. no roller models are visible;
+2. the loaded KTY moves continuously on the flat active/outfeed surfaces;
+3. products stay inside the KTY during transport;
+4. the gate retains products during changeover;
+5. a second KTY reaches `LOAD`;
+6. perception remains alive;
+7. measured RTF is recorded.
