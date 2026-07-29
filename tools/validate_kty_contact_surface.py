@@ -138,12 +138,12 @@ def validate_python_and_launch() -> None:
 def validate_package_and_scripts() -> None:
     setup = read(SIM / "setup.py")
     package_xml = read(SIM / "package.xml")
-    require('version="0.6.0"' in setup, "Expected kty_station_sim version 0.6.0")
+    require('version="0.5.0"' in setup, "Expected compatible kty_station_sim version 0.5.0")
     require(
         "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v3:main" in setup,
         "Missing v3 controller entry point",
     )
-    require("<version>0.6.0</version>" in package_xml, "package.xml version mismatch")
+    require("<version>0.5.0</version>" in package_xml, "package.xml version mismatch")
     require(
         "<exec_depend>kty_conveyor_surface</exec_depend>" in package_xml,
         "Missing runtime dependency on contact-surface plugin",
