@@ -7,7 +7,7 @@ package_name = "kty_station_sim"
 
 setup(
     name=package_name,
-    version="0.5.0",
+    version="0.5.1",
     packages=[package_name],
     data_files=[
         (
@@ -39,9 +39,12 @@ setup(
             "smoke_heartbeat = kty_station_sim.smoke_heartbeat:main",
             "flow_cycle = kty_station_sim.flow_cycle_smooth:main",
             "mechatronics_cycle = kty_station_sim.mechatronics_cycle:main",
+            "mechatronics_cycle_v2 = kty_station_sim.mechatronics_cycle_v2:main",
             "fill_estimator = kty_station_sim.fill_estimator:main",
+            "fill_estimator_v2 = kty_station_sim.fill_estimator_v2:main",
             "depth_perception = kty_station_sim.depth_perception:main",
             "depth_perception_3d = kty_station_sim.depth_perception_3d:main",
+            "depth_perception_3d_v2 = kty_station_sim.depth_perception_3d_v2:main",
             "contour_recorder = kty_station_sim.contour_recorder:main",
             "contour_recorder_3d = kty_station_sim.contour_recorder_3d:main",
             "vision_dashboard = kty_station_sim.vision_dashboard:main",
