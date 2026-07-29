@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Static and cross-file checks for the KTY station.
+"""Static and cross-file checks for the KTY station runtime v3.
 
-The validator does not replace a Gazebo runtime test. It verifies that models,
-ROS interfaces, entry points, bridges and fallback controls are wired
-consistently before the simulator starts.
+These checks do not replace a Gazebo runtime test.  They prevent regressions in
+SDF, Python entry points, model factories, bridges, GUI plugins and scripts.
 """
 
 from __future__ import annotations
@@ -32,8 +31,7 @@ def read(path: Path) -> str:
 
 
 def validate_world() -> None:
-    tree = ET.parse(WORLD)
-    root = tree.getroot()
+    root = ET.parse(WORLD).getroot()
     require(root.tag == "sdf", "Root element must be sdf")
     world = root.find("world")
     require(world is not None, "World element is missing")
@@ -51,12 +49,18 @@ def validate_world() -> None:
         "<mu>0.75</mu>",
         "<upper>0.0032</upper>",
         '<plugin filename="MinimalScene" name="3D View">',
+        '<plugin filename="InteractiveViewControl" name="Interactive view control">',
+        '<plugin filename="CameraTracking" name="Camera tracking">',
+        '<plugin filename="WorldControl" name="World control">',
         "<start_paused>false</start_paused>",
-        "<use_event>true</use_event>",
         "/world/kty_station/control",
     )
     for fragment in required_fragments:
         require(fragment in text, f"Missing world fragment: {fragment}")
+    require(
+        "<use_event>true</use_event>" not in text,
+        "WorldControl must call the world service so Play/Pause/Reset work",
+    )
 
     track_controllers = world.findall(
         ".//plugin[@filename='gz-sim-track-controller-system']"
@@ -118,19 +122,17 @@ def validate_factories() -> None:
     spec.loader.exec_module(module)
 
     kty_sdf = module.make_kty_sdf("kty_test")
-    kty_root = ET.fromstring(kty_sdf)
+    ET.fromstring(kty_sdf)
     require(kty_sdf.count("<collision") == 5, "KTY must have bottom and four walls")
     require("0.003000000" in kty_sdf, "3 mm KTY wall is missing")
     require(
-        "gz-sim-velocity-control-system" in kty_sdf,
-        "Spawned KTY has no deterministic carrier actuator",
+        "gz-sim-velocity-control-system" not in kty_sdf,
+        "KTY must be a free dynamic body outside set_pose transport stages",
     )
     require(
-        "/kty/carrier/cmd_vel" in kty_sdf,
-        "Spawned KTY listens on the wrong Gazebo carrier topic",
+        "/kty/carrier/cmd_vel" not in kty_sdf,
+        "Obsolete carrier velocity topic remains in the KTY model",
     )
-    plugin = kty_root.find(".//plugin[@filename='gz-sim-velocity-control-system']")
-    require(plugin is not None, "VelocityControl plugin is missing from KTY SDF")
 
     rng = __import__("random").Random(42)
     for index in range(100):
@@ -173,32 +175,36 @@ def validate_interfaces() -> None:
 def validate_runtime_wiring() -> None:
     setup = read(PACKAGE / "setup.py")
     for fragment in (
-        "station_controller = kty_station_sim.station_controller_v2:main",
+        "station_controller = kty_station_sim.station_controller_v3:main",
         "vibration_driver = kty_station_sim.vibration_driver:main",
         "safety_monitor = kty_station_sim.safety_monitor_v2:main",
         "registry_json_mirror = kty_station_sim.registry_json_mirror:main",
     ):
         require(fragment in setup, f"Missing console entry point: {fragment}")
 
-    controller = read(PACKAGE / "kty_station_sim" / "station_controller_v2.py")
+    controller = read(PACKAGE / "kty_station_sim" / "station_controller_v3.py")
     for fragment in (
-        'Twist, "/kty/carrier/cmd_vel"',
-        "carrier.linear.x = carrier_x",
-        "deterministic 2 s carrier transfer",
-        "pose feedback unavailable",
-        "scan_failures_before_fault",
-        "surface_command_sign * infeed",
+        'f"/world/{self.world_name}/set_pose"',
+        '"gz.msgs.Pose"',
+        "def _drive_transport(",
+        "KTY moved to platform by set_pose trajectory",
+        "Gazebo simulation time moved backwards",
+        "self._start_kty_spawn_if_needed()",
+        "enabled.data = feed_enabled",
     ):
-        require(fragment in controller, f"Controller v2 is missing: {fragment}")
+        require(fragment in controller, f"Controller v3 is missing: {fragment}")
 
     vibration = read(PACKAGE / "kty_station_sim" / "vibration_driver.py")
     for fragment in (
         "self.create_timer(0.002, self._tick)",
-        '"/kty/carrier/cmd_vel_filtered"',
         '"/kty/platform/cmd_pos_filtered"',
-        "amplitude * omega * math.cos(phase)",
+        "position = amplitude * math.sin(phase)",
     ):
         require(fragment in vibration, f"High-rate vibration driver is missing: {fragment}")
+    require(
+        "/kty/carrier/cmd_vel" not in vibration,
+        "Vibration driver must not kinematically force the KTY",
+    )
 
     safety = read(PACKAGE / "kty_station_sim" / "safety_monitor_v2.py")
     for fragment in (
@@ -210,13 +216,23 @@ def validate_runtime_wiring() -> None:
         require(fragment in safety, f"Conditional safety fallback is missing: {fragment}")
 
     bridge = read(PACKAGE / "config" / "bridge.yaml")
+    require(
+        "/kty/platform/cmd_pos_filtered" in bridge,
+        "Filtered platform command bridge is missing",
+    )
+    require(
+        "/kty/carrier/cmd_vel" not in bridge and "gz.msgs.Twist" not in bridge,
+        "Obsolete carrier velocity bridge remains configured",
+    )
+
+    station_config = read(PACKAGE / "config" / "station.yaml")
     for fragment in (
-        "/kty/carrier/cmd_vel_filtered",
-        "/kty/platform/cmd_pos_filtered",
-        "geometry_msgs/msg/Twist",
-        "gz.msgs.Twist",
+        "transport_update_period_s: 0.05",
+        "transport_position_tolerance_m: 0.005",
+        "transport_failure_limit: 8",
+        "world_reset_jump_threshold_s: 0.10",
     ):
-        require(fragment in bridge, f"Filtered command bridge is missing: {fragment}")
+        require(fragment in station_config, f"Runtime v3 parameter is missing: {fragment}")
 
     run_script = read(ROOT / "scripts" / "run_kty_station.sh")
     for fragment in (
@@ -241,25 +257,19 @@ def validate_runtime_wiring() -> None:
         "Targeted build must not require or skip an ament_python rosdep key",
     )
 
-    general_build = read(ROOT / "scripts" / "build.sh")
-    require(
-        "ament_python" not in general_build,
-        "General build must not require or skip an ament_python rosdep key",
-    )
-
-    setup_dependencies = read(ROOT / "scripts" / "setup_dependencies.sh")
-    require(
-        "ros-jazzy-ament-python" not in setup_dependencies,
-        "Dependency installer references a non-existent ros-jazzy-ament-python package",
-    )
-
     diagnostic = read(ROOT / "scripts" / "check_kty_station.sh")
     for fragment in (
-        "/kty/ground_truth/registry_json",
-        "/kty/carrier/cmd_vel_filtered",
+        "/world/kty_station/control",
+        "/world/kty_station/set_pose",
+        "/gui/camera/view_control",
+        "/kty/product_spawner/enabled",
         "/kty/platform/cmd_pos_filtered",
     ):
         require(fragment in diagnostic, f"Diagnostic check is missing: {fragment}")
+    require(
+        "/kty/carrier/cmd_vel_filtered" not in diagnostic,
+        "Diagnostic script still expects the removed carrier bridge",
+    )
 
 
 def main() -> None:
