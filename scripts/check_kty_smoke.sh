@@ -31,6 +31,46 @@ check_gz_service() {
   fi
 }
 
+check_gz_model() {
+  local model="$1"
+  local raw_list
+  local normalized_list
+
+  raw_list="$(gz model --list 2>/dev/null || true)"
+  normalized_list="$(
+    printf '%s\n' "$raw_list" |
+      sed -E \
+        -e 's/^[[:space:]]*-[[:space:]]*//' \
+        -e 's/^[[:space:]]+//' \
+        -e 's/[[:space:]]+$//'
+  )"
+
+  if grep -Fxq "$model" <<<"$normalized_list"; then
+    echo "OK model: $model (gz model --list)"
+    return 0
+  fi
+
+  # Some Gazebo Harmonic CLI builds decorate or omit entries in `gz model
+  # --list`. The scene broadcaster pose stream is an independent runtime
+  # source of truth for entities loaded into this world.
+  if timeout 5 gz topic -e \
+      -t /world/kty_station_smoke/pose/info \
+      -n 1 2>/dev/null |
+      grep -Fq "name: \"${model}\""; then
+    echo "OK model: $model (world pose stream)"
+    return 0
+  fi
+
+  echo "FAIL model: $model" >&2
+  echo "Raw output of 'gz model --list':" >&2
+  if [[ -n "$raw_list" ]]; then
+    printf '%s\n' "$raw_list" >&2
+  else
+    echo "  <empty>" >&2
+  fi
+  return 1
+}
+
 check_node /kty_smoke_heartbeat
 
 printf '\nHeartbeat sample:\n'
@@ -52,10 +92,7 @@ else
 fi
 
 printf '\nGazebo model check:\n'
-if gz model --list 2>/dev/null | grep -Fxq 'kty_smoke_container'; then
-  echo "OK model: kty_smoke_container"
-else
-  echo "FAIL model: kty_smoke_container" >&2
+if ! check_gz_model kty_smoke_container; then
   failures=$((failures + 1))
 fi
 
