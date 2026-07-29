@@ -13,8 +13,8 @@ float32 clearance_pos_x_m
 float32 clearance_neg_y_m
 float32 clearance_pos_y_m
 
-string STATE_VISIBLE=VISIBLE
-string STATE_OCCLUDED=OCCLUDED
+string STATE_VISIBLE="VISIBLE"
+string STATE_OCCLUDED="OCCLUDED"
 string tracking_state
 geometry_msgs/Polygon oriented_rectangle
 geometry_msgs/Vector3 surface_normal
