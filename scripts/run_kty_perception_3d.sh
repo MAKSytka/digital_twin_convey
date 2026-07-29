@@ -6,4 +6,4 @@ set +u
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash
 set -u
-exec ros2 launch kty_station_sim kty_mechatronics.launch.py "$@"
+exec ros2 launch kty_station_sim kty_mechatronics_v2.launch.py "$@"
