@@ -47,12 +47,12 @@ def validate_world() -> None:
 
     text = read(WORLD)
     for fragment in (
-        'gz-sim-sensors-system',
-        '<render_engine>ogre2</render_engine>',
-        '<topic>/kty/vision</topic>',
-        '<horizontal_fov>1.05</horizontal_fov>',
-        '<near>0.20</near>',
-        '<far>3.0</far>',
+        "gz-sim-sensors-system",
+        "<render_engine>ogre2</render_engine>",
+        "<topic>/kty/vision</topic>",
+        "<horizontal_fov>1.05</horizontal_fov>",
+        "<near>0.20</near>",
+        "<far>3.0</far>",
     ):
         require(fragment in text, f"Missing RGB-D world fragment: {fragment}")
 
@@ -136,7 +136,7 @@ def validate_python() -> None:
 def validate_launch_and_package() -> None:
     launch = read(LAUNCH)
     for fragment in (
-        'kty_flow.launch.py',
+        "kty_flow.launch.py",
         'arguments=["/kty/vision/image"]',
         'arguments=["/kty/vision/depth_image"]',
         'executable="depth_perception"',
@@ -150,7 +150,10 @@ def validate_launch_and_package() -> None:
         require(fragment in launch, f"Missing vision launch wiring: {fragment}")
 
     setup = read(PACKAGE / "setup.py")
-    require('version="0.4.0"' in setup, "Expected setup.py version 0.4.0")
+    require(
+        'version="0.4.0"' in setup or 'version="0.5.0"' in setup,
+        "Expected vision-compatible setup.py version 0.4.0 or 0.5.0",
+    )
     for fragment in (
         "depth_perception = kty_station_sim.depth_perception:main",
         "contour_recorder = kty_station_sim.contour_recorder:main",
@@ -159,7 +162,11 @@ def validate_launch_and_package() -> None:
         require(fragment in setup, f"Missing entry point: {fragment}")
 
     package_xml = read(PACKAGE / "package.xml")
-    require("<version>0.4.0</version>" in package_xml, "Expected package version 0.4.0")
+    require(
+        "<version>0.4.0</version>" in package_xml
+        or "<version>0.5.0</version>" in package_xml,
+        "Expected vision-compatible package version 0.4.0 or 0.5.0",
+    )
     for dependency in (
         "cv_bridge",
         "sensor_msgs",
