@@ -7,7 +7,7 @@ package_name = "kty_station_sim"
 
 setup(
     name=package_name,
-    version="0.4.0",
+    version="0.5.0",
     packages=[package_name],
     data_files=[
         (
@@ -32,12 +32,14 @@ setup(
     zip_safe=True,
     maintainer="Singulator Team",
     maintainer_email="team@example.com",
-    description="KTY flow simulation with RGB-D contour perception and dashboard",
+    description="Physical KTY mechatronics, RGB-D perception and operator dashboard",
     license="Apache-2.0",
     entry_points={
         "console_scripts": [
             "smoke_heartbeat = kty_station_sim.smoke_heartbeat:main",
             "flow_cycle = kty_station_sim.flow_cycle_smooth:main",
+            "mechatronics_cycle = kty_station_sim.mechatronics_cycle:main",
+            "fill_estimator = kty_station_sim.fill_estimator:main",
             "depth_perception = kty_station_sim.depth_perception:main",
             "contour_recorder = kty_station_sim.contour_recorder:main",
             "vision_dashboard = kty_station_sim.vision_dashboard:main",
