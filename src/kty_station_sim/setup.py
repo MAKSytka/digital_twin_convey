@@ -40,7 +40,7 @@ setup(
             "vibration_driver = kty_station_sim.vibration_driver:main",
             "product_spawner = kty_station_sim.product_spawner:main",
             "depth_perception = kty_station_sim.depth_perception:main",
-            "safety_monitor = kty_station_sim.safety_monitor:main",
+            "safety_monitor = kty_station_sim.safety_monitor_v2:main",
             "metrics_node = kty_station_sim.metrics_node:main",
             "registry_json_mirror = kty_station_sim.registry_json_mirror:main",
         ]
