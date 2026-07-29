@@ -56,6 +56,26 @@ install/kty_station_sim
 После сборки он проверяет все шесть сообщений КТЯ командой
 `ros2 interface show`.
 
+### Важное замечание об `ament_python`
+
+`ament_python` в этом пакете является значением тега
+`<build_type>` внутри секции `<export>`. Это не отдельная зависимость `rosdep`
+и не обязательный пакет `ros-jazzy-ament-python`. В `package.xml` не должно быть
+`<buildtool_depend>ament_python</buildtool_depend>`, иначе `rosdep` пытается
+разрешить несуществующий ключ.
+
+Если старый вариант ветки выводит предложение установить
+`ros-jazzy-ament-python`, обновите ветку:
+
+```bash
+git fetch origin
+git switch fix/kty-ament-python-metadata
+git pull --ff-only
+```
+
+После обновления повторите `bash ./scripts/build_kty_station.sh` без установки
+дополнительного пакета.
+
 ## Запуск
 
 Терминал 1:
