@@ -7,7 +7,7 @@ package_name = "kty_station_sim"
 
 setup(
     name=package_name,
-    version="0.5.0",
+    version="0.6.0",
     packages=[package_name],
     data_files=[
         (
@@ -32,7 +32,7 @@ setup(
     zip_safe=True,
     maintainer="Singulator Team",
     maintainer_email="team@example.com",
-    description="Physical KTY mechatronics, classical 3-D perception and dashboard",
+    description="KTY contact-surface transport, physical vibration and RGB-D planning",
     license="Apache-2.0",
     entry_points={
         "console_scripts": [
@@ -40,6 +40,7 @@ setup(
             "flow_cycle = kty_station_sim.flow_cycle_smooth:main",
             "mechatronics_cycle = kty_station_sim.mechatronics_cycle:main",
             "mechatronics_cycle_v2 = kty_station_sim.mechatronics_cycle_v2:main",
+            "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v3:main",
             "fill_estimator = kty_station_sim.fill_estimator:main",
             "fill_estimator_v2 = kty_station_sim.fill_estimator_v2:main",
             "depth_perception = kty_station_sim.depth_perception:main",
