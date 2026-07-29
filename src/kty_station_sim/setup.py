@@ -7,7 +7,7 @@ package_name = "kty_station_sim"
 
 setup(
     name=package_name,
-    version="0.2.0",
+    version="0.3.0",
     packages=[package_name],
     data_files=[
         (
@@ -37,6 +37,7 @@ setup(
     entry_points={
         "console_scripts": [
             "smoke_heartbeat = kty_station_sim.smoke_heartbeat:main",
+            "flow_cycle = kty_station_sim.flow_cycle_smooth:main",
             "station_controller = kty_station_sim.station_controller:main",
             "product_spawner = kty_station_sim.product_spawner:main",
             "depth_perception = kty_station_sim.depth_perception:main",
