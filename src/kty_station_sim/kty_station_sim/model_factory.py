@@ -147,6 +147,7 @@ class ProductSpec:
         <material>
           <ambient>{r:.4f} {g:.4f} {b:.4f} 1</ambient>
           <diffuse>{r:.4f} {g:.4f} {b:.4f} 1</diffuse>
+          
         </material>
       </visual>
     </link>
@@ -163,19 +164,17 @@ def make_kty_sdf(
     wall: float = 0.003,
     mass: float = 1.600,
 ) -> str:
-    """Create an open, flapless, thin-walled dynamic KTY model.
+    """Create an open, flapless, thin-walled KTY model.
 
-    The model origin is at the outer bottom surface, so the spawn Z equals the
-    supporting conveyor or platform top Z.  Infeed and outfeed motion is applied
-    only through the Gazebo ``set_pose`` service.  No persistent velocity plugin
-    is attached: after positioning the KTY remains a normal dynamic rigid body
-    and can react to gravity, products and vertical platform vibration.
+    The model origin is at the outer bottom surface, which makes the spawn Z
+    equal to the supporting conveyor / platform top Z.
     """
 
     outer_x = internal_x + 2.0 * wall
     outer_y = internal_y + 2.0 * wall
     outer_z = internal_z + wall
     ixx, iyy, izz = _box_inertia(mass, outer_x, outer_y, outer_z)
+    wall_z = wall + internal_z / 2.0
     side_z = wall + internal_z / 2.0
     cardboard = "0.63 0.36 0.12 1"
 
