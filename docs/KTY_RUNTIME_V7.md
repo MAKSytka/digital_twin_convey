@@ -14,7 +14,8 @@ infeed contact surface
 ```
 
 The generated Gazebo world contains no `*_roller_*` links, joints or velocity
-controllers.
+controllers. The source roller world remains only as historical input for the
+world generator and is not the world launched by the current run scripts.
 
 A Gazebo system plugin named `KtyConveyorSurfaceSystem` subscribes to:
 
