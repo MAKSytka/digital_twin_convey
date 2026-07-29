@@ -32,7 +32,7 @@ setup(
     zip_safe=True,
     maintainer="Singulator Team",
     maintainer_email="team@example.com",
-    description="Physical KTY mechatronics, RGB-D perception and operator dashboard",
+    description="Physical KTY mechatronics, classical 3-D perception and dashboard",
     license="Apache-2.0",
     entry_points={
         "console_scripts": [
@@ -41,8 +41,11 @@ setup(
             "mechatronics_cycle = kty_station_sim.mechatronics_cycle:main",
             "fill_estimator = kty_station_sim.fill_estimator:main",
             "depth_perception = kty_station_sim.depth_perception:main",
+            "depth_perception_3d = kty_station_sim.depth_perception_3d:main",
             "contour_recorder = kty_station_sim.contour_recorder:main",
+            "contour_recorder_3d = kty_station_sim.contour_recorder_3d:main",
             "vision_dashboard = kty_station_sim.vision_dashboard:main",
+            "vision_dashboard_3d = kty_station_sim.vision_dashboard_3d:main",
             "station_controller = kty_station_sim.station_controller:main",
             "product_spawner = kty_station_sim.product_spawner:main",
             "safety_monitor = kty_station_sim.safety_monitor:main",
