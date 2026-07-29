@@ -6,6 +6,8 @@ station_controller:
     support_top_z_m: 0.50
     approach_speed_mps: 0.65
     approach_duration_s: 2.0
+    positioning_timeout_s: 8.0
+    position_tolerance_m: 0.08
     clamp_duration_s: 0.20
     vibration_start_delay_s: 0.50
     vibration_frequency_hz: 25.0

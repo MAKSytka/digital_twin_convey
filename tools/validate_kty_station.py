@@ -41,6 +41,7 @@ def validate_world() -> None:
         "<upper>0.0032</upper>",
         '<plugin filename="MinimalScene" name="3D View">',
         "<start_paused>false</start_paused>",
+        "<use_event>true</use_event>",
         "/world/kty_station/control",
     )
     for fragment in required_fragments:
@@ -53,7 +54,7 @@ def validate_world() -> None:
     for controller in track_controllers:
         orientation = controller.findtext("track_orientation", "").split()
         require(
-            orientation == ["0", "0", "3.14159265359"],
+            orientation == ["0", "0", "0"],
             "Positive contact-surface commands must transport payloads toward +X",
         )
 
@@ -138,6 +139,16 @@ def validate_launcher() -> None:
         "metrics_node",
     ):
         require(executable in run_script, f"Launcher does not check {executable}")
+
+    controller = (
+        PACKAGE / "kty_station_sim" / "station_controller.py"
+    ).read_text(encoding="utf-8")
+    for fragment in (
+        '"/kty/world/poses"',
+        "abs(self.active_kty_x) <= self.position_tolerance",
+        "KTY positioning timeout; x=",
+    ):
+        require(fragment in controller, f"Missing pose-driven positioning: {fragment}")
 
 
 def main() -> None:
