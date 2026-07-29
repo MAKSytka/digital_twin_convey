@@ -82,8 +82,8 @@ def generate_launch_description() -> LaunchDescription:
 
     perception = Node(
         package="kty_station_sim",
-        executable="depth_perception",
-        name="kty_depth_perception",
+        executable="depth_perception_3d",
+        name="kty_classical_3d_perception",
         output="screen",
         parameters=[
             {
@@ -98,9 +98,16 @@ def generate_launch_description() -> LaunchDescription:
                 "internal_width_m": 0.40,
                 "internal_height_m": 0.40,
                 "minimum_product_height_m": 0.008,
-                "minimum_contour_area_px": 70.0,
-                "track_max_distance_m": 0.12,
-                "track_max_misses": 10,
+                "minimum_contour_area_px": 55.0,
+                "depth_edge_threshold_m": 0.010,
+                "normal_edge_threshold": 0.12,
+                "seed_min_distance_px": 18,
+                "seed_height_prominence_m": 0.012,
+                "track_max_distance_m": 0.14,
+                "track_max_height_delta_m": 0.18,
+                "track_max_misses": 12,
+                "top_normal_min_z": 0.82,
+                "top_occlusion_max": 0.42,
                 "simulated_depth_noise_std_m": 0.001,
                 "simulated_dropout_probability": 0.002,
             }
@@ -109,8 +116,8 @@ def generate_launch_description() -> LaunchDescription:
 
     recorder = Node(
         package="kty_station_sim",
-        executable="contour_recorder",
-        name="kty_contour_recorder",
+        executable="contour_recorder_3d",
+        name="kty_contour_recorder_3d",
         output="screen",
         parameters=[
             {
@@ -125,8 +132,8 @@ def generate_launch_description() -> LaunchDescription:
 
     dashboard = Node(
         package="kty_station_sim",
-        executable="vision_dashboard",
-        name="kty_vision_dashboard",
+        executable="vision_dashboard_3d",
+        name="kty_vision_dashboard_3d",
         output="screen",
         parameters=[
             {
@@ -153,18 +160,9 @@ def generate_launch_description() -> LaunchDescription:
                 "use_sim_time": False,
                 "world_name": "kty_mechatronics",
                 "auto_repeat": ParameterValue(auto_repeat, value_type=bool),
-                "product_spawn_interval_s": ParameterValue(
-                    spawn_interval,
-                    value_type=float,
-                ),
-                "fill_ratio_threshold": ParameterValue(
-                    fill_threshold,
-                    value_type=float,
-                ),
-                "max_height_threshold_m": ParameterValue(
-                    height_threshold,
-                    value_type=float,
-                ),
+                "product_spawn_interval_s": ParameterValue(spawn_interval, value_type=float),
+                "fill_ratio_threshold": ParameterValue(fill_threshold, value_type=float),
+                "max_height_threshold_m": ParameterValue(height_threshold, value_type=float),
                 "weak_vibration_frequency_hz": 8.0,
                 "weak_vibration_amplitude_m": 0.0005,
                 "strong_vibration_frequency_hz": 18.0,
@@ -184,18 +182,9 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument("auto_repeat", default_value="true"),
-            DeclareLaunchArgument(
-                "product_spawn_interval_s",
-                default_value="0.65",
-            ),
-            DeclareLaunchArgument(
-                "fill_ratio_threshold",
-                default_value="0.70",
-            ),
-            DeclareLaunchArgument(
-                "max_height_threshold_m",
-                default_value="0.280",
-            ),
+            DeclareLaunchArgument("product_spawn_interval_s", default_value="0.65"),
+            DeclareLaunchArgument("fill_ratio_threshold", default_value="0.70"),
+            DeclareLaunchArgument("max_height_threshold_m", default_value="0.280"),
             DeclareLaunchArgument("show_dashboard", default_value="true"),
             DeclareLaunchArgument(
                 "polygon_output_directory",
