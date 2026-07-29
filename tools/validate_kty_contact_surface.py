@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static validation for the roller-free KTY contact-surface runtime."""
+"""Static validation for the roller-free deterministic KTY runtime."""
 
 from __future__ import annotations
 
@@ -59,19 +59,22 @@ def validate_plugin_package() -> None:
         "class KtyConveyorSurfaceSystem",
         "ISystemPreUpdate",
         "Link link(linkEntity)",
+        "link.SetLinearVelocity",
+        "link.SetAngularVelocity",
         "link.AddWorldForce",
-        "targetVelocity - velocity->X()",
+        "targetVelocity = commands[index]",
         "modelPrefix",
         "GZ_ADD_PLUGIN",
         "const_cast<sdf::Element *>(_sdf.get())",
         'mutableSdf->GetElement("zone")',
     ):
-        require(fragment in source, f"Missing contact-surface behavior: {fragment}")
+        require(fragment in source, f"Missing deterministic surface behavior: {fragment}")
     require(
         '_sdf->GetElement("zone")' not in source,
-        "sdformat14 repeated-child traversal must not call non-const GetElement through _sdf",
+        "sdformat14 traversal must not call non-const GetElement through _sdf",
     )
-    require("LinearVelocityCmd" not in source, "Transport must preserve vertical physics")
+    overlap_loop = source[source.index("for (std::size_t index = 0;"):source.index("if (!insideZone)")]
+    require("break;" not in overlap_loop, "Later zones must win in overlap regions")
 
 
 def validate_generated_world() -> None:
@@ -80,63 +83,39 @@ def validate_generated_world() -> None:
 
     with tempfile.TemporaryDirectory() as directory:
         destination = Path(directory) / "surface.sdf"
-        build_surface_world(
-            SIM / "worlds" / "kty_mechatronics.sdf",
-            destination,
-        )
+        build_surface_world(SIM / "worlds" / "kty_mechatronics.sdf", destination)
         root = ET.parse(destination).getroot()
 
     world = root.find("world")
     require(world is not None, "Generated world is missing")
-    require(
-        world.attrib.get("name") == "kty_mechatronics_surface",
-        "Unexpected contact-surface world name",
-    )
+    require(world.attrib.get("name") == "kty_mechatronics_surface", "Wrong world name")
     require(world.findtext("physics/max_step_size") == "0.004", "Expected 4 ms step")
-    require(
-        world.findtext("physics/real_time_update_rate") == "250",
-        "Expected 250 Hz real-time profile",
-    )
+    require(world.findtext("physics/real_time_update_rate") == "250", "Expected 250 Hz")
     sensor = world.find(".//sensor[@name='overhead_rgbd']")
     require(sensor is not None, "RGB-D sensor missing")
     require(sensor.findtext("update_rate") == "6", "Expected 6 Hz RGB-D")
-    require(sensor.findtext("camera/image/width") == "512", "Expected 512 px RGB-D")
-    require(sensor.findtext("camera/image/height") == "384", "Expected 384 px RGB-D")
+    require(sensor.findtext("camera/image/width") == "512", "Expected 512 px")
+    require(sensor.findtext("camera/image/height") == "384", "Expected 384 px")
 
     machine = world.find("model[@name='kty_mechatronics_machine']")
     require(machine is not None, "Machine model is missing")
     names = [element.attrib.get("name", "") for element in machine.findall("link")]
     joints = [element.attrib.get("name", "") for element in machine.findall("joint")]
-    require(not any("roller" in name for name in names), "Roller links remain in runtime world")
-    require(not any("roller" in name for name in joints), "Roller joints remain in runtime world")
-    for expected in (
-        "infeed_surface",
-        "outfeed_transfer_bridge",
-        "outfeed_surface",
-    ):
-        require(expected in names, f"Missing contact / transfer surface: {expected}")
-
-    locator = machine.find("link[@name='locator_stop']")
-    require(locator is not None, "Locator stop is missing")
-    require(
-        _floats(locator.findtext("pose"))[:3] == [0.35, 0.0, 0.3],
-        "Locator was not moved to its safe retracted geometry",
-    )
-    require(
-        _floats(locator.findtext("collision/geometry/box/size")) == [0.02, 0.52, 0.18],
-        "Locator blade size does not provide retracted clearance",
-    )
+    require(not any("roller" in name for name in names), "Roller links remain")
+    require(not any("roller" in name for name in joints), "Roller joints remain")
+    require("locator_stop" not in names, "Joint locator link remains")
+    require("locator_stop_joint" not in joints, "Joint locator remains")
+    for expected in ("infeed_surface", "outfeed_transfer_bridge", "outfeed_surface"):
+        require(expected in names, f"Missing surface: {expected}")
 
     bridge = machine.find("link[@name='outfeed_transfer_bridge']")
     outfeed = machine.find("link[@name='outfeed_surface']")
-    active = machine.find(
-        "link[@name='vibration_deck']/collision[@name='active_contact_surface']"
-    )
-    require(bridge is not None and outfeed is not None, "Outfeed transfer geometry missing")
-    require(active is not None, "Active contact plate is missing from vibration deck")
+    active = machine.find("link[@name='vibration_deck']/collision[@name='active_contact_surface']")
+    require(bridge is not None and outfeed is not None, "Outfeed geometry missing")
+    require(active is not None, "Active plate missing")
     require(abs(_top_z(bridge) - 0.498) < 1.0e-9, "Bridge top must be 498 mm")
     require(abs(_top_z(outfeed) - 0.496) < 1.0e-9, "Outfeed top must be 496 mm")
-    require(_top_z(bridge) > _top_z(outfeed), "Transfer must descend towards outfeed")
+    require(_top_z(bridge) > _top_z(outfeed), "Transfer must descend")
 
     collisions = (
         machine.find("link[@name='infeed_surface']/collision"),
@@ -146,62 +125,47 @@ def validate_generated_world() -> None:
     )
     for collision in collisions:
         require(collision is not None, "A transport collision is missing")
-        require(collision.findtext("surface/friction/ode/mu") == "0.08", "X friction must be low")
-        require(collision.findtext("surface/friction/ode/mu2") == "1.15", "Y friction must remain high")
-        require(
-            collision.findtext("surface/friction/ode/fdir1") == "1 0 0",
-            "Longitudinal friction direction is missing",
-        )
+        require(collision.findtext("surface/friction/ode/mu") == "0.08", "X friction")
+        require(collision.findtext("surface/friction/ode/mu2") == "1.15", "Y friction")
+        require(collision.findtext("surface/friction/ode/fdir1") == "1 0 0", "fdir1")
 
-    plugin = world.find(
-        "plugin[@name='kty_conveyor_surface::KtyConveyorSurfaceSystem']"
-    )
-    require(plugin is not None, "Contact-surface Gazebo plugin is missing")
-    require(plugin.findtext("velocity_gain") == "80.0", "Unexpected velocity gain")
-    require(plugin.findtext("max_force") == "120.0", "Unexpected force limit")
+    plugin = world.find("plugin[@name='kty_conveyor_surface::KtyConveyorSurfaceSystem']")
+    require(plugin is not None, "Contact-surface plugin missing")
     topics = {zone.findtext("topic") for zone in plugin.findall("zone")}
     require(
-        topics
-        == {
+        topics == {
             "/kty/mech/infeed_surface/cmd_vel",
             "/kty/mech/active_surface/cmd_vel",
             "/kty/mech/outfeed_surface/cmd_vel",
         },
-        f"Unexpected surface command topics: {sorted(topics)}",
+        f"Unexpected topics: {sorted(topics)}",
     )
 
 
 def validate_python_and_launch() -> None:
     paths = (
         SIM / "kty_station_sim" / "world_patch_v3.py",
-        SIM / "kty_station_sim" / "mechatronics_cycle_v2.py",
         SIM / "kty_station_sim" / "mechatronics_cycle_v3.py",
         SIM / "launch" / "kty_mechatronics_surface.launch.py",
     )
     for path in paths:
         py_compile.compile(str(path), doraise=True)
 
-    controller = read(paths[2])
+    controller = read(paths[1])
     for fragment in (
-        "super().__init__()",
+        "self._v3_ready.wait()",
+        'LOCATOR_NAME = "kty_mech_runtime_locator"',
+        "_spawn_locator_model",
+        "_remove_locator_model",
         '"/kty/mech/infeed_surface/cmd_vel"',
         '"/kty/mech/active_surface/cmd_vel"',
         '"/kty/mech/outfeed_surface/cmd_vel"',
-        'payload["transport"] = "flat_contact_surface"',
+        'payload["transport"] = "flat_contact_surface_velocity"',
+        'payload["last_nonzero_outfeed_mps"]',
     ):
-        require(fragment in controller, f"Missing surface controller behavior: {fragment}")
+        require(fragment in controller, f"Missing v9 controller behavior: {fragment}")
 
-    staged = read(paths[1])
-    for fragment in (
-        "retract locator and open clamps before energising contact surfaces",
-        "self._interruptible_sleep(2.5)",
-        "restraints clear; moving loaded KTY",
-        "active=0.0",
-        "outfeed=0.0",
-    ):
-        require(fragment in staged, f"Missing staged-release behavior: {fragment}")
-
-    launch = read(paths[3])
+    launch = read(paths[2])
     for fragment in (
         "build_surface_world",
         'get_package_prefix("kty_conveyor_surface")',
@@ -214,23 +178,20 @@ def validate_python_and_launch() -> None:
         '"processing_hz": 3.0',
         '"refresh_hz": 4.0',
     ):
-        require(fragment in launch, f"Missing fast runtime launch wiring: {fragment}")
-    require("_rollers/cmd_vel" not in launch, "Launch still bridges roller commands")
+        require(fragment in launch, f"Missing launch wiring: {fragment}")
+    require("_rollers/cmd_vel" not in launch, "Launch still bridges rollers")
 
 
 def validate_package_and_scripts() -> None:
     setup = read(SIM / "setup.py")
     package_xml = read(SIM / "package.xml")
-    require('version="0.5.0"' in setup, "Expected compatible kty_station_sim version 0.5.0")
+    require('version="0.5.0"' in setup, "Expected version 0.5.0")
     require(
         "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v3:main" in setup,
-        "Missing v3 controller entry point",
+        "Missing v3 entry point",
     )
-    require("<version>0.5.0</version>" in package_xml, "package.xml version mismatch")
-    require(
-        "<exec_depend>kty_conveyor_surface</exec_depend>" in package_xml,
-        "Missing runtime dependency on contact-surface plugin",
-    )
+    require("<version>0.5.0</version>" in package_xml, "package.xml mismatch")
+    require("<exec_depend>kty_conveyor_surface</exec_depend>" in package_xml, "Missing dependency")
 
     build = read(ROOT / "scripts" / "build_kty_perception_3d.sh")
     run = read(ROOT / "scripts" / "run_kty_perception_3d.sh")
@@ -241,10 +202,7 @@ def validate_package_and_scripts() -> None:
         "validate_kty_contact_surface.py",
     ):
         require(fragment in build, f"Missing build behavior: {fragment}")
-    require(
-        "kty_mechatronics_surface.launch.py" in run,
-        "Run script does not use surface launch",
-    )
+    require("kty_mechatronics_surface.launch.py" in run, "Wrong run launch")
 
 
 def main() -> None:
@@ -252,7 +210,7 @@ def main() -> None:
     validate_generated_world()
     validate_python_and_launch()
     validate_package_and_scripts()
-    print("KTY roller-free contact-surface static validation: OK")
+    print("KTY deterministic contact-surface static validation: OK")
 
 
 if __name__ == "__main__":
