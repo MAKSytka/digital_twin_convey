@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>kty_station_sim</name>
-  <version>0.5.0</version>
-  <description>Balanced physical KTY rollers, service-managed chute gate, vibration platform, RGB-D perception and dashboard.</description>
+  <version>0.6.0</version>
+  <description>Flat contact-surface KTY transport, physical vibration, slide gate and RGB-D planning.</description>
   <maintainer email="team@example.com">Singulator Team</maintainer>
   <license>Apache-2.0</license>
 
@@ -18,6 +18,7 @@
   <exec_depend>tf2_msgs</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>singulator_interfaces</exec_depend>
+  <exec_depend>kty_conveyor_surface</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>ros_gz_image</exec_depend>
