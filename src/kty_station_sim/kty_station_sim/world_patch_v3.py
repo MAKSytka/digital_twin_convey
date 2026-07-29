@@ -1,4 +1,4 @@
-"""Generate the roller-free contact-surface KTY world."""
+"""Generate the roller-free deterministic contact-surface KTY world."""
 
 from __future__ import annotations
 
@@ -26,9 +26,6 @@ def _surface_link(
     surface = ET.SubElement(collision, "surface")
     friction = ET.SubElement(surface, "friction")
     ode = ET.SubElement(friction, "ode")
-    # Longitudinal motion is produced by KtyConveyorSurfaceSystem. Keep X
-    # friction low so a static plate does not fight the commanded conveyor
-    # force, while retaining strong transverse guidance in Y.
     ET.SubElement(ode, "mu").text = "0.08"
     ET.SubElement(ode, "mu2").text = "1.15"
     ET.SubElement(ode, "fdir1").text = "1 0 0"
@@ -89,17 +86,12 @@ def build_surface_world(source: Path, destination: Path) -> Path:
         raise RuntimeError("Generated SDF has no world")
     world.set("name", "kty_mechatronics_surface")
 
-    # The roller-free world has substantially fewer contacts than the old
-    # 17-roller model. A 4 ms physics step is sufficient for this demonstrator
-    # and prevents the complete simulation from appearing in slow motion.
     physics = world.find("physics")
     if physics is None:
         raise RuntimeError("Generated world has no physics block")
     _set_required_text(physics, "max_step_size", "0.004")
     _set_required_text(physics, "real_time_update_rate", "250")
 
-    # Keep RGB-D useful for classical segmentation, but do not let rendering
-    # dominate the real-time factor during transport acceptance tests.
     sensor = world.find(".//sensor[@name='overhead_rgbd']")
     if sensor is None:
         raise RuntimeError("RGB-D sensor is missing")
@@ -111,33 +103,22 @@ def build_surface_world(source: Path, destination: Path) -> Path:
     if machine is None:
         raise RuntimeError("Machine model is missing")
 
-    # Remove all roller bodies, axle joints and their velocity controllers.
+    # Remove all roller bodies and the unreliable joint-driven locator. Runtime
+    # v9 creates a static locator model and deletes it completely before ejection.
     for link in list(machine.findall("link")):
         name = link.attrib.get("name", "")
-        if name.startswith(ROLLER_GROUPS):
+        if name.startswith(ROLLER_GROUPS) or name == "locator_stop":
             machine.remove(link)
     for joint in list(machine.findall("joint")):
         name = joint.attrib.get("name", "")
-        if "_roller_" in name:
+        if "_roller_" in name or name == "locator_stop_joint":
             machine.remove(joint)
     for plugin in list(machine.findall("plugin")):
         topic = plugin.findtext("topic", default="")
-        if "_rollers/cmd_vel" in topic:
+        if "_rollers/cmd_vel" in topic or topic == "/kty/mech/locator_stop/cmd_pos":
             machine.remove(plugin)
 
-    # The original retracted locator ended only 5 mm below the active surface.
-    # In the recorded runtime it caught the KTY front bottom edge while the
-    # conveyor force was already active, producing the observed forward flip.
-    # Lower and shorten it so the retracted top is z=0.390 m (110 mm clearance),
-    # while the raised top remains z=0.615 m and still provides a 115 mm stop.
-    locator = machine.find("link[@name='locator_stop']")
-    if locator is None:
-        raise RuntimeError("Locator stop link is missing")
-    _set_required_text(locator, "pose", "0.350 0 0.300 0 0 0")
-    _set_required_text(locator, "collision/geometry/box/size", "0.020 0.520 0.180")
-    _set_required_text(locator, "visual/geometry/box/size", "0.020 0.520 0.180")
-
-    # The inlet upper plane is z=0.500 m.
+    # Infeed top plane: 500 mm.
     machine.append(
         _surface_link(
             "infeed_surface",
@@ -148,9 +129,7 @@ def build_surface_world(source: Path, destination: Path) -> Path:
     )
     machine.append(_fixed_joint("infeed_surface_joint", "infeed_surface"))
 
-    # The active deck is nominally z=0.500 m. The transfer bridge and outfeed
-    # form two small downward steps (500 -> 498 -> 496 mm), so the loaded KTY
-    # cannot meet an upward vertical face after vibration stops.
+    # Downhill hand-off: active 500 mm -> bridge 498 mm -> outfeed 496 mm.
     machine.append(
         _surface_link(
             "outfeed_transfer_bridge",
@@ -172,8 +151,8 @@ def build_surface_world(source: Path, destination: Path) -> Path:
     )
     machine.append(_fixed_joint("outfeed_surface_joint", "outfeed_surface"))
 
-    # The active contact plate is part of the vibrating link, therefore the KTY
-    # receives both longitudinal conveyor force and physical Z vibration.
+    # Active plate remains part of the vibration deck. The KTY receives physical
+    # Z vibration whenever no longitudinal surface velocity is commanded.
     deck = machine.find("link[@name='vibration_deck']")
     if deck is None:
         raise RuntimeError("Vibration deck is missing")
@@ -212,9 +191,6 @@ def build_surface_world(source: Path, destination: Path) -> Path:
     ET.SubElement(plugin, "model_prefix").text = "kty_mech_container_"
     ET.SubElement(plugin, "surface_z").text = "0.500"
     ET.SubElement(plugin, "contact_tolerance").text = "0.090"
-    # Moderate force is sufficient after longitudinal friction is reduced. This
-    # removes the large impulse that amplified any remaining obstruction into a
-    # flip while still reaching 0.65 m/s quickly with a loaded KTY.
     ET.SubElement(plugin, "velocity_gain").text = "80.0"
     ET.SubElement(plugin, "max_force").text = "120.0"
     ET.SubElement(plugin, "velocity_deadband").text = "0.006"
