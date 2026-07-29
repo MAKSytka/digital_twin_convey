@@ -127,9 +127,6 @@
       </link>
       <plugin filename="gz-sim-track-controller-system" name="gz::sim::systems::TrackController">
         <link>belt</link>
-        <!-- TrackController models a vehicle track: with identity orientation
-             its top contact surface travels toward -X for a positive command.
-             Rotate the virtual track by pi so station commands move KTYs +X. -->
         <track_orientation>0 0 3.14159265359</track_orientation>
         <velocity_topic>/kty/infeed/cmd_vel</velocity_topic>
         <min_velocity>-1.5</min_velocity><max_velocity>1.5</max_velocity>
