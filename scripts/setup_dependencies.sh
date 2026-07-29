@@ -16,11 +16,13 @@ fi
 
 sudo apt update
 sudo apt install -y \
+  ros-jazzy-ament-python \
   ros-jazzy-ros-gz \
   ros-jazzy-ros-gz-sim \
   ros-jazzy-ros-gz-bridge \
   ros-jazzy-ros-gz-image \
   ros-jazzy-cv-bridge \
+  ros-jazzy-rqt-image-view \
   python3-opencv \
   python3-numpy \
   python3-colcon-common-extensions \
@@ -37,4 +39,9 @@ set +u
 source /opt/ros/jazzy/setup.bash
 set -u
 
-rosdep install --from-paths src --ignore-src --rosdistro jazzy -y
+rosdep install \
+  --from-paths src \
+  --ignore-src \
+  --rosdistro jazzy \
+  --skip-keys ament_python \
+  -y
