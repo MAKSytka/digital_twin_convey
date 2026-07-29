@@ -37,7 +37,7 @@ setup(
     entry_points={
         "console_scripts": [
             "smoke_heartbeat = kty_station_sim.smoke_heartbeat:main",
-            "flow_cycle = kty_station_sim.flow_cycle:main",
+            "flow_cycle = kty_station_sim.flow_cycle_smooth:main",
             "station_controller = kty_station_sim.station_controller:main",
             "product_spawner = kty_station_sim.product_spawner:main",
             "depth_perception = kty_station_sim.depth_perception:main",
