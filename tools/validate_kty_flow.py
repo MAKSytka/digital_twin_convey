@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "src" / "kty_station_sim"
 WORLD = PACKAGE / "worlds" / "kty_flow.sdf"
 LAUNCH = PACKAGE / "launch" / "kty_flow.launch.py"
-CONTROLLER = PACKAGE / "kty_station_sim" / "flow_cycle.py"
+BASE_CONTROLLER = PACKAGE / "kty_station_sim" / "flow_cycle.py"
+SMOOTH_CONTROLLER = PACKAGE / "kty_station_sim" / "flow_cycle_smooth.py"
 
 
 def require(condition: bool, message: str) -> None:
@@ -66,10 +67,10 @@ def validate_world() -> None:
 
 
 def validate_python() -> None:
-    py_compile.compile(str(CONTROLLER), doraise=True)
-    py_compile.compile(str(LAUNCH), doraise=True)
+    for path in (BASE_CONTROLLER, SMOOTH_CONTROLLER, LAUNCH):
+        py_compile.compile(str(path), doraise=True)
 
-    controller = read(CONTROLLER)
+    base = read(BASE_CONTROLLER)
     for fragment in (
         'super().__init__("kty_flow_cycle")',
         '"/kty/flow/state"',
@@ -81,17 +82,30 @@ def validate_python() -> None:
         'self._set_pose_service',
         'self._remove_service',
         'self._pose_topic',
+        'inside == self.product_count',
+        'time.monotonic()',
+    ):
+        require(fragment in base, f"Missing base controller behavior: {fragment}")
+
+    smooth = read(SMOOTH_CONTROLLER)
+    for fragment in (
+        'class SmoothKtyFlowCycle(KtyFlowCycle)',
+        'VIBRATION_DURATION_S = 5.0',
+        'VIBRATION_FREQUENCY_HZ = 5.0',
+        'VIBRATION_AMPLITUDE_M = 0.0020',
+        'PRODUCT_UPDATE_HZ = 8.0',
+        '6.0 * ratio**5 - 15.0 * ratio**4 + 10.0 * ratio**3',
         '"APPROACH"',
         '"LOAD"',
         '"SETTLE"',
+        '"VIBRATE"',
         '"OUTFEED"',
         '"DESPAWN"',
         '"COMPLETE"',
-        'inside == self.product_count',
+        'self._vibrate_kty(kty_name, captured_poses[kty_name])',
         'removed_total=self._removed_models',
-        'time.monotonic()',
     ):
-        require(fragment in controller, f"Missing controller behavior: {fragment}")
+        require(fragment in smooth, f"Missing smooth controller behavior: {fragment}")
 
     launch = read(LAUNCH)
     require(
@@ -103,6 +117,8 @@ def validate_python() -> None:
         'executable="flow_cycle"',
         'DeclareLaunchArgument("product_count"',
         'DeclareLaunchArgument("auto_repeat"',
+        'DeclareLaunchArgument("pose_update_hz", default_value="20.0")',
+        '"pose_update_hz": ParameterValue(',
     ):
         require(fragment in launch, f"Missing launch wiring: {fragment}")
 
@@ -110,8 +126,8 @@ def validate_python() -> None:
 def validate_package_and_scripts() -> None:
     setup = read(PACKAGE / "setup.py")
     require(
-        "flow_cycle = kty_station_sim.flow_cycle:main" in setup,
-        "flow_cycle console entry point is missing",
+        "flow_cycle = kty_station_sim.flow_cycle_smooth:main" in setup,
+        "smooth flow_cycle console entry point is missing",
     )
 
     package_xml = read(PACKAGE / "package.xml")
