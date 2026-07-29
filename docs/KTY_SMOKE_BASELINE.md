@@ -72,6 +72,11 @@ OK model: kty_smoke_container
 KTY smoke diagnostics: OK
 ```
 
+Разные сборки Gazebo Harmonic могут форматировать `gz model --list` по-разному:
+добавлять маркер списка, пробелы или не выводить статические модели. Поэтому
+диагностический скрипт сначала нормализует вывод CLI, а затем использует поток
+`/world/kty_station_smoke/pose/info` как независимую резервную проверку сущности.
+
 Heartbeat можно прочитать отдельно:
 
 ```bash
@@ -95,7 +100,7 @@ data: '{"status":"alive","sequence":3,"wall_uptime_s":3.002,"expected_world":"kt
 Этап считается пройденным только после подтверждения на целевой Ubuntu:
 
 1. КТЯ виден сразу после запуска;
-2. `gz model --list` содержит `kty_smoke_container`;
+2. `scripts/check_kty_smoke.sh` подтверждает сущность `kty_smoke_container`;
 3. heartbeat приходит не менее 30 секунд;
 4. камера вращается мышью;
 5. Play/Pause/Step/Reset работают из GUI;
