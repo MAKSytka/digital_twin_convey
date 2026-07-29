@@ -45,6 +45,7 @@ check_interface singulator_interfaces/msg/KtyGroundTruthArray
 check_interface singulator_interfaces/msg/KtyStationState
 
 check_node /station_controller
+check_node /kty_vibration_driver
 check_node /product_spawner
 check_node /kty_registry_json_mirror
 
@@ -52,6 +53,8 @@ check_topic /kty/station/state
 check_topic /kty/ground_truth/registry
 check_topic /kty/ground_truth/registry_json
 check_topic /kty/carrier/cmd_vel
+check_topic /kty/carrier/cmd_vel_filtered
+check_topic /kty/platform/cmd_pos_filtered
 
 printf '\nStation state:\n'
 timeout 5 ros2 topic echo /kty/station/state --once || {
@@ -64,6 +67,9 @@ timeout 5 ros2 topic echo /kty/ground_truth/registry_json --once || {
   echo "FAIL: no registry JSON received in 5 s" >&2
   failures=$((failures + 1))
 }
+
+printf '\nFiltered carrier command rate:\n'
+timeout 5 ros2 topic hz /kty/carrier/cmd_vel_filtered --window 100 || true
 
 printf '\nGazebo KTY entities:\n'
 if command -v gz >/dev/null 2>&1; then
