@@ -6,9 +6,11 @@ from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,
     IncludeLaunchDescription,
+    RegisterEventHandler,
     TimerAction,
 )
 from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -19,6 +21,7 @@ def generate_launch_description() -> LaunchDescription:
     package_share = Path(get_package_share_directory("kty_station_sim"))
     ros_gz_share = Path(get_package_share_directory("ros_gz_sim"))
     world = package_share / "worlds" / "kty_station.sdf"
+    clock_bridge_config = package_share / "config" / "clock_bridge.yaml"
     bridge_config = package_share / "config" / "bridge.yaml"
     station_config = package_share / "config" / "station.yaml"
 
@@ -36,7 +39,8 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     # Gazebo can expose the world before its control service is ready. Retry
-    # with wall time so use_sim_time nodes are not left on a paused clock.
+    # with wall time. The clock gate below independently verifies that the
+    # simulation clock is not only advertised, but is actually advancing.
     unpause_world = ExecuteProcess(
         cmd=[
             "bash",
@@ -51,7 +55,7 @@ def generate_launch_description() -> LaunchDescription:
                 "--req 'pause: false' 2>&1); "
                 "printf '%s\n' \"$output\"; "
                 "if printf '%s' \"$output\" | grep -qi 'data: true'; then "
-                "echo '[kty-startup] Gazebo world is running'; exit 0; fi; "
+                "echo '[kty-startup] Gazebo accepted the run command'; exit 0; fi; "
                 "sleep 0.25; "
                 "done; "
                 "echo '[kty-startup] failed to unpause Gazebo world' >&2; "
@@ -62,6 +66,15 @@ def generate_launch_description() -> LaunchDescription:
     )
     delayed_unpause = TimerAction(period=0.5, actions=[unpause_world])
 
+    # /clock is deliberately isolated from the general bridge and receives the
+    # ROS Clock QoS profile. This avoids a graph-visible but unreadable clock.
+    clock_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="kty_clock_bridge",
+        output="screen",
+        parameters=[{"config_file": str(clock_bridge_config)}],
+    )
     bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
@@ -158,18 +171,30 @@ def generate_launch_description() -> LaunchDescription:
         condition=IfCondition(vision_gui_enabled),
     )
 
-    delayed_nodes = TimerAction(
-        period=2.0,
-        actions=[
-            registry_json_mirror,
-            perception,
-            product_spawner,
-            vibration_driver,
-            safety,
-            metrics,
-            controller,
-            vision_gui,
-        ],
+    # This process uses wall time and exits only after receiving two increasing
+    # /clock samples. ROS-time-driven nodes start after that exit event, so they
+    # cannot sit alive in the graph while all their timers are frozen at zero.
+    clock_gate = Node(
+        package="kty_station_sim",
+        executable="clock_gate",
+        name="kty_clock_gate",
+        output="screen",
+        parameters=[{"use_sim_time": False}],
+    )
+    start_runtime_when_clock_ready = RegisterEventHandler(
+        OnProcessExit(
+            target_action=clock_gate,
+            on_exit=[
+                registry_json_mirror,
+                perception,
+                product_spawner,
+                vibration_driver,
+                safety,
+                metrics,
+                controller,
+                vision_gui,
+            ],
+        )
     )
 
     return LaunchDescription(
@@ -183,11 +208,13 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="false",
                 description="Open rqt_image_view with the machine-vision debug feed",
             ),
+            start_runtime_when_clock_ready,
             gazebo,
-            delayed_unpause,
+            clock_bridge,
             bridge,
             rgb_bridge,
             depth_bridge,
-            delayed_nodes,
+            delayed_unpause,
+            clock_gate,
         ]
     )
