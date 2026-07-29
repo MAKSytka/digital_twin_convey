@@ -10,7 +10,7 @@ source install/setup.bash
 set -u
 
 for executable in \
-  mechatronics_cycle_v2 \
+  mechatronics_cycle_v3 \
   fill_estimator_v2 \
   depth_perception_3d_v2 \
   contour_recorder_3d \
@@ -22,4 +22,11 @@ for executable in \
   fi
 done
 
-exec ros2 launch kty_station_sim kty_mechatronics_v2.launch.py "$@"
+plugin_prefix="$(ros2 pkg prefix kty_conveyor_surface 2>/dev/null || true)"
+if [[ -z "$plugin_prefix" || ! -f "$plugin_prefix/lib/libKtyConveyorSurfaceSystem.so" ]]; then
+  echo "ERROR: missing kty_conveyor_surface Gazebo plugin" >&2
+  echo "Run: bash ./scripts/build_kty_perception_3d.sh" >&2
+  exit 1
+fi
+
+exec ros2 launch kty_station_sim kty_mechatronics_surface.launch.py "$@"
