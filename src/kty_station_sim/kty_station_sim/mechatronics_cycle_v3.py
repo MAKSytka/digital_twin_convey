@@ -73,7 +73,7 @@ class KtyMechatronicsCycleV3(KtyMechatronicsCycleV2):
                 pass
 
         self.get_logger().info(
-            "Runtime v8: roller-free contact surfaces; commands are linear m/s"
+            "Runtime v8: staged locator release and roller-free surface commands in m/s"
         )
 
     def _state_payload(self) -> dict:
