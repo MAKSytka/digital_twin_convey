@@ -54,6 +54,7 @@ check_gz_service() {
 check_interface singulator_interfaces/msg/KtyGroundTruthArray
 check_interface singulator_interfaces/msg/KtyStationState
 
+check_node /kty_clock_bridge
 check_node /station_controller
 check_node /kty_vibration_driver
 check_node /product_spawner
@@ -78,21 +79,30 @@ else
   failures=$((failures + 1))
 fi
 
+printf '\nROS simulation clock progress:\n'
+if timeout 8 ros2 run kty_station_sim clock_gate; then
+  echo "OK: /clock is delivering increasing simulation timestamps"
+else
+  echo "FAIL: /clock is absent or not advancing" >&2
+  echo "Resume the world and inspect the kty_clock_bridge launch output." >&2
+  failures=$((failures + 1))
+fi
+
 printf '\nStation state:\n'
-timeout 5 ros2 topic echo /kty/station/state --once || {
-  echo "FAIL: no station state received in 5 s" >&2
+timeout 8 ros2 topic echo /kty/station/state --once || {
+  echo "FAIL: no station state received in 8 s" >&2
   failures=$((failures + 1))
 }
 
 printf '\nProduct feeder command:\n'
-timeout 5 ros2 topic echo /kty/product_spawner/enabled --once || {
-  echo "FAIL: no feeder-enable command received in 5 s" >&2
+timeout 8 ros2 topic echo /kty/product_spawner/enabled --once || {
+  echo "FAIL: no feeder-enable command received in 8 s" >&2
   failures=$((failures + 1))
 }
 
 printf '\nGround-truth JSON mirror:\n'
-timeout 5 ros2 topic echo /kty/ground_truth/registry_json --once || {
-  echo "FAIL: no registry JSON received in 5 s" >&2
+timeout 8 ros2 topic echo /kty/ground_truth/registry_json --once || {
+  echo "FAIL: no registry JSON received in 8 s" >&2
   failures=$((failures + 1))
 }
 
@@ -111,7 +121,7 @@ Pause:
 Resume:
   gz service -s /world/kty_station/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: false'
 Reset:
-  gz service -s /world/kty_station/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'reset { all: true }'
+  gz service -s /world/kty_station/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'reset: {all: true}'
 EOF
 
 printf '\nExpected cycle:\n'
