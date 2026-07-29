@@ -1,16 +1,16 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>kty_station_sim</name>
-  <version>0.1.0</version>
-  <description>Simplified Gazebo digital twin of the KTY handling and vibration-compaction station.</description>
+  <version>0.2.0</version>
+  <description>Simplified Gazebo digital twin and isolated smoke scenario for the KTY station.</description>
   <maintainer email="team@example.com">Singulator Team</maintainer>
   <license>Apache-2.0</license>
 
   <!--
-    The package uses the ament_python build type declared below.  We do not
+    The package uses the ament_python build type declared below. We do not
     list ament_python as a rosdep dependency because this workspace targets a
     ROS 2 Jazzy installation where the local rosdep database may not expose an
-    ament_python key.  The build type is provided by the sourced ROS setup.
+    ament_python key. The build type is provided by the sourced ROS setup.
   -->
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>rclpy</exec_depend>
