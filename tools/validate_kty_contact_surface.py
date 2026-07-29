@@ -25,6 +25,13 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _top_z(link: ET.Element) -> float:
+    pose = [float(value) for value in link.findtext("pose", "").split()]
+    size = [float(value) for value in link.findtext("collision/geometry/box/size", "").split()]
+    require(len(pose) == 6 and len(size) == 3, f"Invalid surface geometry: {link.attrib}")
+    return pose[2] + 0.5 * size[2]
+
+
 def validate_plugin_package() -> None:
     package_xml = read(PLUGIN / "package.xml")
     cmake = read(PLUGIN / "CMakeLists.txt")
@@ -80,14 +87,37 @@ def validate_generated_world() -> None:
         world.attrib.get("name") == "kty_mechatronics_surface",
         "Unexpected contact-surface world name",
     )
+    require(world.findtext("physics/max_step_size") == "0.004", "Expected 4 ms step")
+    require(
+        world.findtext("physics/real_time_update_rate") == "250",
+        "Expected 250 Hz real-time profile",
+    )
+    sensor = world.find(".//sensor[@name='overhead_rgbd']")
+    require(sensor is not None, "RGB-D sensor missing")
+    require(sensor.findtext("update_rate") == "6", "Expected 6 Hz RGB-D")
+    require(sensor.findtext("camera/image/width") == "512", "Expected 512 px RGB-D")
+    require(sensor.findtext("camera/image/height") == "384", "Expected 384 px RGB-D")
+
     machine = world.find("model[@name='kty_mechatronics_machine']")
     require(machine is not None, "Machine model is missing")
     names = [element.attrib.get("name", "") for element in machine.findall("link")]
     joints = [element.attrib.get("name", "") for element in machine.findall("joint")]
     require(not any("roller" in name for name in names), "Roller links remain in runtime world")
     require(not any("roller" in name for name in joints), "Roller joints remain in runtime world")
-    require("infeed_surface" in names, "Infeed contact plate is missing")
-    require("outfeed_surface" in names, "Outfeed contact plate is missing")
+    for expected in (
+        "infeed_surface",
+        "outfeed_transfer_bridge",
+        "outfeed_surface",
+    ):
+        require(expected in names, f"Missing contact / transfer surface: {expected}")
+
+    bridge = machine.find("link[@name='outfeed_transfer_bridge']")
+    outfeed = machine.find("link[@name='outfeed_surface']")
+    require(bridge is not None and outfeed is not None, "Outfeed transfer geometry missing")
+    require(abs(_top_z(bridge) - 0.498) < 1.0e-9, "Bridge top must be 498 mm")
+    require(abs(_top_z(outfeed) - 0.496) < 1.0e-9, "Outfeed top must be 496 mm")
+    require(_top_z(bridge) > _top_z(outfeed), "Transfer must descend towards outfeed")
+
     require(
         machine.find("link[@name='vibration_deck']/collision[@name='active_contact_surface']")
         is not None,
@@ -97,6 +127,8 @@ def validate_generated_world() -> None:
         "plugin[@name='kty_conveyor_surface::KtyConveyorSurfaceSystem']"
     )
     require(plugin is not None, "Contact-surface Gazebo plugin is missing")
+    require(plugin.findtext("velocity_gain") == "360.0", "Expected stronger velocity loop")
+    require(plugin.findtext("max_force") == "650.0", "Expected loaded-KTY force limit")
     topics = {zone.findtext("topic") for zone in plugin.findall("zone")}
     require(
         topics
@@ -120,7 +152,7 @@ def validate_python_and_launch() -> None:
 
     controller = read(paths[1])
     for fragment in (
-        'super().__init__()',
+        "super().__init__()",
         '"/kty/mech/infeed_surface/cmd_vel"',
         '"/kty/mech/active_surface/cmd_vel"',
         '"/kty/mech/outfeed_surface/cmd_vel"',
@@ -136,8 +168,12 @@ def validate_python_and_launch() -> None:
         'executable="mechatronics_cycle_v3"',
         '"world_name": "kty_mechatronics_surface"',
         'default_value="1.15"',
+        '"roller_linear_speed_mps": 0.65',
+        '"slow_roller_linear_speed_mps": 0.18',
+        '"processing_hz": 3.0',
+        '"refresh_hz": 4.0',
     ):
-        require(fragment in launch, f"Missing surface launch wiring: {fragment}")
+        require(fragment in launch, f"Missing fast runtime launch wiring: {fragment}")
     require("_rollers/cmd_vel" not in launch, "Launch still bridges roller commands")
 
 
