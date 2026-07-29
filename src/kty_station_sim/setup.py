@@ -37,6 +37,7 @@ setup(
     entry_points={
         "console_scripts": [
             "station_controller = kty_station_sim.station_controller_v2:main",
+            "vibration_driver = kty_station_sim.vibration_driver:main",
             "product_spawner = kty_station_sim.product_spawner:main",
             "depth_perception = kty_station_sim.depth_perception:main",
             "safety_monitor = kty_station_sim.safety_monitor:main",
