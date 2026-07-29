@@ -1,0 +1,10 @@
+# Keep /clock on a dedicated bridge with the ROS Clock QoS profile.
+# The state machine, product spawner and vibration driver all use simulation
+# time, so advertising the topic without delivering samples deadlocks them.
+- ros_topic_name: /clock
+  gz_topic_name: /clock
+  ros_type_name: rosgraph_msgs/msg/Clock
+  gz_type_name: gz.msgs.Clock
+  direction: GZ_TO_ROS
+  qos_profile: CLOCK
+  lazy: false
