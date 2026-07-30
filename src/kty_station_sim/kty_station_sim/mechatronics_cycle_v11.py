@@ -178,6 +178,7 @@ class KtyMechatronicsCycleV11(KtyMechatronicsCycleV10):
         payload.update(
             {
                 "runtime_profile": "kty_mechatronics_v11",
+                "vibration_profile": "vertical_frequency_sweep_v11",
                 "changeover_order": "eject_despawn_position_next",
                 "last_despawned_kty": self._last_despawned_kty,
                 "despawned_cycles": self._despawned_cycles,
