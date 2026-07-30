@@ -1,9 +1,13 @@
-"""Runtime-v11 lifecycle ordering for repeatable two-KTY operation.
+"""Runtime-v11 lifecycle ordering and stronger KTY compaction.
 
-The loaded KTY is now removed immediately after it clears the active zone.  The
-next KTY is not allowed to move until Gazebo confirms that the previous KTY and
-its carried products no longer exist.  This prevents a failed readiness check
-for the second KTY from leaving the first container in the world indefinitely.
+The loaded KTY is removed immediately after it clears the active zone. The next
+KTY is not allowed to move until Gazebo confirms that the previous KTY and its
+carried products no longer exist.
+
+Compaction is also changed from the v10 8..12 Hz / +/-5 mm sweep to a slower,
+larger-stroke 6.5..9.0 Hz / +/-8 mm sweep. The lower frequency is easier for the
+loaded physical deck to track, while the larger displacement creates clearly
+visible repeated unloading and settling of products.
 """
 
 from __future__ import annotations
@@ -17,18 +21,32 @@ from .mechatronics_cycle_v10 import KtyMechatronicsCycleV10
 
 
 class KtyMechatronicsCycleV11(KtyMechatronicsCycleV10):
-    """Effective vibration plus deterministic despawn-before-position changeover."""
+    """Stronger vibration plus deterministic despawn-before-position changeover."""
 
     def __init__(self) -> None:
         # The inherited constructor starts the worker using dynamic dispatch.
-        # Hold it until v11 telemetry fields are available.
+        # Hold it until v11 parameters and telemetry fields are available.
         self._v11_ready = threading.Event()
         self._last_despawned_kty = ""
         self._despawned_cycles = 0
         super().__init__()
+
+        # Runtime-v11 effective profile. These values intentionally override the
+        # legacy launch defaults while preserving the public parameter interface.
+        self.weak_frequency = 5.0
+        self.weak_amplitude = 0.0018
+        self.strong_frequency = 7.75
+        self.strong_sweep_hz = 1.25
+        self.strong_modulation_hz = 0.22
+        self.strong_amplitude = 0.0080
+        self.strong_duration = 15.0
+        self.strong_ramp = 2.0
+        self.vibration_settle_s = 1.2
+
         self._v11_ready.set()
         self.get_logger().info(
-            "Runtime v11: loaded KTY is confirmed removed before POSITION_NEXT"
+            "Runtime v11: 6.5..9.0 Hz +/-8 mm compaction and confirmed "
+            "despawn before POSITION_NEXT"
         )
 
     def _worker_main(self) -> None:
@@ -63,7 +81,7 @@ class KtyMechatronicsCycleV11(KtyMechatronicsCycleV10):
 
     def _despawn_loaded_kty(self, old_kty: str, product_names: set[str]) -> None:
         """Delete carried products first, then the empty KTY, with confirmation."""
-        # Capture products again at the exit position.  The union keeps products
+        # Capture products again at the exit position. The union keeps products
         # identified before transport and any that were only clearly inside later.
         product_names.update(self._products_inside(old_kty))
 
@@ -115,7 +133,7 @@ class KtyMechatronicsCycleV11(KtyMechatronicsCycleV10):
         )
         self._wait_for_x(old_kty, minimum_x=1.25, timeout_s=7.0)
 
-        # Critical v11 ordering: remove the old loaded KTY now.  No readiness or
+        # Critical v11 ordering: remove the old loaded KTY now. No readiness or
         # positioning failure of the next KTY can leave it stranded in the world.
         self._despawn_loaded_kty(old_kty, old_products)
 
@@ -163,6 +181,12 @@ class KtyMechatronicsCycleV11(KtyMechatronicsCycleV10):
                 "changeover_order": "eject_despawn_position_next",
                 "last_despawned_kty": self._last_despawned_kty,
                 "despawned_cycles": self._despawned_cycles,
+                "effective_weak_frequency_hz": self.weak_frequency,
+                "effective_weak_amplitude_m": self.weak_amplitude,
+                "effective_strong_min_hz": self.strong_frequency - self.strong_sweep_hz,
+                "effective_strong_max_hz": self.strong_frequency + self.strong_sweep_hz,
+                "effective_strong_amplitude_m": self.strong_amplitude,
+                "effective_strong_duration_s": self.strong_duration,
             }
         )
         return payload
