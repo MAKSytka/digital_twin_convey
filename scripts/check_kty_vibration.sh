@@ -102,8 +102,8 @@ print(f'Observed frequency range: {node.frequency_min:.2f} .. {node.frequency_ma
 print(f'Max theoretical acceleration: {node.accel_max:.2f} g')
 
 failures = 0
-if node.runtime_profile != 'kty_mechatronics_v11':
-    print('FAIL: runtime-v11 controller was not active')
+if node.runtime_profile != 'kty_mechatronics_v12':
+    print('FAIL: runtime-v12 controller was not active')
     failures += 1
 if node.command_min > -0.0072 or node.command_max < 0.0072:
     print('FAIL: command did not reach approximately +/-8 mm')
@@ -132,7 +132,7 @@ else:
 
 if failures:
     raise SystemExit(f'KTY vibration diagnostics failed: {failures} problem(s)')
-print('KTY runtime-v11 vibration command and compaction telemetry: OK')
+print('KTY runtime-v12 vibration command and compaction telemetry: OK')
 PY
 
 cat <<'EOF'
