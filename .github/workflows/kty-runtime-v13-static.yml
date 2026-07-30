@@ -6,6 +6,7 @@ on:
       - "src/kty_station_sim/**"
       - "scripts/build_kty_perception_3d.sh"
       - "scripts/run_kty_perception_3d.sh"
+      - "scripts/check_kty_cycle_v13.sh"
       - "tools/validate_kty_runtime_v13.py"
       - ".github/workflows/kty-runtime-v13-static.yml"
   workflow_dispatch:
@@ -24,3 +25,4 @@ jobs:
         run: |
           bash -n scripts/build_kty_perception_3d.sh
           bash -n scripts/run_kty_perception_3d.sh
+          bash -n scripts/check_kty_cycle_v13.sh
