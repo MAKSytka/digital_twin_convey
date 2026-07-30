@@ -53,9 +53,13 @@ def validate_wiring() -> None:
     run = read(ROOT / "scripts" / "run_kty_perception_3d.sh")
     build = read(ROOT / "scripts" / "build_kty_perception_3d.sh")
 
+    accepted_routes = (
+        "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v16:main",
+        "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v17:main",
+    )
     require(
-        "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v16:main" in setup,
-        "Accepted entry point does not route to runtime v16",
+        any(route in setup for route in accepted_routes),
+        "Accepted entry point does not route to runtime v16 or its v17 successor",
     )
     require(
         "mechatronics_cycle_v16 = kty_station_sim.mechatronics_cycle_v16:main" in setup,
