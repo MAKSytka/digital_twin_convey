@@ -1,4 +1,4 @@
-"""Build the runtime-v14 KTY world using SceneBroadcaster pose feedback."""
+"""Build the runtime-v14+ KTY world using a robust transport envelope."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from .world_patch_v3 import build_surface_world
 
 
 SCENE_BROADCASTER_NAME = "gz::sim::systems::SceneBroadcaster"
+CONTACT_PLUGIN_NAME = "kty_conveyor_surface::KtyConveyorSurfaceSystem"
 
 
 def _set_required_text(parent: ET.Element, path: str, value: str) -> None:
@@ -21,10 +22,10 @@ def _set_required_text(parent: ET.Element, path: str, value: str) -> None:
 def build_runtime_v13_world(source: Path, destination: Path) -> Path:
     """Generate the accepted surface world with a lighter runtime profile.
 
-    SceneBroadcaster is already part of the base world and publishes the
-    canonical ``/world/<name>/dynamic_pose/info`` Pose_V topic.  Runtime v14
-    bridges that existing stream instead of adding a second PosePublisher with
-    a different topic name.
+    SceneBroadcaster remains available for GUI state.  Runtime v15+ gets named
+    model poses from the contact-surface JSON registry.  The transport envelope is
+    deliberately wider than the nominal contact plane so an empty queued KTY that
+    is lifted or tilted by a stray product still receives admission velocity.
     """
     build_surface_world(source, destination)
     tree = ET.parse(destination)
@@ -52,9 +53,24 @@ def build_runtime_v13_world(source: Path, destination: Path) -> Path:
     if scene_broadcaster is None:
         raise RuntimeError("SceneBroadcaster system is required for dynamic poses")
 
-    # Remove the v13 PosePublisher if an older generated tree is reused.  Its
-    # default world-scoped topic did not match the bridge and caused the startup
-    # deadlock fixed by runtime v14.
+    contact_plugin = world.find(f"plugin[@name='{CONTACT_PLUGIN_NAME}']")
+    if contact_plugin is None:
+        raise RuntimeError("KTY contact-surface system is missing")
+    _set_required_text(contact_plugin, "contact_tolerance", "0.300")
+
+    # Increase overlap around the infeed / active hand-off.  Both zones receive
+    # the same command during POSITION_NEXT, so overlap cannot reverse the KTY;
+    # it only prevents the model centre from falling into an undriven gap.
+    for zone in contact_plugin.findall("zone"):
+        name = zone.findtext("name", default="")
+        if name == "infeed":
+            _set_required_text(zone, "max_x", "-0.100")
+        elif name == "active":
+            _set_required_text(zone, "min_x", "-0.800")
+        _set_required_text(zone, "min_y", "-0.500")
+        _set_required_text(zone, "max_y", "0.500")
+
+    # Remove the obsolete PosePublisher if an older generated tree is reused.
     for plugin in list(world.findall("plugin")):
         if plugin.attrib.get("name") == "gz::sim::systems::PosePublisher":
             world.remove(plugin)
