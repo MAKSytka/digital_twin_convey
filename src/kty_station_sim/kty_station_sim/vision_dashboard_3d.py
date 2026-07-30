@@ -63,9 +63,6 @@ class KtyVisionDashboard3D(KtyVisionDashboard):
         panel = super()._stats_panel(width, height)
         message = self.latest_contours
 
-        # Runtime-v10 vibration telemetry is carried in /kty/flow/state.  This
-        # makes the physical profile visible even when the five-millimetre deck
-        # stroke is difficult to judge from the overview camera.
         flow = self.latest_flow_state
         mode = str(flow.get("vibration_mode", "off"))
         command_mm = 1000.0 * float(flow.get("vibration_command_m", 0.0) or 0.0)
@@ -108,7 +105,7 @@ class KtyVisionDashboard3D(KtyVisionDashboard):
         )
         bar_x, bar_y, bar_w, bar_h = 24, vibration_y + 94, width - 48, 12
         cv2.rectangle(panel, (bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h), (50, 60, 72), -1)
-        normalized = min(1.0, abs(command_mm) / 5.0)
+        normalized = min(1.0, abs(command_mm) / 8.0)
         cv2.rectangle(
             panel,
             (bar_x, bar_y),
@@ -145,7 +142,7 @@ def main(args=None) -> None:
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == "__main__":
