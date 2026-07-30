@@ -61,7 +61,7 @@ for service in \
   fi
 done
 
-printf '\nWaiting for lifecycle-locator changeover and deterministic surface outfeed:\n'
+printf '\nWaiting for eject -> confirmed despawn -> next-KTY positioning:\n'
 if ! python3 - <<'PY'
 import json
 import subprocess
@@ -89,6 +89,9 @@ class Observer(Node):
         self.locator_removed_seen = False
         self.locator_recreated_seen = False
         self.transport_seen = False
+        self.despawn_seen = False
+        self.despawn_confirmed_before_position = False
+        self.first_kty = ''
         self.error = ''
         self.latest_active = 0.0
         self.latest_outfeed = 0.0
@@ -99,6 +102,8 @@ class Observer(Node):
 
     @staticmethod
     def model_exists(name):
+        if not name:
+            return False
         result = subprocess.run(
             ['gz', 'model', '--list'],
             capture_output=True,
@@ -125,7 +130,10 @@ class Observer(Node):
         state = str(data.get('state', ''))
         detail = str(data.get('detail', ''))
         cycle = int(data.get('cycle_id', 0) or 0)
+        active_kty = str(data.get('active_kty', ''))
         self.seen.add(state)
+        if not self.first_kty and active_kty and cycle == 1:
+            self.first_kty = active_kty
         self.transport_seen = self.transport_seen or str(data.get('transport', '')).startswith(
             'flat_contact_surface'
         )
@@ -145,10 +153,25 @@ class Observer(Node):
             self.release_zero_seen = True
         if state == 'EJECT_ACTIVE' and 'locator absent' in detail and not locator_exists:
             self.locator_removed_seen = True
+        if state == 'DESPAWN_ACTIVE':
+            self.despawn_seen = True
+        despawned_cycles = int(data.get('despawned_cycles', 0) or 0)
+        last_despawned = str(data.get('last_despawned_kty', ''))
+        if state in {'POSITION_NEXT', 'VERIFY_READY', 'OPEN_GATE', 'LOAD'}:
+            if (
+                despawned_cycles >= 1
+                and self.first_kty
+                and last_despawned == self.first_kty
+                and not self.model_exists(self.first_kty)
+            ):
+                self.despawn_confirmed_before_position = True
         if state in {'POSITION_NEXT', 'VERIFY_READY'} and locator_exists:
             self.locator_recreated_seen = True
         gate_exists = self.model_exists('kty_mech_chute_gate')
-        if state in {'CLOSE_GATE', 'COMPACT', 'EJECT_ACTIVE', 'POSITION_NEXT', 'VERIFY_READY'} and gate_exists:
+        if state in {
+            'CLOSE_GATE', 'COMPACT', 'EJECT_ACTIVE', 'DESPAWN_ACTIVE',
+            'POSITION_NEXT', 'VERIFY_READY'
+        } and gate_exists:
             self.gate_closed_seen = True
         if self.gate_closed_seen and state in {'OPEN_GATE', 'LOAD'} and not gate_exists:
             self.gate_open_after_closed = True
@@ -156,9 +179,11 @@ class Observer(Node):
             self.second_load = True
         print(
             f"cycle={cycle} state={state} detail={detail!r} "
+            f"active_kty={active_kty} first_kty={self.first_kty} "
             f"locator={locator_exists} gate={gate_exists} "
             f"active={self.latest_active:.3f} outfeed={self.latest_outfeed:.3f} "
             f"last_nonzero={self.last_nonzero_outfeed:.3f} "
+            f"despawned_cycles={despawned_cycles} last_despawned={last_despawned!r} "
             f"transport={data.get('transport')} "
             f"fill={float(data.get('estimated_fill_ratio', 0.0) or 0.0):.3f}",
             flush=True,
@@ -167,7 +192,7 @@ class Observer(Node):
 
 rclpy.init()
 node = Observer()
-deadline = time.monotonic() + 300.0
+deadline = time.monotonic() + 360.0
 success = False
 try:
     while rclpy.ok() and time.monotonic() < deadline:
@@ -176,7 +201,7 @@ try:
             print(f"ERROR state: {node.error}; retained outfeed={node.last_nonzero_outfeed:.3f}")
             break
         required = {
-            'LOAD', 'CLOSE_GATE', 'COMPACT', 'EJECT_ACTIVE',
+            'LOAD', 'CLOSE_GATE', 'COMPACT', 'EJECT_ACTIVE', 'DESPAWN_ACTIVE',
             'POSITION_NEXT', 'VERIFY_READY', 'OPEN_GATE'
         }
         if (
@@ -184,6 +209,8 @@ try:
             and node.transport_seen
             and node.release_zero_seen
             and node.locator_removed_seen
+            and node.despawn_seen
+            and node.despawn_confirmed_before_position
             and node.locator_recreated_seen
             and node.outfeed_nonzero
             and node.gate_closed_seen
@@ -191,7 +218,7 @@ try:
             and node.second_load
         ):
             success = True
-            print('OK: lifecycle locator disappeared, KTY exited and locator returned')
+            print('OK: first loaded KTY was absent before the second KTY was positioned')
             break
 except ExternalShutdownException:
     pass
@@ -201,7 +228,7 @@ finally:
 raise SystemExit(0 if success else 1)
 PY
 then
-  echo 'FAIL: deterministic contact-surface changeover was not observed' >&2
+  echo 'FAIL: runtime-v11 despawn-first changeover was not observed' >&2
   failures=$((failures + 1))
 fi
 
@@ -234,13 +261,13 @@ PY
 
 cat <<'EOF'
 
-Expected runtime:
+Expected runtime v11:
   - generated world contains no roller links and no joint-driven locator;
-  - kty_mech_runtime_locator is deleted before active/outfeed command becomes nonzero;
-  - nonzero surface commands impose horizontal KTY velocity and suppress overturning;
-  - zero surface commands leave normal vertical vibration and collision physics active;
-  - the runtime locator is recreated before positioning the queued KTY;
-  - kty_mech_chute_gate exists while closed and disappears in OPEN_GATE.
+  - kty_mech_runtime_locator is deleted before active/outfeed becomes nonzero;
+  - the loaded KTY enters DESPAWN_ACTIVE after clearing the active zone;
+  - carried products and the first KTY are confirmed absent before POSITION_NEXT;
+  - the runtime locator is recreated only after the old KTY is absent;
+  - kty_mech_chute_gate remains closed during changeover and opens for cycle 2.
 EOF
 
 if (( failures > 0 )); then
@@ -248,4 +275,4 @@ if (( failures > 0 )); then
   exit 1
 fi
 
-echo 'KTY deterministic contact-surface diagnostics: OK'
+echo 'KTY runtime-v11 despawn-first diagnostics: OK'
