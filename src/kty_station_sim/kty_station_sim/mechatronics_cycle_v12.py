@@ -1,15 +1,11 @@
 """Runtime-v12 guards for repeatable loading and second-KTY positioning.
 
-Two target-machine failures are addressed here:
+The accepted v11 mechanics are retained. Runtime v12 fixes two target-machine
+failures:
 
-* a transient depth spike from one falling carton could satisfy the maximum-height
-  criterion even though the KTY volume was almost empty;
-* POSITION_NEXT used an eight-second wall-clock timeout, which is insufficient
-  when Gazebo runs at a low real-time factor.
-
-Runtime v12 keeps the accepted v11 transport, vibration and despawn ordering. It
-adds a physically grounded load interlock, long progress-aware positioning and
-confirmed gate opening before each LOAD state.
+* a sparse transient depth spike could close the chute after one carton;
+* POSITION_NEXT used an eight-second wall-clock timeout, which is too short at
+  low Gazebo real-time factors.
 """
 
 from __future__ import annotations
@@ -25,14 +21,14 @@ from .mechatronics_cycle_v11 import KtyMechatronicsCycleV11
 
 
 class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
-    """V11 mechanics with robust fill and repeatable queued-KTY admission."""
+    """V11 vibration / despawn with robust fill and queued-KTY admission."""
 
     def __init__(self) -> None:
         self._v12_ready = threading.Event()
         self._fill_received_at = 0.0
         self._load_guard = {
             "elapsed_s": 0.0,
-            "inside_products": 0,
+            "spawned_products": 0,
             "volume_reached": False,
             "height_reached": False,
             "occupied_floor_ratio": 0.0,
@@ -87,8 +83,8 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
 
         self._v12_ready.set()
         self.get_logger().info(
-            "Runtime v12: guarded fill thresholds, 60 s progress-aware "
-            "POSITION_NEXT and confirmed gate reopening"
+            "Runtime v12: guarded fill thresholds, progress-aware POSITION_NEXT "
+            "and confirmed gate reopening"
         )
 
     def _worker_main(self) -> None:
@@ -103,29 +99,25 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
         return self.GATE_NAME not in self._read_world_poses()
 
     def _ensure_gate_open(self, timeout_s: float = 5.0) -> None:
-        """Remove the static slide gate and confirm its absence in Gazebo."""
+        """Remove the static gate and confirm absence before entering LOAD."""
         deadline = time.monotonic() + timeout_s
-        attempt = 0
+        attempts = 0
         while time.monotonic() < deadline:
             self._check_interrupt()
             if self._gate_is_absent():
                 self._gate_model_spawned = False
                 return
-            attempt += 1
+            attempts += 1
             self._gate_model_spawned = True
             super()._remove_gate_model()
             self._interruptible_sleep(0.15)
         raise RuntimeError(
-            f"slide gate remained present after {attempt} removal attempts"
+            f"slide gate remained present after {attempts} removal attempts"
         )
 
-    def _sample_inside_product_count(self) -> int:
-        if not self._active_kty:
-            return 0
-        return len(self._products_inside(self._active_kty))
-
     def _load_until_full(self) -> None:
-        # Reassert and verify the physical gate state at the start of every cycle.
+        # Reassert physical opening at every cycle. This also recovers a gate whose
+        # first remove request was accepted late by Gazebo.
         self._set_commands(gate=self.gate_open)
         self._ensure_gate_open()
         self._transition(
@@ -144,8 +136,7 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
 
         started = time.monotonic()
         next_spawn = started
-        next_inside_sample = started
-        inside_products = 0
+        spawned_products = 0
         threshold_since: float | None = None
 
         while True:
@@ -154,11 +145,8 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
             if now >= next_spawn:
                 name = self._spawn_product()
                 self._active_product_names.add(name)
+                spawned_products += 1
                 next_spawn = now + self.spawn_interval
-
-            if now >= next_inside_sample:
-                inside_products = self._sample_inside_product_count()
-                next_inside_sample = now + 0.75
 
             with self._lock:
                 fill = dict(self._latest_fill)
@@ -169,18 +157,15 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
             occupied_ratio = float(fill.get("occupied_floor_ratio", 0.0) or 0.0)
             camera_ok = bool(fill.get("camera_ok", False))
             fill_fresh = now - self._fill_received_at <= self.fill_freshness_timeout
-            enough_products = inside_products >= self.minimum_products_for_close
+            enough_products = spawned_products >= self.minimum_products_for_close
             enough_time = elapsed >= self.minimum_load_duration
 
-            # A true 70% volume event must also occupy a meaningful floor area;
-            # this rejects wall / chute artefacts that integrate into a tall but
-            # spatially tiny blob.
+            # Both closure paths require spatial support. A single tall carton or a
+            # thin chute / wall artefact can no longer close an almost empty KTY.
             volume_reached = (
                 fill_ratio >= self.fill_ratio_threshold
                 and occupied_ratio >= self.volume_guard_occupied
             )
-            # The 280 mm safety criterion is retained, but only when the tall
-            # region is supported by non-trivial volume and floor occupancy.
             height_reached = (
                 maximum_height >= self.height_threshold
                 and fill_ratio >= self.height_guard_fill
@@ -204,7 +189,7 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
 
             self._load_guard = {
                 "elapsed_s": elapsed,
-                "inside_products": inside_products,
+                "spawned_products": spawned_products,
                 "volume_reached": volume_reached,
                 "height_reached": height_reached,
                 "occupied_floor_ratio": occupied_ratio,
@@ -225,7 +210,7 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
                         "Load close accepted: "
                         f"reason={reason} fill={fill_ratio:.3f} "
                         f"height={maximum_height:.3f} m occupied={occupied_ratio:.3f} "
-                        f"inside={inside_products} elapsed={elapsed:.1f} s"
+                        f"spawned={spawned_products} elapsed={elapsed:.1f} s"
                     )
                     return
             else:
@@ -251,7 +236,7 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
                     infeed=self.roller_speed,
                     active=self.roller_speed,
                 )
-                self._interruptible_sleep(0.20)
+                self._interruptible_sleep(0.25)
                 continue
 
             if pose.x > best_x + 0.010:
@@ -273,8 +258,8 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
             else:
                 speed = min(self.slow_roller_speed, 0.18)
 
-            # The pusher starts the queue KTY, then retracts so it cannot drag or
-            # wedge the container while the flat surfaces finish positioning.
+            # The pusher only starts the KTY. It retracts before the contact
+            # surfaces perform final positioning, so it cannot drag or wedge it.
             if not pusher_retracted and pose.x >= self.queue_spawn_x + 0.28:
                 pusher_retracted = True
             pusher = 0.0 if pusher_retracted else self.pusher_extended
@@ -298,13 +283,14 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
                 active=speed,
                 outfeed=0.0,
             )
-            self._interruptible_sleep(0.12)
+            self._interruptible_sleep(0.20)
 
         pose = self._read_pose(name)
         x_text = "unknown" if pose is None else f"{pose.x:.3f}"
+        best_text = "unknown" if not math.isfinite(best_x) else f"{best_x:.3f}"
         raise RuntimeError(
-            f"{name} did not reach the active locator within "
-            f"{self.position_next_timeout:.0f} s; last x={x_text}, best x={best_x:.3f}"
+            f"{name} did not reach active locator within "
+            f"{self.position_next_timeout:.0f} s; last x={x_text}, best x={best_text}"
         )
 
     def _wait_until_ready(
@@ -313,7 +299,7 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
         previous_name: str,
         timeout_s: float,
     ) -> None:
-        """Verify mechanics and a fresh empty-KTY depth frame before opening gate."""
+        """Verify mechanics and a fresh empty-KTY depth frame before opening."""
         deadline = time.monotonic() + max(timeout_s, self.readiness_timeout)
         stable_since: float | None = None
         last_pose = None
@@ -328,7 +314,7 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
             previous = poses.get(previous_name)
             if pose is None:
                 stable_since = None
-                self._interruptible_sleep(0.15)
+                self._interruptible_sleep(0.25)
                 continue
 
             velocity = math.inf
@@ -393,7 +379,7 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
                     return
             else:
                 stable_since = None
-            self._interruptible_sleep(0.12)
+            self._interruptible_sleep(0.25)
 
         raise RuntimeError(
             f"{name} failed readiness checks after {self.readiness_timeout:.0f} s: "
@@ -409,7 +395,9 @@ class KtyMechatronicsCycleV12(KtyMechatronicsCycleV11):
                 "load_guard": dict(self._load_guard),
                 "position_next_timeout_s": self.position_next_timeout,
                 "position_recovery_pulses": self._position_recovery_pulses,
-                "gate_open_confirmed": self._gate_is_absent(),
+                # This flag is only set false after a confirmed removal attempt;
+                # avoid spawning a blocking gz subprocess from the state timer.
+                "gate_open_confirmed": not self._gate_model_spawned,
             }
         )
         return payload
