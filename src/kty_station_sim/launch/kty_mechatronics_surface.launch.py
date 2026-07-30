@@ -175,8 +175,8 @@ def generate_launch_description() -> LaunchDescription:
 
     controller = Node(
         package="kty_station_sim",
-        # The installed v3 entry point is routed to runtime v11 so existing
-        # diagnostics and operator scripts keep the accepted node name.
+        # The accepted v3 executable is routed to runtime v12 so existing
+        # diagnostics and operator scripts keep the established node name.
         executable="mechatronics_cycle_v3",
         name="kty_mechatronics_cycle_v3",
         output="screen",
@@ -199,11 +199,9 @@ def generate_launch_description() -> LaunchDescription:
                 ),
                 "roller_linear_speed_mps": 0.65,
                 "slow_roller_linear_speed_mps": 0.18,
-                # Runtime-v11 loading agitation.
+                # Runtime-v11 vibration retained by v12.
                 "weak_vibration_frequency_hz": 5.0,
                 "weak_vibration_amplitude_m": 0.0018,
-                # Runtime-v11 compaction: 6.5..9.0 Hz at +/-8 mm. The lower
-                # frequency is easier for the loaded deck to track than 8..12 Hz.
                 "strong_vibration_frequency_hz": 7.75,
                 "strong_vibration_sweep_hz": 1.25,
                 "strong_vibration_modulation_hz": 0.22,
@@ -211,6 +209,22 @@ def generate_launch_description() -> LaunchDescription:
                 "strong_vibration_duration_s": 15.0,
                 "strong_vibration_ramp_s": 2.0,
                 "vibration_settle_s": 1.2,
+                # Runtime-v12 false-close guards.
+                "minimum_load_duration_s": 4.0,
+                "minimum_products_for_close": 3,
+                "height_guard_min_fill_ratio": 0.10,
+                "height_guard_min_occupied_ratio": 0.18,
+                "volume_guard_min_occupied_ratio": 0.35,
+                "load_close_persistence_s": 1.0,
+                # Wall-clock budgets must tolerate low Gazebo RTF.
+                "position_next_timeout_s": 60.0,
+                "position_progress_timeout_s": 7.0,
+                "readiness_timeout_s": 30.0,
+                "readiness_position_tolerance_m": 0.012,
+                "readiness_velocity_tolerance_mps": 0.040,
+                "empty_kty_fill_limit": 0.22,
+                "empty_kty_occupied_limit": 0.30,
+                "fill_freshness_timeout_s": 3.0,
             }
         ],
     )
