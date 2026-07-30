@@ -10,4 +10,5 @@ set -u
 # kty_mechatronics_surface.launch.py
 # kty_mechatronics_v13.launch.py
 # kty_mechatronics_v14.launch.py
-exec ros2 launch kty_station_sim kty_mechatronics_v15.launch.py "$@"
+# kty_mechatronics_v15.launch.py
+exec ros2 launch kty_station_sim kty_mechatronics_v16.launch.py "$@"
