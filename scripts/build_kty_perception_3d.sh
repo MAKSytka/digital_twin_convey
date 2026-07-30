@@ -4,7 +4,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 # A previous failed build can leave the current shell pointing at package
-# prefixes which have already been removed.  Strip only this workspace's stale
+# prefixes which have already been removed. Strip only this workspace's stale
 # install entries before sourcing the clean ROS underlay.
 strip_workspace_install_entries() {
   local variable_name="$1"
@@ -37,6 +37,7 @@ set -u
 
 python3 tools/validate_kty_classical_3d.py
 python3 tools/validate_kty_contact_surface.py
+python3 tools/validate_kty_runtime_v13.py
 
 rm -rf \
   build/singulator_interfaces install/singulator_interfaces \
@@ -59,6 +60,7 @@ for exe in \
   contour_recorder_3d \
   vision_dashboard_3d \
   mechatronics_cycle_v3 \
+  mechatronics_cycle_v13 \
   fill_estimator_v2; do
   ros2 pkg executables kty_station_sim | awk '{print $2}' | grep -Fxq "$exe" || {
     echo "ERROR missing $exe" >&2
@@ -75,4 +77,4 @@ test -f "$plugin_prefix/lib/libKtyConveyorSurfaceSystem.so" || {
 ros2 interface show singulator_interfaces/msg/KtyGraspCandidate >/dev/null
 ros2 interface show singulator_interfaces/msg/KtyProductContour >/dev/null
 
-echo "KTY contact-surface runtime build: OK"
+echo "KTY runtime-v13 contact-surface build: OK"
