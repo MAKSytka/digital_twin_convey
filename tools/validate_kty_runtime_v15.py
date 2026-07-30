@@ -28,7 +28,7 @@ def validate_plugin() -> None:
         "gz/msgs/stringmsg.pb.h",
         'poseRegistryTopic{"/kty/mech/model_pose_registry_json"}',
         'poseRegistryPrefix{"kty_mech_"}',
-        '"kty_model_pose_registry/v1"',
+        "kty_model_pose_registry/v1",
         "registryPublisher.Publish(message)",
         "std::chrono::duration<double>(_info.simTime).count()",
     ):
