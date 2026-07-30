@@ -19,7 +19,7 @@ def generate_launch_description() -> LaunchDescription:
     output_directory = LaunchConfiguration("polygon_output_directory")
 
     # The contact-surface Gazebo system publishes a compact, explicitly named
-    # JSON registry.  StringMsg avoids the Pose_V -> TFMessage frame-name issue
+    # JSON registry. StringMsg avoids the Pose_V -> TFMessage frame-name issue
     # observed on the target Jazzy installation.
     pose_registry_bridge = Node(
         package="ros_gz_bridge",
@@ -53,10 +53,10 @@ def generate_launch_description() -> LaunchDescription:
                 "product_spawn_interval_s",
                 default_value="1.90",
             ),
-            DeclareLaunchArgument("fill_ratio_threshold", default_value="0.70"),
+            DeclareLaunchArgument("fill_ratio_threshold", default_value="0.82"),
             DeclareLaunchArgument(
                 "max_height_threshold_m",
-                default_value="0.280",
+                default_value="0.340",
             ),
             DeclareLaunchArgument("show_dashboard", default_value="false"),
             DeclareLaunchArgument(
