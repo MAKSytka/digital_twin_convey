@@ -40,16 +40,14 @@ setup(
             "flow_cycle = kty_station_sim.flow_cycle_smooth:main",
             "mechatronics_cycle = kty_station_sim.mechatronics_cycle:main",
             "mechatronics_cycle_v2 = kty_station_sim.mechatronics_cycle_v2:main",
-            # Accepted executable name now routes to runtime v13. Compatibility
-            # markers keep stacked v11/v12 static validators green until the
-            # branch history is cleaned up:
-            # mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v11:main
-            # mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v12:main
-            "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v13:main",
+            # Preserve the accepted executable name while routing it to the
+            # deadlock-free runtime-v14 startup implementation.
+            "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v14:main",
             "mechatronics_cycle_v10 = kty_station_sim.mechatronics_cycle_v10:main",
             "mechatronics_cycle_v11 = kty_station_sim.mechatronics_cycle_v11:main",
             "mechatronics_cycle_v12 = kty_station_sim.mechatronics_cycle_v12:main",
             "mechatronics_cycle_v13 = kty_station_sim.mechatronics_cycle_v13:main",
+            "mechatronics_cycle_v14 = kty_station_sim.mechatronics_cycle_v14:main",
             "fill_estimator = kty_station_sim.fill_estimator:main",
             "fill_estimator_v2 = kty_station_sim.fill_estimator_v2:main",
             "depth_perception = kty_station_sim.depth_perception:main",
