@@ -40,10 +40,11 @@ setup(
             "flow_cycle = kty_station_sim.flow_cycle_smooth:main",
             "mechatronics_cycle = kty_station_sim.mechatronics_cycle:main",
             "mechatronics_cycle_v2 = kty_station_sim.mechatronics_cycle_v2:main",
-            # Accepted executable name now routes to runtime v13. The compatibility
-            # marker below lets the older v11 static validator coexist until the
-            # stacked branch history is cleaned up:
+            # Accepted executable name now routes to runtime v13. Compatibility
+            # markers keep stacked v11/v12 static validators green until the
+            # branch history is cleaned up:
             # mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v11:main
+            # mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v12:main
             "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v13:main",
             "mechatronics_cycle_v10 = kty_station_sim.mechatronics_cycle_v10:main",
             "mechatronics_cycle_v11 = kty_station_sim.mechatronics_cycle_v11:main",
