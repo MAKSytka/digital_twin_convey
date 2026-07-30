@@ -34,6 +34,7 @@ class Observer(Node):
         self.position_next_seen = False
         self.open_gate_seen = False
         self.second_load_seen = False
+        self.second_load_gate_confirmed = False
         self.first_kty = ''
         self.last_despawned = ''
         self.create_subscription(String, '/kty/flow/state', self.on_state, qos)
@@ -74,11 +75,13 @@ class Observer(Node):
             self.open_gate_seen = True
         if state == 'LOAD' and cycle >= 2:
             self.second_load_seen = True
+            self.second_load_gate_confirmed = bool(data.get('gate_open_confirmed', False))
         self.last_despawned = str(data.get('last_despawned_kty', ''))
         print(
             f"cycle={cycle} state={state} runtime={self.runtime} "
             f"gate_open={data.get('gate_open')} gate_confirmed={data.get('gate_open_confirmed')} "
-            f"despawned={self.last_despawned!r} guard={guard}",
+            f"despawned={self.last_despawned!r} recoveries={data.get('position_recovery_pulses')} "
+            f"guard={guard}",
             flush=True,
         )
 
@@ -112,15 +115,15 @@ if node.first_close_guard is None:
 else:
     guard = node.first_close_guard
     elapsed = float(guard.get('elapsed_s', 0.0) or 0.0)
-    inside = int(guard.get('inside_products', 0) or 0)
+    spawned = int(guard.get('spawned_products', 0) or 0)
     enough_time = bool(guard.get('enough_time', False))
     enough_products = bool(guard.get('enough_products', False))
-    print(f'First close guard: elapsed={elapsed:.1f}s inside={inside} data={guard}')
+    print(f'First close guard: elapsed={elapsed:.1f}s spawned={spawned} data={guard}')
     if not enough_time or elapsed < 3.8:
         print('FAIL: gate closed before minimum load duration')
         failures += 1
-    if not enough_products or inside < 3:
-        print('FAIL: gate closed before at least three products were confirmed inside')
+    if not enough_products or spawned < 3:
+        print('FAIL: gate closed before at least three deterministic spawn events')
         failures += 1
 if not node.despawn_seen or not node.last_despawned:
     print('FAIL: loaded KTY despawn was not observed')
@@ -136,6 +139,9 @@ if not node.open_gate_seen:
     failures += 1
 if not node.second_load_seen:
     print('FAIL: second LOAD was not observed')
+    failures += 1
+elif not node.second_load_gate_confirmed:
+    print('FAIL: second LOAD began without confirmed gate removal')
     failures += 1
 
 if failures:
