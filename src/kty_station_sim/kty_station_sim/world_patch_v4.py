@@ -1,4 +1,4 @@
-"""Build the runtime-v13 KTY world with a persistent, rate-limited pose stream."""
+"""Build the runtime-v14 KTY world using SceneBroadcaster pose feedback."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from .world_patch_v3 import build_surface_world
 
 
-POSE_PUBLISHER_NAME = "gz::sim::systems::PosePublisher"
+SCENE_BROADCASTER_NAME = "gz::sim::systems::SceneBroadcaster"
 
 
 def _set_required_text(parent: ET.Element, path: str, value: str) -> None:
@@ -19,7 +19,13 @@ def _set_required_text(parent: ET.Element, path: str, value: str) -> None:
 
 
 def build_runtime_v13_world(source: Path, destination: Path) -> Path:
-    """Generate the accepted surface world plus a 20 Hz model-only Pose_V topic."""
+    """Generate the accepted surface world with a lighter runtime profile.
+
+    SceneBroadcaster is already part of the base world and publishes the
+    canonical ``/world/<name>/dynamic_pose/info`` Pose_V topic.  Runtime v14
+    bridges that existing stream instead of adding a second PosePublisher with
+    a different topic name.
+    """
     build_surface_world(source, destination)
     tree = ET.parse(destination)
     root = tree.getroot()
@@ -27,9 +33,6 @@ def build_runtime_v13_world(source: Path, destination: Path) -> Path:
     if world is None:
         raise RuntimeError("Generated SDF has no world")
 
-    # Lower the CPU cost while retaining over 20 physics samples per 9 Hz
-    # vibration cycle. Horizontal KTY transport is deterministic in the Gazebo
-    # system plugin, so it does not require a 250 Hz solver.
     physics = world.find("physics")
     if physics is None:
         raise RuntimeError("Generated world has no physics block")
@@ -43,27 +46,18 @@ def build_runtime_v13_world(source: Path, destination: Path) -> Path:
     _set_required_text(sensor, "camera/image/width", "448")
     _set_required_text(sensor, "camera/image/height", "336")
 
-    for plugin in list(world.findall("plugin")):
-        if plugin.attrib.get("name") == POSE_PUBLISHER_NAME:
-            world.remove(plugin)
-
-    publisher = ET.SubElement(
-        world,
-        "plugin",
-        {
-            "filename": "gz-sim-pose-publisher-system",
-            "name": POSE_PUBLISHER_NAME,
-        },
+    scene_broadcaster = world.find(
+        f"plugin[@name='{SCENE_BROADCASTER_NAME}']"
     )
-    ET.SubElement(publisher, "publish_link_pose").text = "false"
-    ET.SubElement(publisher, "publish_visual_pose").text = "false"
-    ET.SubElement(publisher, "publish_collision_pose").text = "false"
-    ET.SubElement(publisher, "publish_sensor_pose").text = "false"
-    ET.SubElement(publisher, "publish_model_pose").text = "true"
-    ET.SubElement(publisher, "publish_nested_model_pose").text = "true"
-    ET.SubElement(publisher, "use_pose_vector_msg").text = "true"
-    ET.SubElement(publisher, "update_frequency").text = "20"
-    ET.SubElement(publisher, "static_publisher").text = "false"
+    if scene_broadcaster is None:
+        raise RuntimeError("SceneBroadcaster system is required for dynamic poses")
+
+    # Remove the v13 PosePublisher if an older generated tree is reused.  Its
+    # default world-scoped topic did not match the bridge and caused the startup
+    # deadlock fixed by runtime v14.
+    for plugin in list(world.findall("plugin")):
+        if plugin.attrib.get("name") == "gz::sim::systems::PosePublisher":
+            world.remove(plugin)
 
     tree.write(destination, encoding="utf-8", xml_declaration=True)
     ET.parse(destination)
