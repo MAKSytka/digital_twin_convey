@@ -1,8 +1,11 @@
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <iomanip>
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -10,6 +13,7 @@
 
 #include <gz/math/Vector3.hh>
 #include <gz/msgs/double.pb.h>
+#include <gz/msgs/stringmsg.pb.h>
 #include <gz/plugin/Register.hh>
 #include <gz/sim/Entity.hh>
 #include <gz/sim/EntityComponentManager.hh>
@@ -58,6 +62,16 @@ public:
       this->maxForce = _sdf->Get<double>("max_force");
     if (_sdf->HasElement("velocity_deadband"))
       this->velocityDeadband = _sdf->Get<double>("velocity_deadband");
+    if (_sdf->HasElement("pose_registry_topic"))
+      this->poseRegistryTopic = _sdf->Get<std::string>("pose_registry_topic");
+    if (_sdf->HasElement("pose_registry_prefix"))
+      this->poseRegistryPrefix = _sdf->Get<std::string>("pose_registry_prefix");
+    if (_sdf->HasElement("pose_registry_hz"))
+      this->poseRegistryHz = _sdf->Get<double>("pose_registry_hz");
+
+    this->poseRegistryHz = std::max(1.0, this->poseRegistryHz);
+    this->registryPublisher =
+      this->transport.Advertise<gz::msgs::StringMsg>(this->poseRegistryTopic);
 
     if (!_sdf->HasElement("zone"))
       return;
@@ -98,7 +112,7 @@ public:
     const gz::sim::UpdateInfo &_info,
     gz::sim::EntityComponentManager &_ecm) override
   {
-    if (_info.paused || this->zones.empty())
+    if (_info.paused)
       return;
 
     std::vector<double> commands;
@@ -109,14 +123,35 @@ public:
         commands.push_back(zone.command);
     }
 
+    const double simSeconds =
+      std::chrono::duration<double>(_info.simTime).count();
+    const bool publishRegistry =
+      simSeconds - this->lastRegistryPublishSeconds >=
+      1.0 / this->poseRegistryHz;
+
+    std::ostringstream registry;
+    bool firstRegistryModel = true;
+    if (publishRegistry)
+    {
+      registry << std::fixed << std::setprecision(9)
+               << "{\"schema\":\"kty_model_pose_registry/v1\","
+               << "\"sequence\":" << ++this->registrySequence << ','
+               << "\"sim_time_s\":" << simSeconds << ','
+               << "\"models\":[";
+    }
+
     _ecm.Each<gz::sim::components::Model, gz::sim::components::Name>(
-      [this, &commands, &_ecm](
+      [this, &commands, &_ecm, publishRegistry, &registry,
+       &firstRegistryModel](
         const gz::sim::Entity &_entity,
         const gz::sim::components::Model *,
         const gz::sim::components::Name *_name) -> bool
       {
         const auto &name = _name->Data();
-        if (name.rfind(this->modelPrefix, 0) != 0)
+        const bool isTransportModel = name.rfind(this->modelPrefix, 0) == 0;
+        const bool isRegistryModel =
+          name.rfind(this->poseRegistryPrefix, 0) == 0;
+        if (!isTransportModel && !(publishRegistry && isRegistryModel))
           return true;
 
         gz::sim::Model model(_entity);
@@ -125,12 +160,28 @@ public:
           return true;
 
         gz::sim::Link link(linkEntity);
+        const auto pose = link.WorldPose(_ecm);
+        if (!pose)
+          return true;
+
+        if (publishRegistry && isRegistryModel)
+        {
+          if (!firstRegistryModel)
+            registry << ',';
+          firstRegistryModel = false;
+          registry << "{\"name\":\"" << EscapeJson(name) << "\","
+                   << "\"x\":" << pose->Pos().X() << ','
+                   << "\"y\":" << pose->Pos().Y() << ','
+                   << "\"z\":" << pose->Pos().Z() << '}';
+        }
+
+        if (!isTransportModel || this->zones.empty())
+          return true;
+
         if (this->velocityEnabled.insert(linkEntity).second)
           link.EnableVelocityChecks(_ecm, true);
-
-        const auto pose = link.WorldPose(_ecm);
         const auto velocity = link.WorldLinearVelocity(_ecm);
-        if (!pose || !velocity)
+        if (!velocity)
           return true;
 
         const auto &position = pose->Pos();
@@ -181,19 +232,53 @@ public:
         link.AddWorldForce(_ecm, gz::math::Vector3d(force, 0.0, 0.0));
         return true;
       });
+
+    if (publishRegistry)
+    {
+      registry << "]}";
+      gz::msgs::StringMsg message;
+      message.set_data(registry.str());
+      this->registryPublisher.Publish(message);
+      this->lastRegistryPublishSeconds = simSeconds;
+    }
   }
 
 private:
+  static std::string EscapeJson(const std::string &_value)
+  {
+    std::string result;
+    result.reserve(_value.size());
+    for (const char character : _value)
+    {
+      switch (character)
+      {
+        case '\\': result += "\\\\"; break;
+        case '"': result += "\\\""; break;
+        case '\n': result += "\\n"; break;
+        case '\r': result += "\\r"; break;
+        case '\t': result += "\\t"; break;
+        default: result += character; break;
+      }
+    }
+    return result;
+  }
+
   std::string modelPrefix{"kty_mech_container_"};
   double surfaceZ{0.50};
   double contactTolerance{0.075};
   double velocityGain{80.0};
   double maxForce{120.0};
   double velocityDeadband{0.005};
+  std::string poseRegistryTopic{"/kty/mech/model_pose_registry_json"};
+  std::string poseRegistryPrefix{"kty_mech_"};
+  double poseRegistryHz{20.0};
+  double lastRegistryPublishSeconds{-1.0e9};
+  std::uint64_t registrySequence{0};
   std::vector<Zone> zones;
   std::mutex commandMutex;
   std::unordered_set<gz::sim::Entity> velocityEnabled;
   gz::transport::Node transport;
+  gz::transport::Node::Publisher registryPublisher;
 };
 }
 
