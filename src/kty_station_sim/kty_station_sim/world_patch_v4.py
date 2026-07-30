@@ -22,8 +22,8 @@ def _set_required_text(parent: ET.Element, path: str, value: str) -> None:
 def build_runtime_v13_world(source: Path, destination: Path) -> Path:
     """Generate the accepted surface world with a lighter runtime profile.
 
-    SceneBroadcaster remains available for GUI state.  Runtime v15+ gets named
-    model poses from the contact-surface JSON registry.  The transport envelope is
+    SceneBroadcaster remains available for GUI state. Runtime v15+ gets named
+    model poses from the contact-surface JSON registry. The transport envelope is
     deliberately wider than the nominal contact plane so an empty queued KTY that
     is lifted or tilted by a stray product still receives admission velocity.
     """
@@ -47,6 +47,19 @@ def build_runtime_v13_world(source: Path, destination: Path) -> Path:
     _set_required_text(sensor, "camera/image/width", "448")
     _set_required_text(sensor, "camera/image/height", "336")
 
+    # Keep the accepted camera orientation and move only its physical height.
+    # KTY bottom Z is 0.50 m, therefore camera Z=1.60 m gives 1.10 m to bottom.
+    camera_link = world.find(
+        "model[@name='kty_mechatronics_vision_station']/link[@name='camera_link']"
+    )
+    if camera_link is None:
+        raise RuntimeError("KTY RGB-D camera link is missing")
+    _set_required_text(
+        camera_link,
+        "pose",
+        "0 0 1.60 0 1.57079632679 1.57079632679",
+    )
+
     scene_broadcaster = world.find(
         f"plugin[@name='{SCENE_BROADCASTER_NAME}']"
     )
@@ -58,7 +71,7 @@ def build_runtime_v13_world(source: Path, destination: Path) -> Path:
         raise RuntimeError("KTY contact-surface system is missing")
     _set_required_text(contact_plugin, "contact_tolerance", "0.300")
 
-    # Increase overlap around the infeed / active hand-off.  Both zones receive
+    # Increase overlap around the infeed / active hand-off. Both zones receive
     # the same command during POSITION_NEXT, so overlap cannot reverse the KTY;
     # it only prevents the model centre from falling into an undriven gap.
     for zone in contact_plugin.findall("zone"):
