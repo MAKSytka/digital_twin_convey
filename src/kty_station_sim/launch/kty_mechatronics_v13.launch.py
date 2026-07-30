@@ -98,7 +98,7 @@ def generate_launch_description() -> LaunchDescription:
             "depth_topic": "/kty/vision/depth_image",
             "camera_info_topic": "/kty/vision/camera_info",
             "output_topic": "/kty/fill/state",
-            "camera_to_bottom_m": 1.25,
+            "camera_to_bottom_m": 1.10,
             "internal_length_m": 0.60,
             "internal_width_m": 0.40,
             "internal_height_m": 0.40,
@@ -120,7 +120,7 @@ def generate_launch_description() -> LaunchDescription:
             "camera_info_topic": "/kty/vision/camera_info",
             "output_topic": "/kty/perception/contours",
             "debug_topic": "/kty/perception/debug_image",
-            "camera_to_kty_bottom_m": 1.25,
+            "camera_to_kty_bottom_m": 1.10,
             "internal_length_m": 0.60,
             "internal_width_m": 0.40,
             "internal_height_m": 0.40,
@@ -213,8 +213,8 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         DeclareLaunchArgument("auto_repeat", default_value="true"),
         DeclareLaunchArgument("product_spawn_interval_s", default_value="1.90"),
-        DeclareLaunchArgument("fill_ratio_threshold", default_value="0.70"),
-        DeclareLaunchArgument("max_height_threshold_m", default_value="0.280"),
+        DeclareLaunchArgument("fill_ratio_threshold", default_value="0.82"),
+        DeclareLaunchArgument("max_height_threshold_m", default_value="0.340"),
         DeclareLaunchArgument("show_dashboard", default_value="false"),
         DeclareLaunchArgument(
             "polygon_output_directory",
