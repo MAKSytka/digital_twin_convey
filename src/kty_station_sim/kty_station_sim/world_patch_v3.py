@@ -104,7 +104,7 @@ def build_surface_world(source: Path, destination: Path) -> Path:
         raise RuntimeError("Machine model is missing")
 
     # Remove all roller bodies and the unreliable joint-driven locator. Runtime
-    # v9 creates a static locator model and deletes it completely before ejection.
+    # v11 creates a static locator model and deletes it completely before ejection.
     for link in list(machine.findall("link")):
         name = link.attrib.get("name", "")
         if name.startswith(ROLLER_GROUPS) or name == "locator_stop":
@@ -118,31 +118,30 @@ def build_surface_world(source: Path, destination: Path) -> Path:
         if "_rollers/cmd_vel" in topic or topic == "/kty/mech/locator_stop/cmd_pos":
             machine.remove(plugin)
 
-    # The previous +/-4 mm / 18 Hz profile was difficult for the loaded deck to
-    # track. Runtime v10 uses a slower 8..12 Hz sweep at +/-5 mm. Give the joint
-    # one extra millimetre of mechanical margin and enough velocity / force to
-    # reproduce the commanded stroke with the deck, clamps, KTY and products.
+    # Runtime v11 uses a 6.5..9.0 Hz sweep at +/-8 mm. Give the joint two
+    # millimetres of mechanical margin and enough force to reproduce the larger
+    # stroke with the deck, clamps, loaded KTY and products.
     vibration_joint = machine.find("joint[@name='vibration_joint']")
     if vibration_joint is None:
         raise RuntimeError("Vibration joint is missing")
-    _set_required_text(vibration_joint, "axis/limit/lower", "-0.006")
-    _set_required_text(vibration_joint, "axis/limit/upper", "0.006")
-    _set_required_text(vibration_joint, "axis/limit/effort", "12000")
+    _set_required_text(vibration_joint, "axis/limit/lower", "-0.010")
+    _set_required_text(vibration_joint, "axis/limit/upper", "0.010")
+    _set_required_text(vibration_joint, "axis/limit/effort", "16000")
     _set_required_text(vibration_joint, "axis/limit/velocity", "2.0")
-    _set_required_text(vibration_joint, "axis/dynamics/damping", "80")
-    _set_required_text(vibration_joint, "axis/dynamics/friction", "3")
+    _set_required_text(vibration_joint, "axis/dynamics/damping", "60")
+    _set_required_text(vibration_joint, "axis/dynamics/friction", "2")
 
     vibration_controller = None
-    for plugin in machine.findall("plugin"):
-        if plugin.findtext("joint_name", default="") == "vibration_joint":
-            vibration_controller = plugin
+    for system in machine.findall("plugin"):
+        if system.findtext("joint_name", default="") == "vibration_joint":
+            vibration_controller = system
             break
     if vibration_controller is None:
         raise RuntimeError("Vibration joint controller is missing")
-    _set_required_text(vibration_controller, "p_gain", "320000")
-    _set_required_text(vibration_controller, "d_gain", "2400")
-    _set_required_text(vibration_controller, "cmd_max", "12000")
-    _set_required_text(vibration_controller, "cmd_min", "-12000")
+    _set_required_text(vibration_controller, "p_gain", "420000")
+    _set_required_text(vibration_controller, "d_gain", "2800")
+    _set_required_text(vibration_controller, "cmd_max", "16000")
+    _set_required_text(vibration_controller, "cmd_min", "-16000")
 
     # Infeed top plane: 500 mm.
     machine.append(
