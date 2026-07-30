@@ -41,11 +41,12 @@ setup(
             "mechatronics_cycle = kty_station_sim.mechatronics_cycle:main",
             "mechatronics_cycle_v2 = kty_station_sim.mechatronics_cycle_v2:main",
             # Preserve the accepted executable name used by launch and diagnostics,
-            # while routing it to runtime v12.
-            "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v12:main",
+            # while routing it to runtime v13.
+            "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v13:main",
             "mechatronics_cycle_v10 = kty_station_sim.mechatronics_cycle_v10:main",
             "mechatronics_cycle_v11 = kty_station_sim.mechatronics_cycle_v11:main",
             "mechatronics_cycle_v12 = kty_station_sim.mechatronics_cycle_v12:main",
+            "mechatronics_cycle_v13 = kty_station_sim.mechatronics_cycle_v13:main",
             "fill_estimator = kty_station_sim.fill_estimator:main",
             "fill_estimator_v2 = kty_station_sim.fill_estimator_v2:main",
             "depth_perception = kty_station_sim.depth_perception:main",
