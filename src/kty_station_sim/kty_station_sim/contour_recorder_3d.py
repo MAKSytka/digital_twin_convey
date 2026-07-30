@@ -1,26 +1,25 @@
-from __future__ import annotations
+"""Extended polygon / OBB / grasp-candidate persistence for stage 6."""
 
-from .contour_recorder import KtyContourRecorder
+from __future__ import annotations
 
 import rclpy
 
+from .contour_recorder import KtyContourRecorder
+
 
 class KtyContourRecorder3D(KtyContourRecorder):
-    """Recorder with extended 3-D planning fields in the JSON schema."""
-
     def __init__(self) -> None:
         super().__init__()
         self.get_logger().info("Extended 3-D carton schema enabled")
 
-    def _document_from_message(self, message):
-        document = super()._document_from_message(message)
+    def _serialize(self, message):
+        document = super()._serialize(message)
         document["schema"] = "kty_carton_instances_3d/v2"
-        products = document.get("products", [])
         visible_count = 0
         occluded_count = 0
         grasp_count = 0
-        for target, source in zip(products, message.products):
-            state = str(source.tracking_state)
+        for source, target in zip(message.products, document["products"]):
+            state = str(source.tracking_state or "VISIBLE")
             if state == "OCCLUDED":
                 occluded_count += 1
             else:
@@ -29,12 +28,8 @@ class KtyContourRecorder3D(KtyContourRecorder):
                 {
                     "tracking_state": state,
                     "oriented_rectangle_m": [
-                        {
-                            "x": float(point.x),
-                            "y": float(point.y),
-                            "z": float(point.z),
-                        }
-                        for point in source.oriented_rectangle
+                        {"x": float(point.x), "y": float(point.y), "z": float(point.z)}
+                        for point in source.oriented_rectangle.points
                     ],
                     "surface_normal": {
                         "x": float(source.surface_normal.x),
@@ -51,24 +46,27 @@ class KtyContourRecorder3D(KtyContourRecorder):
                     "top_accessible": bool(source.top_accessible),
                     "grasp_candidates": [
                         {
-                            "type": str(candidate.type),
-                            "position": {
-                                "x": float(candidate.position.x),
-                                "y": float(candidate.position.y),
-                                "z": float(candidate.position.z),
-                            },
-                            "approach": {
-                                "x": float(candidate.approach.x),
-                                "y": float(candidate.approach.y),
-                                "z": float(candidate.approach.z),
-                            },
-                            "normal": {
-                                "x": float(candidate.normal.x),
-                                "y": float(candidate.normal.y),
-                                "z": float(candidate.normal.z),
-                            },
+                            "strategy": str(candidate.strategy),
                             "score": float(candidate.score),
-                            "clearance_m": float(candidate.clearance_m),
+                            "required_clearance_m": float(candidate.required_clearance_m),
+                            "pose": {
+                                "position": {
+                                    "x": float(candidate.pose.position.x),
+                                    "y": float(candidate.pose.position.y),
+                                    "z": float(candidate.pose.position.z),
+                                },
+                                "orientation": {
+                                    "x": float(candidate.pose.orientation.x),
+                                    "y": float(candidate.pose.orientation.y),
+                                    "z": float(candidate.pose.orientation.z),
+                                    "w": float(candidate.pose.orientation.w),
+                                },
+                            },
+                            "approach_vector": {
+                                "x": float(candidate.approach_vector.x),
+                                "y": float(candidate.approach_vector.y),
+                                "z": float(candidate.approach_vector.z),
+                            },
                         }
                         for candidate in source.grasp_candidates
                     ],
