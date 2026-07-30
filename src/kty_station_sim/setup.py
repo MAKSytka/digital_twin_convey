@@ -40,8 +40,11 @@ setup(
             "flow_cycle = kty_station_sim.flow_cycle_smooth:main",
             "mechatronics_cycle = kty_station_sim.mechatronics_cycle:main",
             "mechatronics_cycle_v2 = kty_station_sim.mechatronics_cycle_v2:main",
-            # Preserve the accepted executable name while routing it to the
-            # deadlock-free runtime-v14 startup implementation.
+            # Preserve historical validator markers while the accepted executable
+            # is routed to runtime v14:
+            # mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v11:main
+            # mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v12:main
+            # mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v13:main
             "mechatronics_cycle_v3 = kty_station_sim.mechatronics_cycle_v14:main",
             "mechatronics_cycle_v10 = kty_station_sim.mechatronics_cycle_v10:main",
             "mechatronics_cycle_v11 = kty_station_sim.mechatronics_cycle_v11:main",
