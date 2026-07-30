@@ -12,3 +12,14 @@ float32 clearance_neg_x_m
 float32 clearance_pos_x_m
 float32 clearance_neg_y_m
 float32 clearance_pos_y_m
+
+string STATE_VISIBLE="VISIBLE"
+string STATE_OCCLUDED="OCCLUDED"
+string tracking_state
+geometry_msgs/Polygon oriented_rectangle
+geometry_msgs/Vector3 surface_normal
+geometry_msgs/Vector3 estimated_size
+float32 yaw_rad
+float32 occlusion_score
+bool top_accessible
+KtyGraspCandidate[] grasp_candidates

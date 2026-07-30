@@ -11,6 +11,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/BoxObservationArray.msg"
   "msg/MatrixCommand.msg"
   "msg/MatrixState.msg"
+  "msg/KtyGraspCandidate.msg"
   "msg/KtyProductContour.msg"
   "msg/KtyProductContourArray.msg"
   "msg/KtyGroundTruth.msg"

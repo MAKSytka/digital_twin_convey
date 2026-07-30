@@ -1,0 +1,5 @@
+geometry_msgs/Pose pose
+geometry_msgs/Vector3 approach_vector
+float32 score
+float32 required_clearance_m
+string strategy

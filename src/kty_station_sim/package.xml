@@ -1,13 +1,15 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>kty_station_sim</name>
-  <version>0.3.0</version>
-  <description>Simplified Gazebo digital twin of the KTY handling and vibration-compaction station.</description>
+  <version>0.5.0</version>
+  <description>Flat contact-surface KTY transport, physical vibration, slide gate and RGB-D planning.</description>
   <maintainer email="team@example.com">Singulator Team</maintainer>
   <license>Apache-2.0</license>
 
   <!-- ament_python is the exported build type, not a rosdep key. -->
   <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
@@ -16,6 +18,7 @@
   <exec_depend>tf2_msgs</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>singulator_interfaces</exec_depend>
+  <exec_depend>kty_conveyor_surface</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>ros_gz_image</exec_depend>
