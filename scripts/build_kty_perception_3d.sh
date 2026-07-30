@@ -35,6 +35,7 @@ set -u
 python3 tools/validate_kty_classical_3d.py
 python3 tools/validate_kty_contact_surface.py
 python3 tools/validate_kty_runtime_v14.py
+python3 tools/validate_kty_runtime_v15.py
 
 rm -rf \
   build/singulator_interfaces install/singulator_interfaces \
@@ -59,6 +60,7 @@ for exe in \
   mechatronics_cycle_v3 \
   mechatronics_cycle_v13 \
   mechatronics_cycle_v14 \
+  mechatronics_cycle_v15 \
   fill_estimator_v2; do
   ros2 pkg executables kty_station_sim | awk '{print $2}' | grep -Fxq "$exe" || {
     echo "ERROR missing $exe" >&2
@@ -75,4 +77,4 @@ test -f "$plugin_prefix/lib/libKtyConveyorSurfaceSystem.so" || {
 ros2 interface show singulator_interfaces/msg/KtyGraspCandidate >/dev/null
 ros2 interface show singulator_interfaces/msg/KtyProductContour >/dev/null
 
-echo "KTY runtime-v14 contact-surface build: OK"
+echo "KTY runtime-v15 contact-surface build: OK"
