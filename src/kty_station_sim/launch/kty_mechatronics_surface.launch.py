@@ -175,8 +175,8 @@ def generate_launch_description() -> LaunchDescription:
 
     controller = Node(
         package="kty_station_sim",
-        # The installed v3 entry point is intentionally routed to runtime v10
-        # so existing diagnostics and scripts remain compatible.
+        # The installed v3 entry point is routed to runtime v11 so existing
+        # diagnostics and operator scripts keep the accepted node name.
         executable="mechatronics_cycle_v3",
         name="kty_mechatronics_cycle_v3",
         output="screen",
@@ -199,18 +199,18 @@ def generate_launch_description() -> LaunchDescription:
                 ),
                 "roller_linear_speed_mps": 0.65,
                 "slow_roller_linear_speed_mps": 0.18,
-                # Loading agitation: visible but below lift-off acceleration.
-                "weak_vibration_frequency_hz": 6.0,
-                "weak_vibration_amplitude_m": 0.0012,
-                # Compaction: 8..12 Hz frequency sweep at +/-5 mm.  The peak
-                # theoretical acceleration varies from about 1.3 to 2.9 g.
-                "strong_vibration_frequency_hz": 10.0,
-                "strong_vibration_sweep_hz": 2.0,
-                "strong_vibration_modulation_hz": 0.35,
-                "strong_vibration_amplitude_m": 0.0050,
-                "strong_vibration_duration_s": 12.0,
-                "strong_vibration_ramp_s": 1.5,
-                "vibration_settle_s": 1.0,
+                # Runtime-v11 loading agitation.
+                "weak_vibration_frequency_hz": 5.0,
+                "weak_vibration_amplitude_m": 0.0018,
+                # Runtime-v11 compaction: 6.5..9.0 Hz at +/-8 mm. The lower
+                # frequency is easier for the loaded deck to track than 8..12 Hz.
+                "strong_vibration_frequency_hz": 7.75,
+                "strong_vibration_sweep_hz": 1.25,
+                "strong_vibration_modulation_hz": 0.22,
+                "strong_vibration_amplitude_m": 0.0080,
+                "strong_vibration_duration_s": 15.0,
+                "strong_vibration_ramp_s": 2.0,
+                "vibration_settle_s": 1.2,
             }
         ],
     )
