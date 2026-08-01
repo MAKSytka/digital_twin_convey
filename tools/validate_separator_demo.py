@@ -24,6 +24,7 @@ EXPECTED_ROLLERS = 11
 EXPECTED_PITCH_M = 0.150
 EXPECTED_RADIUS_M = 0.025
 EXPECTED_OPENING_M = 0.100
+EXPECTED_GRAVITY_Z_MPS2 = -12.0
 
 
 def require(condition: bool, message: str) -> None:
@@ -59,10 +60,14 @@ def main() -> None:
     roller = ET.parse(ROLLER).getroot()
     world = ET.parse(WORLD).getroot()
 
+    world_node = world.find(".//world[@name='infeed_size_separator_demo']")
+    require(world_node is not None, "Unexpected separator world name")
+    gravity = values(world_node.findtext("gravity"))
     require(
-        world.find(".//world[@name='infeed_size_separator_demo']") is not None,
-        "Unexpected separator world name",
+        gravity == [0.0, 0.0, EXPECTED_GRAVITY_Z_MPS2],
+        "Separator demo gravity must be 0 0 -12.0 m/s^2",
     )
+
     includes = [
         node
         for node in world.findall(".//include")
@@ -202,8 +207,13 @@ def main() -> None:
         'default_value="continuous"',
         'default_value="4.0"',
         'default_value="0.70"',
-        'default_value="2.0"',
         '"upper_safety_projection_m": 0.110',
+        '"box_restitution",\n                default_value="0.0"',
+        '"bounce_capture_velocity_mps",\n                default_value="1.0"',
+        '"linear_velocity_decay",\n                default_value="0.12"',
+        '"angular_velocity_decay",\n                default_value="0.60"',
+        '"contact_max_correcting_velocity_mps",\n                default_value="0.02"',
+        '"spawn_clearance_m",\n                default_value="0.001"',
         '"remove_retries": 3',
     ):
         require(token in launch, f"Launch token is missing: {token}")
@@ -241,6 +251,13 @@ def main() -> None:
         is not None,
         "small_item_probability is missing",
     )
+    for token in (
+        "<restitution_coefficient>",
+        "<velocity_decay>",
+        "contact_max_correcting_velocity_mps",
+    ):
+        require(token in base_spawner, f"Impact-model token is missing: {token}")
+
     spawner = SPAWNER.read_text(encoding="utf-8")
     require(
         "classified_lower = projection_x < self.cutoff" in spawner,
@@ -273,8 +290,11 @@ def main() -> None:
         f"rollers={len(includes)}, roller_length={length:.3f} m, "
         f"roller_pitch={pitch:.3f} m, "
         f"longitudinal_opening={opening:.3f} m, "
+        f"gravity_z={gravity[2]:.1f} m/s^2, "
         f"omega_2mps=80.0 rad/s, rpm_2mps={rpm:.1f}, "
         "lower_cutoff=0.070 m, upper_safety=0.110 m, "
+        "restitution=0.00, bounce_threshold=1.00 m/s, "
+        "velocity_decay=0.12/0.60, contact_max_vel=0.02 m/s, "
         "lower_probability=0.70"
     )
 
