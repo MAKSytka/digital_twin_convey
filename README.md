@@ -11,7 +11,7 @@
 | Матрица сингуляризации и роликовое горлышко | `bash ./scripts/run_roller_demo.sh` | [DEMO_SCENARIOS.md](docs/DEMO_SCENARIOS.md) |
 | Инфид-сепаратор | `ros2 launch singulator_bringup infeed_size_separator_demo.launch.py` | [INFEED_SIZE_SEPARATOR.md](docs/INFEED_SIZE_SEPARATOR.md) |
 | Станция КТЯ, уплотнение и RGB-D | `bash ./scripts/run_kty_perception_3d.sh` | [KTY_RUNTIME_COMMANDS.md](docs/KTY_RUNTIME_COMMANDS.md) |
-| Статическая проверка проекта | `python3 tools/validate_project.py` | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
+| Полный статический release-check | `bash ./scripts/run_release_checks.sh` | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
 
 ## 1. Назначение решения
 
@@ -248,6 +248,11 @@ ros2 run kty_station_sim vision_dashboard_3d \
 ~/.ros/kty_vision/polygons.jsonl
 ```
 
+Подробные материалы по принятому runtime:
+
+- [KTY runtime v18 — handoff и критерии приёмки](docs/KTY_RUNTIME_V18_HANDOFF.md)
+- [Команды сборки, запуска и диагностики](docs/KTY_RUNTIME_COMMANDS.md)
+
 ## 7. Нагрузочные сценарии
 
 Сценарии должны запускаться с фиксированным `seed:=42`:
@@ -279,6 +284,7 @@ Diagnostics, validators and dashboards
 - [ROS-интерфейсы](docs/INTERFACES.md)
 - [Параметры симуляции](docs/SIMULATION_PARAMETERS.md)
 - [Сценарии демонстрации](docs/DEMO_SCENARIOS.md)
+- [Алгоритм управления сингуляцией](docs/SINGULATION_CONTROL.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
 
 ## 9. Структура пакетов
@@ -297,7 +303,16 @@ Diagnostics, validators and dashboards
 
 ## 10. Проверки перед демонстрацией
 
+Рекомендуемый единый запуск:
+
 ```bash
+bash ./scripts/run_release_checks.sh
+```
+
+Отдельные проверки:
+
+```bash
+python3 tools/validate_release.py
 python3 tools/validate_project.py
 python3 tools/validate_separator_demo.py
 python3 tools/validate_kty_runtime_v18.py
