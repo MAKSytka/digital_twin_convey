@@ -23,7 +23,6 @@
 
 ```text
 src/singulator_gazebo/scripts/generate_matrix_14x4_stream_v2.py
-src/singulator_gazebo/worlds/matrix_14x4_stream_v2.sdf
 src/singulator_bringup/launch/matrix_stream_roller.launch.py
 src/singulator_bringup/config/bridge_rows_14_17.yaml
 ```
@@ -117,13 +116,29 @@ seed = 42
 |---|---:|
 | Рабочая ширина | 2.5 м |
 | Скорость | 2.0 м/с |
-| Валы | 11 |
-| Диски на вал | 25 |
+| Поперечные ролики | 11 |
+| Конструкция ряда | один сплошной ролик длиной 2.480 м |
 | Радиус контакта | 0.025 м |
+| Межосевой шаг | 0.130 м |
+| Чистый продольный промежуток | 0.080 м |
+| Порог нижнего класса | `projection_x < 0.070 м` |
+| Начало безопасного верхнего класса | `projection_x >= 0.090 м` |
 | Скорость вращения | 80 рад/с |
-| Открытые промежутки | 0.070×0.070 м |
-| Вероятность нижней ветви | 0.50 |
+| Вероятность нижней ветви | 0.70 |
+| Номинальная интенсивность demo | 4 товара/с |
 | Seed | 42 |
+
+Межосевой шаг 130 мм при диаметре 50 мм создаёт отверстие 80 мм. Порог нижнего класса не увеличен: дополнительные 10 мм используются как физический запас для более надёжного падения мелких товаров. Верхний класс начинается с 90 мм и также имеет 10-мм запас относительно отверстия.
+
+Основные файлы:
+
+```text
+src/singulator_gazebo/worlds/infeed_size_separator_demo.sdf
+src/singulator_description/models/separator_star_shaft/model.sdf
+src/singulator_description/models/infeed_size_separator/model.sdf
+src/singulator_bringup/launch/infeed_size_separator_demo.launch.py
+src/singulator_sim/singulator_sim/separator_continuous_roller_spawner.py
+```
 
 ## 7. Станция КТЯ runtime v18
 
