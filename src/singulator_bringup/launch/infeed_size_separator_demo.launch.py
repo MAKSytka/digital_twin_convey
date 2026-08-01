@@ -217,7 +217,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 "small_item_probability",
-                default_value="0.50",
+                default_value="0.70",
             ),
             DeclareLaunchArgument(
                 "seed",
