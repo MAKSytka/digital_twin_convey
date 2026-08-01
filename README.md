@@ -139,7 +139,7 @@ ros2 launch singulator_bringup \
   spawn_mode:=finite \
   maximum_items:=200 \
   target_rate_boxes_per_sec:=4.0 \
-  small_item_probability:=0.50 \
+  small_item_probability:=0.70 \
   seed:=42
 ```
 
@@ -147,12 +147,14 @@ ros2 launch singulator_bringup \
 
 - рабочая ширина 2,5 м;
 - скорость 2,0 м/с;
-- 11 валов по 25 дисков;
+- 11 сплошных поперечных роликов длиной 2,480 м;
 - радиус контакта 25 мм;
+- шаг роликов 120 мм;
+- продольный промежуток между роликами 70 мм;
 - 80 рад/с, около 763,9 об/мин;
-- открытые промежутки 70×70 мм;
 - переходы: 1 мм по горизонтали и ступень 4 мм вниз;
-- классификация по минимальной опорной проекции;
+- классификация нижней ветви по условию `projection_x < 70 мм`;
+- вероятность нижней ветви по умолчанию 70%;
 - автоматический контроль маршрута и despawn.
 
 Статическая проверка:
@@ -160,6 +162,8 @@ ros2 launch singulator_bringup \
 ```bash
 python3 tools/validate_separator_demo.py
 ```
+
+Подробно: [INFEED_SIZE_SEPARATOR.md](docs/INFEED_SIZE_SEPARATOR.md).
 
 ## 6. Демонстрация станции КТЯ
 
@@ -285,6 +289,7 @@ Diagnostics, validators and dashboards
 - [Параметры симуляции](docs/SIMULATION_PARAMETERS.md)
 - [Сценарии демонстрации](docs/DEMO_SCENARIOS.md)
 - [Алгоритм управления сингуляцией](docs/SINGULATION_CONTROL.md)
+- [Runtime-приёмка](docs/RUNTIME_ACCEPTANCE.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
 
 ## 9. Структура пакетов
