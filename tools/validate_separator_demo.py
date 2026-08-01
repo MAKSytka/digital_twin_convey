@@ -439,9 +439,15 @@ def main() -> None:
     spawner_text = SPAWNER.read_text(
         encoding="utf-8"
     )
+    probability_declaration = re.search(
+        r"self\.declare_parameter\(\s*"
+        r"[\"']small_item_probability[\"']\s*,\s*"
+        r"0\.50\s*,?\s*\)",
+        spawner_text,
+        flags=re.DOTALL,
+    )
     require(
-        'self.declare_parameter("small_item_probability"'
-        in spawner_text,
+        probability_declaration is not None,
         "Spawner lower-class probability parameter is missing",
     )
     require(
