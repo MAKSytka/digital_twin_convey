@@ -2,9 +2,10 @@
 
 The supplied long-run log proves that vision is not the cause of the third-cycle
 failure: container_0002 completes loading, compaction, ejection and despawn, while
-container_0003 stalls at x=-0.748 during POSITION_NEXT.  This runtime keeps the
+container_0003 stalls at x=-0.748 during POSITION_NEXT. This runtime keeps the
 accepted v17 gate / registry behavior, limits carton dimensions to a medium range,
-and adds a bounded empty-KTY recovery when physical admission makes no progress.
+adds a bounded empty-KTY recovery when physical admission makes no progress, and
+constrains chute spawning to a footprint that fits inside the KTY opening.
 """
 
 from __future__ import annotations
@@ -50,6 +51,8 @@ class KtyMechatronicsCycleV18(KtyMechatronicsCycleV17):
             "position_recovery_spawn_x_m": -0.320,
             "position_recovery_max_respawns": 2,
             "position_recovery_confirm_timeout_s": 8.0,
+            "product_spawn_center_half_width_m": 0.090,
+            "product_landing_half_width_m": 0.170,
         }
         for name, value in defaults.items():
             self.declare_parameter(name, value)
@@ -66,17 +69,49 @@ class KtyMechatronicsCycleV18(KtyMechatronicsCycleV17):
         self.position_recovery_confirm_timeout = float(
             read("position_recovery_confirm_timeout_s")
         )
+        self.product_spawn_center_half_width = float(
+            read("product_spawn_center_half_width_m")
+        )
+        self.product_landing_half_width = float(
+            read("product_landing_half_width_m")
+        )
         if self.position_recovery_after_stalls < 1:
             raise ValueError("position_recovery_after_stalls must be positive")
         if self.position_recovery_max_respawns < 1:
             raise ValueError("position_recovery_max_respawns must be positive")
         if self.position_recovery_spawn_x >= self.active_target_x - 0.08:
             raise ValueError("position recovery spawn must remain behind active target")
+        if self.product_spawn_center_half_width <= 0.0:
+            raise ValueError("product_spawn_center_half_width_m must be positive")
+        if not (
+            self.product_spawn_center_half_width
+            <= self.product_landing_half_width
+            < 0.200
+        ):
+            raise ValueError(
+                "product landing envelope must contain the centre range and "
+                "remain inside the 400 mm KTY width"
+            )
+        for profile in MEDIUM_PRODUCT_PROFILES:
+            if self._transverse_half_projection(profile) >= self.product_landing_half_width:
+                raise ValueError(
+                    "a runtime-v18 product profile is wider than the configured "
+                    "KTY landing envelope"
+                )
 
         self._v18_ready.set()
         self.get_logger().info(
-            "Runtime v18: medium cartons up to 280x190x145 mm and bounded "
-            "queued-KTY admission recovery"
+            "Runtime v18: medium cartons up to 280x190x145 mm, bounded queued-KTY "
+            "admission recovery, chute spawn centres within +/-90 mm and complete "
+            "product footprints within +/-170 mm"
+        )
+
+    @staticmethod
+    def _transverse_half_projection(profile: ProductProfile) -> float:
+        """Return half of the yaw-aware product footprint along chute Y."""
+        return 0.5 * (
+            abs(profile.size_x * math.sin(profile.yaw))
+            + abs(profile.size_y * math.cos(profile.yaw))
         )
 
     def _worker_main(self) -> None:
@@ -90,7 +125,11 @@ class KtyMechatronicsCycleV18(KtyMechatronicsCycleV17):
         profile = MEDIUM_PRODUCT_PROFILES[
             (self._product_serial - 1) % len(MEDIUM_PRODUCT_PROFILES)
         ]
-        max_lateral = max(0.0, 0.26 - 0.5 * profile.size_y)
+        projected_half_y = self._transverse_half_projection(profile)
+        max_lateral = min(
+            self.product_spawn_center_half_width,
+            self.product_landing_half_width - projected_half_y,
+        )
         y = max(-max_lateral, min(max_lateral, profile.spawn_y))
         z = 1.54 + 0.5 * profile.size_z
         attempts_in_round = 0
@@ -285,6 +324,9 @@ class KtyMechatronicsCycleV18(KtyMechatronicsCycleV17):
                 "product_profile_count": len(MEDIUM_PRODUCT_PROFILES),
                 "product_size_min_m": [0.035, 0.015, 0.010],
                 "product_size_max_m": [0.280, 0.190, 0.145],
+                "chute_guidance_policy": "tapered_side_guides_to_kty_opening",
+                "product_spawn_center_half_width_m": self.product_spawn_center_half_width,
+                "product_landing_half_width_m": self.product_landing_half_width,
                 "queue_admission_policy": "physical_then_bounded_empty_kty_respawn",
                 "position_recovery_respawns": self._position_recovery_respawns,
                 "position_recovery_failures": self._position_recovery_failures,
