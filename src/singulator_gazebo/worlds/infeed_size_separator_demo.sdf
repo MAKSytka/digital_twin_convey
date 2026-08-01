@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <sdf version="1.10">
   <world name="infeed_size_separator_demo">
-    <gravity>0 0 -9.81</gravity>
+    <!-- Demo-specific gravity is intentionally increased to suppress prolonged
+         bouncing of very light parcels after they enter the lower branch. -->
+    <gravity>0 0 -12.0</gravity>
     <physics name="physics_1ms" type="ignored">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
