@@ -19,6 +19,52 @@ def _set_required_text(parent: ET.Element, path: str, value: str) -> None:
     element.text = value
 
 
+def _append_chute_guide(
+    chute_link: ET.Element,
+    *,
+    name: str,
+    pose: str,
+) -> None:
+    """Add one tall tapered guide wall to the product chute."""
+    collision = ET.SubElement(
+        chute_link,
+        "collision",
+        {"name": f"{name}_collision"},
+    )
+    ET.SubElement(collision, "pose").text = pose
+    geometry = ET.SubElement(collision, "geometry")
+    box = ET.SubElement(geometry, "box")
+    ET.SubElement(box, "size").text = "1.010 0.030 0.240"
+
+    surface = ET.SubElement(collision, "surface")
+    friction = ET.SubElement(surface, "friction")
+    ode = ET.SubElement(friction, "ode")
+    ET.SubElement(ode, "mu").text = "0.25"
+    ET.SubElement(ode, "mu2").text = "0.25"
+    bounce = ET.SubElement(surface, "bounce")
+    ET.SubElement(bounce, "restitution_coefficient").text = "0.0"
+    ET.SubElement(bounce, "threshold").text = "0.50"
+    contact = ET.SubElement(surface, "contact")
+    contact_ode = ET.SubElement(contact, "ode")
+    ET.SubElement(contact_ode, "kp").text = "4000000"
+    ET.SubElement(contact_ode, "kd").text = "180"
+    ET.SubElement(contact_ode, "max_vel").text = "0.03"
+    ET.SubElement(contact_ode, "min_depth").text = "0.0003"
+
+    visual = ET.SubElement(
+        chute_link,
+        "visual",
+        {"name": f"{name}_visual"},
+    )
+    ET.SubElement(visual, "pose").text = pose
+    visual_geometry = ET.SubElement(visual, "geometry")
+    visual_box = ET.SubElement(visual_geometry, "box")
+    ET.SubElement(visual_box, "size").text = "1.010 0.030 0.240"
+    material = ET.SubElement(visual, "material")
+    ET.SubElement(material, "ambient").text = "0.72 0.34 0.10 1"
+    ET.SubElement(material, "diffuse").text = "0.90 0.46 0.14 1"
+
+
 def build_runtime_v13_world(source: Path, destination: Path) -> Path:
     """Generate the accepted surface world with a lighter runtime profile.
 
@@ -58,6 +104,26 @@ def build_runtime_v13_world(source: Path, destination: Path) -> Path:
         camera_link,
         "pose",
         "0 0 1.60 0 1.57079632679 1.57079632679",
+    )
+
+    # The original chute has parallel outer rails. Add a second, visible pair
+    # of taller guides which converges from roughly 565 mm at the inlet to
+    # roughly 405 mm at the outlet. The outlet therefore matches the 400 mm
+    # internal KTY width and prevents products from leaving beside the container.
+    chute_link = world.find(
+        "model[@name='kty_product_chute']/link[@name='chute']"
+    )
+    if chute_link is None:
+        raise RuntimeError("KTY product chute link is missing")
+    _append_chute_guide(
+        chute_link,
+        name="funnel_guide_neg_y",
+        pose="0 -0.255 0.120 0 0 0.079830",
+    )
+    _append_chute_guide(
+        chute_link,
+        name="funnel_guide_pos_y",
+        pose="0 0.255 0.120 0 0 -0.079830",
     )
 
     scene_broadcaster = world.find(
