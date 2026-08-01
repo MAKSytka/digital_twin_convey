@@ -17,8 +17,9 @@ from singulator_sim.separator_demo_spawner import (
 
 # A continuous roller leaves openings only in the longitudinal X direction.
 # Long and narrow items are therefore spawned almost perpendicular to the flow:
-# their short side becomes the longitudinal projection that can enter a 70 mm
-# opening between adjacent rollers.
+# their short side becomes the longitudinal projection that can enter the 80 mm
+# opening between adjacent rollers. The LOWER cutoff remains 70 mm, leaving a
+# 10 mm mechanical margin so near-cutoff parcels fall more reliably.
 CONTINUOUS_ROLLER_LOWER_PROFILES = (
     BoxProfile(
         "micro_parcel",
@@ -128,7 +129,9 @@ class ContinuousRollerSeparatorSpawner(SeparatorDemoSpawner):
 
             # With one roller spanning the whole 2.48 m width, there is no
             # transverse Y opening. Falling is governed by the footprint along
-            # the direction of travel and the 70 mm gap between roller rows.
+            # the direction of travel and the 80 mm gap between roller rows.
+            # The class boundary stays at 70 mm; the extra 10 mm is physical
+            # clearance rather than a broader software class.
             classified_lower = projection_x < self.cutoff
             if classified_lower != expected_lower:
                 continue
