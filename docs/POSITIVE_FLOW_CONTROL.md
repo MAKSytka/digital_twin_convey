@@ -1,82 +1,65 @@
 # Forward-only singulation with bounded longitudinal lag
 
-## Problem fixed
+## Назначение
 
-The previous emergency mode could command a follower at `-0.8 m/s`.  That
-created reverse-moving parcels and collisions between consecutive spawn waves.
-The controller now guarantees that every commanded cell speed is positive.
+Рабочий алгоритм не использует реверс товаров. Разделение выполняется ускорением лидера и ограниченным замедлением следующего товара при сохранении положительного направления движения.
 
-## Reference trajectory and lag budget
-
-Each parcel receives a virtual reference trajectory when it first enters the
-controlled matrix zone:
+## Эталонная траектория и бюджет отставания
 
 ```text
 x_ref(t) = x_entry + v_nominal * (t - t_entry)
 lag(t)   = max(0, x_ref(t) - x_measured(t))
 ```
 
-Default values:
-
-```text
-v_nominal = 2.00 m/s
-maximum longitudinal lag = 0.30 m
-minimum forward cell speed = 0.35 m/s
-```
-
-The speed floor is increased as the remaining lag budget is consumed:
+Принцип ограничения:
 
 ```text
 v_floor = v_nominal - (lag_max - lag) / guard_horizon
 ```
 
-The result is clamped to `0.35 ... 3.00 m/s`.  If measured lag exceeds the
-budget, the floor rises above `2.00 m/s`, so the parcel catches up instead of
-being stopped or reversed.
+Чем сильнее товар отстаёт от эталонной траектории, тем выше становится минимально допустимая скорость. Это предотвращает остановку товара и накопление затора.
 
-With the default `guard_horizon = 0.20 s`, the nominal floor is approximately:
+## Управление зазором
 
-| measured lag | minimum permitted speed |
-|---:|---:|
-| 0.00 m | 0.50 m/s |
-| 0.10 m | 1.00 m/s |
-| 0.20 m | 1.50 m/s |
-| 0.30 m | 2.00 m/s |
+Контроллер разделяет соседнюю пару следующим образом:
 
-## Gap controller
+1. ускоряет лидирующий товар;
+2. замедляет следующий товар, не допуская реверса;
+3. учитывает скорость сближения;
+4. ограничивает продольное отставание;
+5. усиливает разность скоростей около выхода, если целевой зазор ещё не сформирован.
 
-The controller still separates a rear parcel from the parcel in front, but it
-now does so only by:
-
-1. accelerating the leading parcel up to `3.0 m/s`;
-2. slowing the following parcel while keeping a positive speed;
-3. increasing the target gap when measured closing speed is high;
-4. respecting the remaining longitudinal lag budget.
-
-The dynamic extra distance is estimated from closing speed and available
-acceleration.  This starts braking before the geometric gap becomes critical.
-
-## Conveyor settings
-
-The upgraded demonstration uses:
+## Принятая конфигурация roller-сценария
 
 ```text
-infeed conveyor = 2.00 m/s
-free matrix cells = 2.00 m/s
-roller throat = 2.00 m/s
-matrix command range = 0.35 ... 3.00 m/s
+матрица = 18 × 4
+число индивидуальных команд = 72
+infeed conveyor = 2.00 м/с
+transport / throat = до 2.50 м/с
+диапазон команд ячеек = 1.00 ... 3.00 м/с
+максимальное ускорение = 6.00 м/с²
+целевой зазор = 0.18 м
+межволновой зазор = 0.28 м
 mu = 0.8
-mu2 = 0.8
+mu2 = 0.2
+частота управления = 30 Гц
 ```
 
-The Gazebo actuator still supports the physical range `-3 ... +3 m/s`, but the
-closed-loop controller deliberately uses only positive commands.
+`mu2=0.2` является принятой калибровкой поперечного контакта. Она намеренно ниже продольного коэффициента и помогает сохранить управляемое продольное движение без чрезмерной поперечной сцепляемости.
 
-## Tuning
+## Распределение скоростей
 
-Start with `maximum_longitudinal_lag_m = 0.30`.  Reduce it to `0.20` if parcels
-must stay closer to their nominal trajectory.  Increase it to `0.35 ... 0.40`
-only if the matrix needs more time to separate dense waves.
+Требуемая скорость рассчитывается сначала для товара, а не непосредственно для одной ячейки. Затем геометрия товара пересекается с сеткой. Если несколько товаров делят одну ячейку, cell-aware allocator подбирает ограниченный набор скоростей ячеек, минимизируя ошибку эффективных overlap-взвешенных скоростей товаров.
 
-A lower `lag_guard_horizon_s` permits a deeper short slowdown.  A higher value
-makes the controller more conservative and keeps speeds closer to `2 m/s`.
+Подробно: [SINGULATION_CONTROL.md](SINGULATION_CONTROL.md).
+
+## Настройка
+
+Параметры следует менять через launch-файл `matrix_stream_roller.launch.py`. После изменения необходимо выполнить:
+
+```bash
+python3 tools/test_v7_logic.py
+bash scripts/check_v7_control.sh
+```
+
+Изменение трения требует отдельного прогона Gazebo, поскольку оно влияет не только на продольное ускорение, но и на вращение, проскальзывание и контакт товаров на границах ячеек.
