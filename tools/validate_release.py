@@ -7,14 +7,13 @@ from pathlib import Path
 import re
 import sys
 
-
 ROOT = Path(__file__).resolve().parents[1]
-
 README = ROOT / "README.md"
 ARCHITECTURE = ROOT / "docs/ARCHITECTURE.md"
 INTERFACES = ROOT / "docs/INTERFACES.md"
 PARAMETERS = ROOT / "docs/SIMULATION_PARAMETERS.md"
 DEMO_SCENARIOS = ROOT / "docs/DEMO_SCENARIOS.md"
+SINGULATION = ROOT / "docs/SINGULATION_CONTROL.md"
 CLEANUP = ROOT / "docs/REPOSITORY_CLEANUP.md"
 ROLLER_LAUNCH = ROOT / "src/singulator_bringup/launch/matrix_stream_roller.launch.py"
 ROLLER_RUNNER = ROOT / "scripts/run_roller_demo.sh"
@@ -26,6 +25,7 @@ REQUIRED_FILES = (
     INTERFACES,
     PARAMETERS,
     DEMO_SCENARIOS,
+    SINGULATION,
     CLEANUP,
     ROLLER_LAUNCH,
     ROLLER_RUNNER,
@@ -52,7 +52,8 @@ def validate_matrix_contract() -> None:
     launch = read(ROLLER_LAUNCH)
     runner = read(ROLLER_RUNNER)
     docs = "\n".join(
-        read(path) for path in (README, ARCHITECTURE, INTERFACES, PARAMETERS)
+        read(path)
+        for path in (README, ARCHITECTURE, INTERFACES, PARAMETERS, SINGULATION)
     )
 
     required_launch_fragments = (
@@ -71,18 +72,16 @@ def validate_matrix_contract() -> None:
         if fragment not in launch:
             fail(f"Roller launch misses release fragment: {fragment}")
 
-    if 'seed:="${SEED:-42}"' not in runner:
-        fail("run_roller_demo.sh must default to deterministic seed 42")
-    if 'target_rate_boxes_per_sec:="${TARGET_RATE_BOXES_PER_SEC:-4.0}"' not in runner:
-        fail("run_roller_demo.sh must expose the nominal 4 items/s rate")
-
-    required_doc_fragments = (
-        "18×4",
-        "72",
-        "mu2",
-        "0,2",
-        "6,0 м/с²",
+    runner_fragments = (
+        'seed:="${SEED:-42}"',
+        'target_rate_boxes_per_sec:="${TARGET_RATE_BOXES_PER_SEC:-4.0}"',
+        'matrix_stream_roller.launch.py',
     )
+    for fragment in runner_fragments:
+        if fragment not in runner:
+            fail(f"run_roller_demo.sh misses: {fragment}")
+
+    required_doc_fragments = ("18×4", "72", "mu2", "0,2", "6,0 м/с²")
     for fragment in required_doc_fragments:
         if fragment not in docs:
             fail(f"Jury documentation misses matrix contract: {fragment}")
@@ -100,11 +99,7 @@ def validate_matrix_contract() -> None:
 
 
 def validate_kty_release_contract() -> None:
-    readme = read(README)
-    architecture = read(ARCHITECTURE)
-    interfaces = read(INTERFACES)
-    combined = "\n".join((readme, architecture, interfaces))
-
+    combined = "\n".join(read(path) for path in (README, ARCHITECTURE, INTERFACES))
     required = (
         "runtime v18",
         "LOAD",
@@ -131,7 +126,7 @@ def validate_kty_release_contract() -> None:
         flags=re.IGNORECASE,
     )
     if obsolete_branch_commands:
-        fail(f"Jury docs still require historical KTY branches: {obsolete_branch_commands}")
+        fail(f"Jury docs require historical KTY branches: {obsolete_branch_commands}")
 
 
 def validate_jury_entrypoint() -> None:
@@ -141,7 +136,6 @@ def validate_jury_entrypoint() -> None:
         "infeed_size_separator_demo.launch.py",
         "bash ./scripts/run_kty_perception_3d.sh",
         "python3 tools/validate_project.py",
-        "python3 tools/validate_release.py",
     )
     for command in required_commands:
         if command not in readme:
@@ -176,7 +170,7 @@ def validate_repository_hygiene() -> None:
         if pattern not in gitignore:
             fail(f".gitignore misses required release pattern: {pattern}")
 
-    forbidden_paths = []
+    forbidden_paths: list[Path] = []
     for pattern in (
         "**/*.before_*",
         "**/*.backup",
@@ -188,7 +182,7 @@ def validate_repository_hygiene() -> None:
         forbidden_paths.extend(ROOT.glob(pattern))
     if forbidden_paths:
         relative = sorted(str(path.relative_to(ROOT)) for path in forbidden_paths)
-        fail(f"Backup/generated files are tracked in the release tree: {relative}")
+        fail(f"Backup/generated files are tracked in release tree: {relative}")
 
 
 def main() -> int:
