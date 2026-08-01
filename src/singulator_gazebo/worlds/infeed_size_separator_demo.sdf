@@ -41,18 +41,18 @@
       <pose>0 0 0 0 0 0</pose>
     </include>
 
-    <!-- 140 mm centre pitch with 50 mm roller diameter leaves a 90 mm opening. -->
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_00</name><pose>-0.700 0 0 0 0 0</pose></include>
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_01</name><pose>-0.560 0 0 0 0 0</pose></include>
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_02</name><pose>-0.420 0 0 0 0 0</pose></include>
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_03</name><pose>-0.280 0 0 0 0 0</pose></include>
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_04</name><pose>-0.140 0 0 0 0 0</pose></include>
+    <!-- 150 mm centre pitch with 50 mm roller diameter leaves a 100 mm opening. -->
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_00</name><pose>-0.750 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_01</name><pose>-0.600 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_02</name><pose>-0.450 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_03</name><pose>-0.300 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_04</name><pose>-0.150 0 0 0 0 0</pose></include>
     <include><uri>model://separator_star_shaft</uri><name>screen_shaft_05</name><pose>0.000 0 0 0 0 0</pose></include>
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_06</name><pose>0.140 0 0 0 0 0</pose></include>
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_07</name><pose>0.280 0 0 0 0 0</pose></include>
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_08</name><pose>0.420 0 0 0 0 0</pose></include>
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_09</name><pose>0.560 0 0 0 0 0</pose></include>
-    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_10</name><pose>0.700 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_06</name><pose>0.150 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_07</name><pose>0.300 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_08</name><pose>0.450 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_09</name><pose>0.600 0 0 0 0 0</pose></include>
+    <include><uri>model://separator_star_shaft</uri><name>screen_shaft_10</name><pose>0.750 0 0 0 0 0</pose></include>
 
     <gui fullscreen="0">
       <plugin filename="MinimalScene" name="3D View">
