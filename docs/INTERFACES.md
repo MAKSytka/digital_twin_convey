@@ -1,46 +1,16 @@
-# ROS-интерфейсы и системы координат
+# ROS 2-интерфейсы и системы координат
 
-## Матрица сингуляризации
+Документ описывает публичные контракты, которые нужны для запуска, диагностики и интеграции трёх демонстрационных стендов.
+
+## 1. Матрица сингуляризации
 
 ### Система координат
 
 - `+X` — движение от входа к выходу;
 - `+Y` — поперёк матрицы;
 - `+Z` — вверх;
-- начало — центр матрицы.
-
-Строки идут от `r00` на входе до `r13` на выходе. Колонки нумеруются от отрицательного `Y` к положительному.
-
-### Общая команда
-
-```text
-/singulator/matrix/command
-singulator_interfaces/msg/MatrixCommand
-```
-
-```text
-std_msgs/Header header
-uint16 rows
-uint16 cols
-float32[] target_speed_mps
-```
-
-Обязательные условия:
-
-- `rows == 14`;
-- `cols == 4`;
-- `len(target_speed_mps) == 56`;
-- индекс: `row * cols + col`;
-- единица скорости: м/с.
-
-### Состояние
-
-```text
-/singulator/matrix/state
-singulator_interfaces/msg/MatrixState
-```
-
-`actual_speed_mps` в текущей реализации не является полноценной обратной связью от каждого физического привода.
+- строки идут от `r00` на входе до `r17` на выходе;
+- колонки `c00...c03` идут от отрицательного `Y` к положительному.
 
 ### Наблюдения товаров
 
@@ -49,179 +19,226 @@ singulator_interfaces/msg/MatrixState
 singulator_interfaces/msg/BoxObservationArray
 ```
 
+Один объект содержит логический ID, имя модели, центр, размеры, yaw, confidence и поля движения, определённые в актуальном `.msg`-контракте. Наблюдения формируются классическим машинным зрением; Gazebo ground truth не используется как вход контроллера.
+
+### Общая команда матрицы
+
 ```text
-uint32 id
-string model_name
-geometry_msgs/Point center
-float32 length_m
-float32 width_m
-float32 height_m
-float32 yaw_rad
-float32 confidence
+/singulator/matrix/command
+singulator_interfaces/msg/MatrixCommand
 ```
 
-## Станция операций с КТЯ
+Ключевые условия актуального roller-сценария:
+
+```text
+rows = 18
+cols = 4
+len(target_speed_mps) = 72
+index = row * cols + col
+speed unit = m/s
+```
+
+Команда формируется `singulation_controller`, а `matrix_command_fanout` преобразует её в индивидуальные команды зон.
+
+### Индивидуальные команды
+
+Шаблон имён:
+
+```text
+/singulator/cell/r00_c00/cmd_vel
+...
+/singulator/cell/r17_c03/cmd_vel
+```
+
+Тип команды на стороне ROS задаётся конфигурацией bridge/fan-out и передаётся в Gazebo TrackController соответствующей зоны.
+
+### Состояние и диагностика
+
+```text
+/singulator/matrix/state
+singulator_interfaces/msg/MatrixState
+```
+
+`actual_speed_mps` не следует трактовать как промышленную обратную связь энкодера каждого физического привода. Это состояние цифровой модели и программного контура.
+
+Полезные проверки:
+
+```bash
+ros2 topic echo /singulator/boxes --once
+ros2 topic echo /singulator/matrix/command --once
+ros2 topic hz /singulator/matrix/command
+```
+
+## 2. Инфид-сепаратор
+
+Стенд использует ROS-команды скоростей входной, верхней, нижней лент и вращающегося экрана. Точные Gazebo-топики задаются bridge-конфигурацией `singulator_bringup`.
+
+Основные логические узлы:
+
+```text
+separator_demo_controller
+separator_demo_spawner
+separator_demo_cleanup
+```
+
+Спавнер принимает launch-параметры:
+
+```text
+spawn_mode
+maximum_items
+target_rate_boxes_per_sec
+small_item_probability
+seed
+conveyor_speed_mps
+screen_surface_speed_mps
+```
+
+Cleanup публикует диагностическую статистику в логах: фактические верхние/нижние маршруты, удаления, ошибки удаления и перезапуски монитора.
+
+## 3. Станция операций с КТЯ
 
 ### Системы координат
 
 `kty_station`:
 
-- `+X` — от входной контактной зоны к выходной;
+- `+X` — от входной транспортной зоны к выходной;
 - `+Y` — поперёк КТЯ;
-- `+Z` — вверх;
-- центр виброплатформы находится около `X=0`, `Y=0`.
+- `+Z` — вверх.
 
 `kty_inner`:
 
-- локальная система внутреннего объёма установленного КТЯ;
-- полигон машинного зрения публикуется в плоскости дна;
-- высота задаётся относительно внутреннего дна КТЯ.
+- локальная система внутреннего объёма активного КТЯ;
+- геометрия товаров публикуется в метрах;
+- высота задаётся относительно внутреннего дна.
 
-### Команды контактных зон и механизмов
-
-```text
-/kty/infeed/cmd_vel       std_msgs/msg/Float64
-/kty/platform/cmd_vel     std_msgs/msg/Float64
-/kty/outfeed/cmd_vel      std_msgs/msg/Float64
-/kty/platform/cmd_pos     std_msgs/msg/Float64
-/kty/shutter/cmd_pos      std_msgs/msg/Float64
-```
-
-`cmd_vel` задаётся в м/с. `platform/cmd_pos` задаёт вертикальное отклонение платформы в метрах. `shutter/cmd_pos` задаёт положение вертикального призматического соединения шторки.
-
-### Состояние станции
+### Камера
 
 ```text
-/kty/station/state
-singulator_interfaces/msg/KtyStationState
+/kty/vision/image          sensor_msgs/msg/Image
+/kty/vision/depth_image    sensor_msgs/msg/Image
 ```
 
-```text
-std_msgs/Header header
-uint32 cycle_id
-uint8 state
-string state_name
-string reason
-bool kty_expected
-bool shutter_closed
-bool vibration_enabled
-bool product_feed_enabled
-float32 vibration_frequency_hz
-float32 vibration_amplitude_m
-float32 measured_maximum_height_m
-float32 fill_height_threshold_m
-float32 estimated_mass_kg
-```
+Камера работает с частотой 15 Гц в принятой конфигурации. Графический dashboard может обновляться реже, не изменяя частоту perception-контура.
 
-Состояния:
-
-```text
-WAIT_EMPTY_KTY, POSITION_KTY, CLAMP, LOAD, VIBRATE,
-SETTLE, SCAN, EJECT_PREP, EJECT, FAULT
-```
-
-### RGB-D сенсор
-
-```text
-/kty/camera/image          sensor_msgs/msg/Image
-/kty/camera/depth_image    sensor_msgs/msg/Image
-/kty/camera/camera_info    sensor_msgs/msg/CameraInfo
-```
-
-### Полигональные контуры
+### Результат классического 3-D perception
 
 ```text
 /kty/perception/contours
 singulator_interfaces/msg/KtyProductContourArray
 ```
 
-Массив содержит:
+Для видимого товара публикуются:
+
+- постоянный `track_id`;
+- верхний полигон;
+- ориентированный прямоугольник;
+- 3-D центроид;
+- нормаль поверхности;
+- оценка размеров XYZ;
+- yaw;
+- confidence;
+- оценка окклюзии;
+- состояние `VISIBLE` или `OCCLUDED`;
+- признак доступности сверху;
+- кандидаты захвата.
+
+Для `OCCLUDED`-объекта ID может временно сохраняться, но безопасные кандидаты захвата не публикуются.
+
+### Dashboard
 
 ```text
-std_msgs/Header header
-uint32 frame_sequence
-bool camera_ok
-float32 valid_depth_fraction
-float32 maximum_height_m
-float32 top_fill_ratio
-KtyProductContour[] products
+/kty/vision/dashboard
+sensor_msgs/msg/Image
 ```
 
-Один товар:
+Запуск отдельного окна:
+
+```bash
+ros2 run kty_station_sim vision_dashboard_3d \
+  --ros-args \
+  -r __node:=kty_vision_dashboard_window \
+  -p show_window:=true \
+  -p refresh_hz:=3.0
+```
+
+### Оценка заполнения
 
 ```text
-uint32 track_id
-geometry_msgs/Polygon polygon
-geometry_msgs/Point32 centroid
-float32 top_height_m
-float32 visible_area_m2
-float32 confidence
-bool side_neg_x_accessible
-bool side_pos_x_accessible
-bool side_neg_y_accessible
-bool side_pos_y_accessible
-float32 clearance_neg_x_m
-float32 clearance_pos_x_m
-float32 clearance_neg_y_m
-float32 clearance_pos_y_m
+/kty/fill/state
 ```
 
-`track_id` предназначен для сохранения идентичности между последовательными микропаузами. Полигон описывает видимую верхнюю область, а доступность сторон — предварительный интерфейс для будущего манипулятора.
+Состояние содержит оценку заполнения и максимальной высоты, используемые автоматом для перехода к закрытию створки и уплотнению. Точный тип следует проверять командой:
 
-### Ground truth
+```bash
+ros2 topic type /kty/fill/state
+```
+
+### Состояние рабочего цикла
 
 ```text
-/kty/ground_truth/registry
-singulator_interfaces/msg/KtyGroundTruthArray
+/kty/flow/state
 ```
 
-Реестр содержит размер, массу, профиль и имя Gazebo-модели. Он используется safety/metrics узлами и не должен подключаться к входу `depth_perception`.
-
-### Аварии
+Принятая последовательность runtime v18:
 
 ```text
-/kty/fault
-singulator_interfaces/msg/KtyFault
+LOAD
+CLOSE_GATE
+COMPACT
+EJECT_ACTIVE
+DESPAWN_ACTIVE
+POSITION_NEXT
+VERIFY_READY
+OPEN_GATE
 ```
 
-Коды:
+### Реестр поз
 
 ```text
-product_outside_kty
-product_jammed_on_chute
-kty_not_installed
-mass_exceeded
-camera_lost_view
-product_still_moving
+/kty/mech/model_pose_registry_json
 ```
 
-Критическое активное сообщение переводит автомат в `FAULT`.
+Реестр используется автоматом жизненного цикла и диагностикой для подтверждения создания, положения и удаления КТЯ, створки и товаров. Он не является входом алгоритма сегментации RGB-D.
 
-### Управление сценарием
+### Сохраняемые данные
 
 ```text
-/kty/cycle_id                    std_msgs/msg/UInt32
-/kty/product_spawner/enabled     std_msgs/msg/Bool
-/kty/product_spawner/clear       std_msgs/msg/Bool
-/kty/station/reset               std_srvs/srv/Trigger
+~/.ros/kty_vision/polygons_latest.json
+~/.ros/kty_vision/polygons.jsonl
 ```
 
-### Позиции Gazebo
+Схема включает геометрию, состояние трека, OBB, нормали, размеры и кандидатов захвата.
 
-```text
-/kty/world/poses
-tf2_msgs/msg/TFMessage
+## 4. Sim time и QoS
+
+- физические сценарии используют `/clock` Gazebo;
+- узлы, управляющие динамикой, запускаются с `use_sim_time=true`, если иное явно не указано в принятом runtime;
+- состояние, необходимое поздно подключившимся узлам, может использовать transient-local QoS;
+- перед диагностикой следует убедиться, что `sim_time` увеличивается.
+
+Проверка:
+
+```bash
+ros2 topic echo /clock --once
+ros2 node list
+ros2 topic list
 ```
 
-Топик мостит `/world/kty_station/pose/info` и используется только для safety, ground-truth метрик и проверки качества зрения.
+## 5. Правило изменения контрактов
 
-## Полезные команды
+Изменение `.msg`, имени топика, frame convention или порядка массива команд считается изменением межмодульного API. Такое изменение должно сопровождаться одновременным обновлением:
+
+1. издателя;
+2. подписчика;
+3. launch/bridge-конфигурации;
+4. валидатора;
+5. этого документа.
+
+Для точного состава любого пользовательского сообщения источником истины является установленный интерфейс:
 
 ```bash
 ros2 interface show singulator_interfaces/msg/MatrixCommand
-ros2 interface show singulator_interfaces/msg/KtyStationState
+ros2 interface show singulator_interfaces/msg/BoxObservation
+ros2 interface show singulator_interfaces/msg/KtyProductContour
 ros2 interface show singulator_interfaces/msg/KtyProductContourArray
-ros2 interface show singulator_interfaces/msg/KtyFault
-ros2 topic echo /kty/station/state
-ros2 topic echo /kty/fault
 ```
