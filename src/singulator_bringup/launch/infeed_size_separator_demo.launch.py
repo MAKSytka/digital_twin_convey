@@ -170,7 +170,7 @@ def generate_launch_description() -> LaunchDescription:
                     value_type=float,
                 ),
                 "cutoff_m": 0.070,
-                "upper_safety_projection_m": 0.090,
+                "upper_safety_projection_m": 0.100,
                 "seed": ParameterValue(
                     seed,
                     value_type=int,
