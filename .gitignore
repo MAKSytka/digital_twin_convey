@@ -33,6 +33,7 @@ old_workspace/
 *.db3
 *.mcap
 results/
+release_audit/
 
 # Large binary artifacts kept in S3/cloud
 *.mp4
