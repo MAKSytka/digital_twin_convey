@@ -2,173 +2,207 @@
 
 ## Общая структура
 
-Репозиторий содержит несколько независимых цифровых стендов, использующих общие ROS 2 интерфейсы и единый подход к запуску:
+Репозиторий содержит три независимых цифровых стенда, использующих общие ROS 2-интерфейсы, единый workspace и общий набор средств диагностики.
 
 ```mermaid
 flowchart TB
     R[GitHub workspace]
-    R --> M[Матрица сингуляризации 14x4]
-    R --> S[Роликовый сепаратор]
+    R --> M[Матрица сингуляризации 18x4]
+    R --> S[Инфид-сепаратор]
     R --> K[Станция операций с КТЯ]
 
-    M --> MI[singulator_interfaces]
-    S --> MI
-    K --> MI
+    M --> I[singulator_interfaces]
+    S --> I
+    K --> I
+
+    M --> V[validators and diagnostics]
+    S --> V
+    K --> V
 ```
 
-Стенды запускаются отдельно и не должны одновременно использовать одинаковые имена миров или конфликтующие топики.
+Стенды запускаются отдельно. Это уменьшает вычислительную нагрузку и позволяет экспертам независимо проверить физику, алгоритмы управления и машинное зрение каждого узла.
 
-## Матрица сингуляризации
-
-### Поток управления
+## Сквозная схема взаимодействия
 
 ```mermaid
 flowchart LR
-    A[Алгоритм сингуляризации] -->|MatrixCommand| B[/singulator/matrix/command]
-    B --> C[matrix_command_fanout]
-    C --> D[56 ROS-топиков Float64]
-    D --> E[ros_gz_bridge]
-    E --> F[56 Gazebo TrackController]
-    F --> G[Физика товаров]
+    G[Gazebo world and sensors]
+    B[ros_gz_bridge]
+    P[Perception nodes]
+    C[Control nodes]
+    F[Fan-out and Gazebo plugins]
+    D[Diagnostics and dashboards]
+
+    G -->|RGB, depth, poses, contacts, clock| B
+    B --> P
+    P -->|typed observations| C
+    C -->|commands and state| F
+    F --> G
+    P --> D
+    C --> D
+    G --> D
 ```
 
-`matrix_command_fanout` является границей между алгоритмом и физической моделью. Внешний алгоритм знает только размер матрицы и построчный массив скоростей.
+## Матрица сингуляризации
+
+### Контур машинного зрения и управления
+
+```mermaid
+flowchart LR
+    CAM[Gazebo camera]
+    CV[singulator_perception]
+    OBS[/singulator/boxes]
+    CTRL[singulation_controller]
+    CMD[/singulator/matrix/command]
+    FAN[matrix_command_fanout]
+    CELL[72 individual speed topics]
+    BR[ros_gz_bridge]
+    PHY[72 driven matrix cells]
+
+    CAM --> CV
+    CV --> OBS
+    OBS --> CTRL
+    CTRL --> CMD
+    CMD --> FAN
+    FAN --> CELL
+    CELL --> BR
+    BR --> PHY
+```
+
+Контроллер не назначает скорость каждой ячейке независимо. Он сначала формирует глобальный порядок товаров, рассчитывает требования к скоростям соседних товаров, затем решает задачу распределения команд по пересекаемым ячейкам с учётом площади контакта. Подробности приведены в `SINGULATION_CONTROL.md`.
+
+### Актуальная размерность
+
+- 18 продольных рядов;
+- 4 поперечные колонки;
+- 72 независимо управляемые зоны;
+- строки `r00...r17`;
+- колонки `c00...c03`;
+- массив команд индексируется как `row * 4 + col`.
 
 ### Поток сценария
 
 ```mermaid
 flowchart LR
-    S[singulation_row_spawner] -->|create_multiple| W[Gazebo world]
-    W --> I[Входной конвейер]
-    I --> M[Матрица 14x4]
-    M --> O[Выход]
-    O --> C[cleanup_passed_boxes]
-    C -->|remove| W
+    SPAWN[singulation_row_spawner]
+    WORLD[Gazebo world]
+    IN[Infeed conveyor]
+    MATRIX[18x4 matrix]
+    THROAT[Roller throat]
+    CLEAN[cleanup node]
+
+    SPAWN -->|create models| WORLD
+    WORLD --> IN
+    IN --> MATRIX
+    MATRIX --> THROAT
+    THROAT --> CLEAN
+    CLEAN -->|remove models| WORLD
 ```
 
-Спавнер использует `/clock`, поэтому интенсивность определяется симуляционным временем.
+Спавнер использует симуляционное время и фиксированный seed для воспроизводимости.
 
-## Станция операций с КТЯ
-
-### Функциональная схема
+## Инфид-сепаратор
 
 ```mermaid
 flowchart LR
-    C[station_controller] -->|скорости контактных зон| G[Gazebo world kty_station]
-    C -->|положение платформы| V[Vertical slide]
-    C -->|шторка и разрешение подачи| P[product_spawner]
-    P -->|create product| G
-    G --> RGBD[RGB-D camera]
-    RGBD --> D[depth_perception]
-    D -->|KtyProductContourArray| C
-    G --> GT[pose/info]
-    P --> REG[ground-truth registry]
-    GT --> SAFE[safety_monitor]
-    REG --> SAFE
-    D --> SAFE
-    SAFE -->|KtyFault| C
-    GT --> MET[metrics_node]
-    REG --> MET
-    D --> MET
+    SP[separator_demo_spawner]
+    IW[Gazebo separator world]
+    IC[separator_demo_controller]
+    SCREEN[11 rotating shafts]
+    UP[upper accepted flow]
+    LOW[lower small-item flow]
+    MON[separator_demo_cleanup]
+
+    SP --> IW
+    IC --> SCREEN
+    IW --> SCREEN
+    SCREEN --> UP
+    SCREEN --> LOW
+    UP --> MON
+    LOW --> MON
+    MON -->|route statistics and despawn| IW
 ```
 
-### Автомат состояний
+Классификация демонстрационного товара выполняется по двум опорным проекциям. Товары с минимальной проекцией меньше 70 мм ожидаются на нижней ветви. Фактический маршрут определяется по потоку поз Gazebo и сравнивается с ожидаемым.
+
+## Станция операций с КТЯ
+
+### Принятый runtime
+
+```mermaid
+flowchart LR
+    MC[kty mechatronics runtime v18]
+    SURF[contact conveyor surface plugin]
+    WORLD[Gazebo KTY world]
+    RGBD[overhead RGB-D camera]
+    PER[classical 3-D perception]
+    FILL[fill estimator]
+    DASH[vision dashboard]
+    REC[JSON recorder]
+
+    MC --> SURF
+    SURF --> WORLD
+    WORLD --> RGBD
+    RGBD --> PER
+    RGBD --> FILL
+    PER --> MC
+    FILL --> MC
+    PER --> DASH
+    PER --> REC
+    MC --> DASH
+```
+
+Ground truth и реестр поз используются для контроля жизненного цикла, safety-проверок и диагностики. Они не подаются на вход классического алгоритма сегментации товаров.
+
+### Рабочий цикл
 
 ```mermaid
 stateDiagram-v2
-    [*] --> WAIT_EMPTY_KTY
-    WAIT_EMPTY_KTY --> POSITION_KTY: пустой КТЯ создан
-    POSITION_KTY --> CLAMP: 2 с
-    CLAMP --> LOAD
-    LOAD --> VIBRATE: задержка 0,5 с
-    VIBRATE --> SETTLE: период контроля
-    SETTLE --> SCAN: микропауза 0,5 с
-    SCAN --> VIBRATE: высота ниже порога
-    SCAN --> EJECT_PREP: высота достигнута
-    EJECT_PREP --> EJECT: 0,5 с без вибрации
-    EJECT --> WAIT_EMPTY_KTY: 1 с и despawn
-    WAIT_EMPTY_KTY --> FAULT: критическая ошибка
-    POSITION_KTY --> FAULT
-    CLAMP --> FAULT
-    LOAD --> FAULT
-    VIBRATE --> FAULT
-    SETTLE --> FAULT
-    SCAN --> FAULT
-    EJECT_PREP --> FAULT
-    EJECT --> FAULT
-    FAULT --> WAIT_EMPTY_KTY: reset
+    [*] --> LOAD
+    LOAD --> CLOSE_GATE: порог заполнения или высоты
+    CLOSE_GATE --> COMPACT
+    COMPACT --> EJECT_ACTIVE
+    EJECT_ACTIVE --> DESPAWN_ACTIVE
+    DESPAWN_ACTIVE --> POSITION_NEXT
+    POSITION_NEXT --> VERIFY_READY
+    VERIFY_READY --> OPEN_GATE
+    OPEN_GATE --> LOAD
 ```
 
-### Граница физической достоверности
-
-- КТЯ — открытая тонкостенная сборка из пяти жёстких коллизионных тел.
-- Рольганги и выталкивание заменены контактными поверхностями с заданной скоростью.
-- Виброплатформа перемещается по вертикальному призматическому соединению.
-- Четыре пружины пока являются визуальными объектами.
-- Деформация картона и полиуретана не моделируется.
-- Ground truth не подаётся в алгоритм зрения и используется только для контроля и метрик.
+В мире одновременно могут находиться активный и ожидающий КТЯ. Ожидающая тара предварительно подаётся во время отвода заполненной, а старая тара удаляется до финального позиционирования новой.
 
 ## Пакеты
 
-### `singulator_interfaces`
+| Пакет | Ответственность |
+|---|---|
+| `singulator_interfaces` | Пользовательские сообщения и межмодульные контракты |
+| `singulator_description` | Геометрия, модели и конфигурации |
+| `singulator_gazebo` | SDF-миры и генераторы геометрии |
+| `singulator_bringup` | Launch-файлы и конфигурации мостов |
+| `singulator_sim` | Спавнеры, fan-out, очистка и сценарные узлы |
+| `singulator_control` | Контроллер сингуляризации и вспомогательные приводы |
+| `singulator_perception` | Машинное зрение матрицы |
+| `kty_conveyor_surface` | Gazebo-плагин контактных транспортных поверхностей |
+| `kty_station_sim` | Механика КТЯ, RGB-D, уплотнение, dashboard и диагностика |
 
-Общие контракты:
+## Границы достоверности
 
-- матрица: `BoxObservation`, `BoxObservationArray`, `MatrixCommand`, `MatrixState`, `ResetScenario`;
-- КТЯ: `KtyProductContour`, `KtyProductContourArray`, `KtyGroundTruth`, `KtyGroundTruthArray`, `KtyStationState`, `KtyFault`.
-
-Изменение этих сообщений является изменением межмодульного контракта.
-
-### `singulator_description`
-
-Конфигурация и модели матрицы, включая `config/matrix.yaml` и модель камеры.
-
-### `singulator_gazebo`
-
-SDF-миры матрицы и роликового сепаратора, а также генераторы геометрии.
-
-### `singulator_bringup`
-
-Launch-файлы, bridge-конфигурации и композиция основного стенда.
-
-### `singulator_sim`
-
-Спавнеры товаров, fan-out команд, очистка мира и сценарные адаптеры.
-
-### `singulator_control`
-
-Контроллеры вспомогательных конвейеров и алгоритмы управления матрицей.
-
-### `singulator_perception`
-
-Потоковая обработка камеры матрицы и сопровождение наблюдений.
-
-### `kty_station_sim`
-
-Самодостаточный модуль станции КТЯ:
-
-- `worlds/kty_station.sdf` — упрощённая механика;
-- `station_controller.py` — автомат и вибрация;
-- `product_spawner.py` — хаотический поток 1 ед/с;
-- `depth_perception.py` — RGB-D контуры и tracking;
-- `safety_monitor.py` — аварийные условия;
-- `metrics_node.py` — заполнение, пустоты, успокоение и точность зрения;
-- `model_factory.py` — SDF КТЯ и товаров.
+- контактная динамика и коллизии моделируются Gazebo;
+- деформация картона, резины и упаковки не моделируется;
+- параметры трения являются калибровочными: для матрицы приняты `mu=0,8`, `mu2=0,2`;
+- моторы представлены управляемыми скоростями и ограничениями, а не полной электрической моделью;
+- одна верхняя RGB-D камера имеет физические ограничения при полной окклюзии и отсутствии видимого шва;
+- внешняя WMS заменена демонстрационным контуром назначения маршрута.
 
 ## Источники истины
 
-Для матрицы:
+При расхождении документации и реализации используется следующий приоритет:
 
-1. фактический SDF мира;
-2. генератор SDF;
-3. YAML-конфигурация;
-4. документация.
+1. активный launch-файл;
+2. SDF-мир и генератор SDF;
+3. конфигурационные YAML-файлы;
+4. код контроллера и perception-узлов;
+5. валидаторы;
+6. документация.
 
-Для станции КТЯ:
-
-1. `src/kty_station_sim/worlds/kty_station.sdf`;
-2. `src/kty_station_sim/config/station.yaml`;
-3. код `station_controller.py` и `model_factory.py`;
-4. `docs/KTY_STATION.md`.
-
-При расхождении сначала исправляется физическая модель и конфигурация, затем документация.
+Перед релизом документация и валидаторы должны быть синхронизированы с первыми четырьмя уровнями.
