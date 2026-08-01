@@ -1,25 +1,74 @@
 # Аудит и очистка репозитория перед сдачей
 
-Этот документ фиксирует безопасный порядок очистки. История разработки содержит много stacked-, fix- и Codex-ветвей; удалять их только по названию нельзя.
+Этот документ задаёт безопасный порядок финализации. История разработки содержит много stacked-, fix-, experiment- и Codex-ветвей, поэтому удалять ветви только по названию нельзя.
 
 ## Принятый источник истины
 
 - базовая ветка: `main`;
 - ветка финального оформления: `chore/final-project-packaging`;
-- принятый КТЯ runtime: v18, слит PR #47;
-- принятый инфид-сепаратор: изменения PR #18–#23 и документация PR #29;
-- актуальный roller-сценарий: 18×4, 72 команды;
+- матрица: 18×4, 72 команды;
 - рабочее трение матрицы: `mu=0.8`, `mu2=0.2`;
-- штатное ограничение ускорения: 6 м/с²;
+- ограничение ускорения: 6 м/с²;
+- инфид-сепаратор: 11 сплошных роликов, шаг 150 мм, отверстие 100 мм;
+- станция КТЯ: runtime v18 со сходящимися направляющими лотка;
 - воспроизводимый seed: 42.
 
-## Что уже установлено по истории PR
+Все три runtime-модуля приняты на целевой машине. Подробности зафиксированы в `docs/RUNTIME_ACCEPTANCE.md`.
 
-На момент аудита открытых PR нет. PR #47 объединяет принятый KTY runtime v18 и был слит в `main`. Из-за squash/merge большая feature-ветвь может продолжать показывать множество «уникальных» коммитов, хотя её итоговое дерево уже перенесено в `main`. Поэтому одного `git rev-list main..branch` недостаточно: нужно также сравнивать дерево и изменённые файлы.
+## Текущее состояние финализации
 
-### Группа A — ветви слитых PR, кандидаты на удаление
+Ветка `chore/final-project-packaging` должна быть слита в `main` одним финальным PR. До merge запрещено удалять:
 
-После успешного финального runtime-теста и merge этой ветки можно удалить ветви, связанные со слитыми PR:
+```text
+main
+chore/final-project-packaging
+```
+
+После squash merge источником истины становится `main`, затем создаётся release tag и только после этого удаляются исторические ветви.
+
+## Read-only аудит
+
+```bash
+git fetch --all --prune
+chmod +x scripts/audit_repository.sh
+bash scripts/audit_repository.sh
+```
+
+Скрипт ничего не удаляет и создаёт локальный каталог `release_audit/`:
+
+```text
+branches.tsv
+tracked_candidates.txt
+historical_branch_references.txt
+outdated_matrix_references.txt
+```
+
+`branches.tsv` содержит число уникальных коммитов, равенство деревьев и предварительную подсказку. После squash merge значение `unique_commits > 0` само по себе не запрещает удаление ветви.
+
+## Проверка отдельной ветви
+
+```bash
+git log --oneline main..origin/<branch>
+git diff --stat main...origin/<branch>
+git diff --name-status main...origin/<branch>
+```
+
+Для большой squash-ветви дополнительно сравнить итоговое содержимое:
+
+```bash
+git diff main origin/<branch> -- \
+  README.md \
+  docs \
+  scripts \
+  tools \
+  src
+```
+
+Ветвь допустимо удалить, когда её полезная функциональность уже присутствует в `main`, даже если исходные SHA не стали предками `main` из-за squash merge.
+
+## Группа A — ветви слитых PR
+
+После финального merge и повторного аудита являются кандидатами на удаление:
 
 ```text
 docs/cluster-singulation
@@ -39,11 +88,7 @@ feat/kty-vision-dashboard-v4
 fix/kty-mechatronics-runtime-v7
 ```
 
-Перед удалением каждой ветви всё равно выполняется `scripts/audit_repository.sh`.
-
-### Группа B — закрытые неслитые или заменённые stacked-ветви
-
-Эти ветви не являются источником актуального runtime. Они сохранялись как промежуточные этапы и после проверки могут быть удалены:
+## Группа B — закрытые или заменённые stacked-ветви
 
 ```text
 chore/kty-vision-mainline-v5
@@ -55,11 +100,9 @@ fix/kty-runtime-v2
 archive/kty-runtime-v3-broken
 ```
 
-Их функциональность либо вошла в PR #47, либо была заменена более поздней реализацией.
+Их функциональность либо вошла в runtime v18, либо была заменена более поздней реализацией.
 
-### Группа C — автоматические и дублирующие Codex-ветви
-
-Многочисленные ветви вида ниже относятся к повторным PR одной и той же доработки:
+## Группа C — автоматические Codex-ветви
 
 ```text
 codex
@@ -79,9 +122,9 @@ uv3d8q-codex/-pr-24-26
 w3xd7f-codex/-pr-24-26
 ```
 
-После подтверждения, что связанные PR закрыты и итоговые изменения присутствуют в `main`, эти ветви можно удалить одной группой.
+Удалять группой только после подтверждения, что связанные PR закрыты и их итоговые изменения присутствуют в `main`.
 
-### Группа D — separator GUI эксперименты
+## Группа D — эксперименты сепаратора
 
 ```text
 fix-separator-white-screen
@@ -95,76 +138,11 @@ fix-separator-product-motion
 feature-separator-box-realism
 ```
 
-Сохранять их для жюри не нужно. Перед удалением проверить только отсутствие уникальных файлов, которых нет в принятом PR #23.
+Сохранять их для экспертной проверки не требуется. Перед удалением проверить отсутствие уникальных файлов, которых нет в финальном `main`.
 
-## Автоматический read-only аудит
+## Прочие временные ветви
 
-```bash
-git fetch --all --prune
-chmod +x scripts/audit_repository.sh
-bash scripts/audit_repository.sh
-```
-
-Скрипт ничего не удаляет и создаёт локальный каталог `release_audit/`:
-
-```text
-branches.tsv
-tracked_candidates.txt
-historical_branch_references.txt
-outdated_matrix_references.txt
-```
-
-`branches.tsv` содержит число уникальных коммитов, равенство деревьев и предварительную подсказку. После squash merge значение `unique_commits > 0` само по себе не запрещает удаление ветви.
-
-## Проверка содержимого ветви
-
-Для спорной ветви выполнить:
-
-```bash
-git log --oneline main..origin/<branch>
-git diff --stat main...origin/<branch>
-git diff --name-status main...origin/<branch>
-```
-
-Для большой squash-ветви дополнительно сравнить конечное содержимое ключевых файлов:
-
-```bash
-git diff main origin/<branch> -- \
-  README.md \
-  docs \
-  scripts \
-  tools \
-  src
-```
-
-Ветвь допустимо удалить, когда её принятый функционал уже есть в `main`, даже если SHA-коммиты не являются предками `main` из-за squash merge.
-
-## Удаление ветвей
-
-Сначала удалить локальную ветвь:
-
-```bash
-git branch -d <branch>
-```
-
-Если Git отказывается из-за squash merge, после ручного сравнения:
-
-```bash
-git branch -D <branch>
-```
-
-Удаление удалённой ветви:
-
-```bash
-git push origin --delete <branch>
-```
-
-Не удалять до завершения работы:
-
-```text
-main
-chore/final-project-packaging
-```
+Ветвь `tmp-ignore` не является частью принятой архитектуры. Удалять её только после проверки через `scripts/audit_repository.sh` и сравнения с `main`.
 
 ## Файлы-кандидаты на удаление
 
@@ -182,37 +160,109 @@ log/
 __pycache__/
 ```
 
-`.gitignore` предотвращает их повторное добавление. Наличие уже отслеживаемого файла проверяется командой:
+Проверка уже отслеживаемых файлов:
 
 ```bash
-git ls-files | grep -E '(^|/)(build|install|log|__pycache__)(/|$)|\.before_|\.backup$|\.bak$|^src_before_|^scripts_before_'
+git ls-files | grep -E \
+  '(^|/)(build|install|log|__pycache__)(/|$)|\.before_|\.backup$|\.bak$|^src_before_|^scripts_before_'
 ```
 
-## Обязательные проверки перед merge
+## Обязательные проверки перед PR/merge
 
 ```bash
+cd ~/singulator_digital_twin
 rm -rf build install log
+unset AMENT_PREFIX_PATH
+unset CMAKE_PREFIX_PATH
+unset COLCON_PREFIX_PATH
 source /opt/ros/jazzy/setup.bash
+
 rosdep install --from-paths src --ignore-src -r -y
 bash ./scripts/build.sh
 source install/setup.bash
 
-python3 tools/validate_project.py
-python3 tools/validate_release.py
-python3 tools/validate_separator_demo.py
-python3 tools/validate_kty_runtime_v18.py
-python3 tools/test_v7_logic.py
-bash ./scripts/check_v7_control.sh
-bash ./scripts/check_kty_runtime_v18.sh
+bash ./scripts/run_release_checks.sh
 ```
 
-## Порядок финализации
+Runtime уже принят, но перед merge нужно убедиться, что актуальный commit по-прежнему запускает:
 
-1. Выполнить read-only аудит и сохранить отчёт локально.
-2. Завершить документацию и валидаторы.
-3. Выполнить чистую сборку и runtime-тесты на целевом ПК.
-4. Открыть один финальный PR в `main`.
-5. Выполнить squash merge.
-6. Создать release tag и сохранить SHA, версии среды, seed и логи.
-7. Удалить подтверждённые устаревшие ветви.
-8. Выполнить `git fetch --prune` и повторный аудит.
+```bash
+bash ./scripts/run_roller_demo.sh
+ros2 launch singulator_bringup infeed_size_separator_demo.launch.py seed:=42
+bash ./scripts/run_kty_perception_3d.sh
+```
+
+## Создание финального PR
+
+PR должен иметь:
+
+```text
+base: main
+head: chore/final-project-packaging
+```
+
+В описании зафиксировать:
+
+- матрицу 18×4 и 72 команды;
+- `mu=0.8`, `mu2=0.2`;
+- инфид-сепаратор с шагом 150 мм и отверстием 100 мм;
+- KTY runtime v18 со сходящимися направляющими;
+- результаты `run_release_checks.sh`;
+- подтверждение трёх runtime-сценариев;
+- Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic;
+- seed 42.
+
+Рекомендуемый способ объединения — squash merge.
+
+## Release tag
+
+После merge:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git tag -a v1.0.0 -m "Digital Twin Convey final demo release"
+git push origin v1.0.0
+```
+
+Перед созданием тега сохранить:
+
+```bash
+git rev-parse HEAD
+ros2 --version
+gz sim --version
+lsb_release -a
+```
+
+Также сохранить вывод валидаторов, результат четырёхциклового KTY-теста, RTF и скриншоты трёх демонстраций.
+
+## Удаление ветвей
+
+Локальная ветвь:
+
+```bash
+git branch -d <branch>
+```
+
+После ручного подтверждения squash-ветви:
+
+```bash
+git branch -D <branch>
+```
+
+Удалённая ветвь:
+
+```bash
+git push origin --delete <branch>
+```
+
+## Финальный порядок
+
+1. Выполнить `scripts/audit_repository.sh`.
+2. Выполнить чистую сборку и `scripts/run_release_checks.sh`.
+3. Открыть финальный PR в `main`.
+4. Выполнить squash merge.
+5. Создать tag `v1.0.0`.
+6. Удалить только подтверждённые исторические ветви.
+7. Выполнить `git fetch --prune` и повторный аудит.
+8. Проверить чистый клон из тега на новой директории.
