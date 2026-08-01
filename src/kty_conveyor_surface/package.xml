@@ -8,15 +8,20 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <build_depend>gz-sim8</build_depend>
-  <build_depend>gz-plugin2</build_depend>
-  <build_depend>gz-transport13</build_depend>
-  <build_depend>gz-msgs10</build_depend>
+  <!--
+    ROS dependency resolution must use the Jazzy vendor packages.  The
+    versioned CMake packages (gz-sim8, gz-plugin2, gz-transport13 and
+    gz-msgs10) are provided by these vendors, but are not valid rosdep keys.
+  -->
+  <build_depend>gz_sim_vendor</build_depend>
+  <build_depend>gz_plugin_vendor</build_depend>
+  <build_depend>gz_transport_vendor</build_depend>
+  <build_depend>gz_msgs_vendor</build_depend>
 
-  <exec_depend>gz-sim8</exec_depend>
-  <exec_depend>gz-plugin2</exec_depend>
-  <exec_depend>gz-transport13</exec_depend>
-  <exec_depend>gz-msgs10</exec_depend>
+  <exec_depend>gz_sim_vendor</exec_depend>
+  <exec_depend>gz_plugin_vendor</exec_depend>
+  <exec_depend>gz_transport_vendor</exec_depend>
+  <exec_depend>gz_msgs_vendor</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
