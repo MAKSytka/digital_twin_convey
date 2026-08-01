@@ -21,9 +21,9 @@ CLEANUP = ROOT / "src/singulator_sim/singulator_sim/separator_demo_cleanup.py"
 SIM_SETUP = ROOT / "src/singulator_sim/setup.py"
 
 EXPECTED_ROLLERS = 11
-EXPECTED_PITCH_M = 0.140
+EXPECTED_PITCH_M = 0.150
 EXPECTED_RADIUS_M = 0.025
-EXPECTED_OPENING_M = 0.090
+EXPECTED_OPENING_M = 0.100
 
 
 def require(condition: bool, message: str) -> None:
@@ -77,7 +77,7 @@ def main() -> None:
     require(pitches, "Roller pitch list is empty")
     require(
         all(abs(pitch - EXPECTED_PITCH_M) < 1e-6 for pitch in pitches),
-        "Roller pitch must be 140 mm for every adjacent pair",
+        "Roller pitch must be 150 mm for every adjacent pair",
     )
     pitch = pitches[0]
 
@@ -110,7 +110,7 @@ def main() -> None:
     opening = pitch - 2.0 * radius
     require(
         abs(opening - EXPECTED_OPENING_M) < 1e-6,
-        "Longitudinal opening must be 90 mm",
+        "Longitudinal opening must be 100 mm",
     )
 
     joint = roller.find(".//joint[@name='shaft_joint'][@type='revolute']")
@@ -143,19 +143,19 @@ def main() -> None:
         "reject_transfer_belt_collision",
     )
     require(
-        abs(transfer_size[0] - 1.6) < 1e-9,
-        "Lower transfer belt must be 1.6 m long for the wider screen",
+        abs(transfer_size[0] - 1.7) < 1e-9,
+        "Lower transfer belt must be 1.7 m long for the wider screen",
     )
     require(
         abs(transfer_size[1] - 2.5) < 1e-9,
         "Lower transfer belt must cover 2.5 m",
     )
     require(
-        abs(box_size(frame, "left_guard_collision")[0] - 7.55) < 1e-9,
+        abs(box_size(frame, "left_guard_collision")[0] - 7.65) < 1e-9,
         "Side guards must cover the widened separator",
     )
     require(
-        abs(box_size(frame, "left_screen_cheek_collision")[0] - 1.52) < 1e-9,
+        abs(box_size(frame, "left_screen_cheek_collision")[0] - 1.62) < 1e-9,
         "Screen cheeks must cover the widened roller bank",
     )
 
@@ -203,7 +203,7 @@ def main() -> None:
         'default_value="4.0"',
         'default_value="0.70"',
         'default_value="2.0"',
-        '"upper_safety_projection_m": 0.100',
+        '"upper_safety_projection_m": 0.110',
         '"remove_retries": 3',
     ):
         require(token in launch, f"Launch token is missing: {token}")
@@ -274,7 +274,7 @@ def main() -> None:
         f"roller_pitch={pitch:.3f} m, "
         f"longitudinal_opening={opening:.3f} m, "
         f"omega_2mps=80.0 rad/s, rpm_2mps={rpm:.1f}, "
-        "lower_cutoff=0.070 m, upper_safety=0.100 m, "
+        "lower_cutoff=0.070 m, upper_safety=0.110 m, "
         "lower_probability=0.70"
     )
 
