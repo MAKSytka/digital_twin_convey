@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the roller-throat world with a downstream observation conveyor."""
+"""Generate the 18x4 roller-throat world used by the final singulation demo."""
 
+from __future__ import annotations
+
+import argparse
 from pathlib import Path
 
 ROWS = 18
@@ -13,7 +16,7 @@ PITCH_X = CELL_X + GAP_X
 PITCH_Y = CELL_Y + GAP_Y
 CELL_HEIGHT = 0.080
 MU = 0.8
-MU2 = 0.8
+MU2 = 0.2
 MAX_SPEED = 3.0
 MAX_ACCELERATION = 6.0
 MAX_JERK = 30.0
@@ -25,9 +28,13 @@ OUTFEED_LENGTH = 1.60
 OUTFEED_WIDTH = 0.60
 MATRIX_LENGTH = ROWS * CELL_X + (ROWS - 1) * GAP_X
 MATRIX_WIDTH = COLS * CELL_Y + (COLS - 1) * GAP_Y
-# Keep existing r00…r13 in place and append the four extension rows at outlet.
+
+# Keep the historical r00...r13 coordinates and append four rows at the outlet.
+# MATRIX_MIN_X is the left edge of row 0, not its centre.
 MATRIX_MIN_X = -(14 * CELL_X + 13 * GAP_X) / 2.0
 MATRIX_MAX_X = MATRIX_MIN_X + MATRIX_LENGTH
+
+# The infeed right edge is exactly GAP_X before the first matrix row.
 INFEED_CENTER_X = MATRIX_MIN_X - GAP_X - INFEED_LENGTH / 2.0
 THROAT_CENTER_X = MATRIX_MAX_X + GAP_X + THROAT_LENGTH / 2.0
 THROAT_MAX_X = THROAT_CENTER_X + THROAT_LENGTH / 2.0
@@ -161,6 +168,11 @@ def generate_world() -> str:
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
       <render_engine>ogre2</render_engine>
     </plugin>
+    <scene>
+      <ambient>0.60 0.60 0.60</ambient>
+      <background>0.80 0.80 0.80</background>
+      <grid>true</grid>
+    </scene>
     <light type="directional" name="sun">
       <pose>0 0 6 0 0 0</pose><cast_shadows>false</cast_shadows>
       <diffuse>0.9 0.9 0.9 1</diffuse><specular>0.2 0.2 0.2 1</specular>
@@ -181,29 +193,63 @@ def generate_world() -> str:
     {outfeed}
     <gui fullscreen="0">
       <plugin filename="MinimalScene" name="3D View">
-        <gz-gui><title>3D View</title><property type="bool" key="showTitleBar">false</property><property type="string" key="state">docked</property></gz-gui>
-        <engine>ogre2</engine><scene>scene</scene>
-        <ambient_light>0.6 0.6 0.6</ambient_light><background_color>0.8 0.8 0.8</background_color>
-        <!-- Broadside view includes infeed, matrix, roller throat and downstream outfeed. -->
+        <gz-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.6 0.6 0.6</ambient_light>
+        <background_color>0.8 0.8 0.8</background_color>
         <camera_pose>0.60 -9.20 5.10 0 0.45 1.570796</camera_pose>
       </plugin>
-      <plugin filename="CameraTracking" name="Camera tracking"/>
-      <plugin filename="GzSceneManager" name="Scene Manager"><gz-gui><property key="resizable" type="bool">false</property><property key="width" type="double">5</property><property key="height" type="double">5</property><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui></plugin>
-      <plugin filename="EntityTree" name="Entity tree"/>
-      <plugin filename="WorldControl" name="World control"/>
+      <plugin filename="EntityContextMenuPlugin" name="Entity context menu">
+        <gz-gui><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui>
+      </plugin>
+      <plugin filename="GzSceneManager" name="Scene Manager">
+        <gz-gui><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui>
+      </plugin>
+      <plugin filename="InteractiveViewControl" name="Interactive view control">
+        <gz-gui><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui>
+      </plugin>
+      <plugin filename="CameraTracking" name="Camera Tracking">
+        <gz-gui><property key="state" type="string">floating</property><property key="showTitleBar" type="bool">false</property></gz-gui>
+      </plugin>
+      <plugin name="World control" filename="WorldControl">
+        <gz-gui><title>World control</title><property type="bool" key="showTitleBar">0</property><property type="string" key="state">floating</property></gz-gui>
+        <play_pause>1</play_pause><step>1</step><start_paused>0</start_paused>
+      </plugin>
       <plugin filename="WorldStats" name="World stats"/>
+      <plugin filename="EntityTree" name="Entity tree"/>
     </gui>
   </world>
 </sdf>
 """
 
 
-def main() -> None:
-    output = (
+def default_output() -> Path:
+    return (
         Path(__file__).resolve().parents[1]
         / "worlds"
         / "matrix_14x4_stream_v2.sdf"
     )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=default_output(),
+        help="Destination SDF path (defaults to the source worlds directory).",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    output = args.output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         "\n".join(line.rstrip() for line in generate_world().splitlines())
@@ -211,7 +257,9 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"Created upgraded world: {output}")
+    print(f"Matrix rows/cols: {ROWS}x{COLS}")
     print(f"Matrix friction: mu={MU}, mu2={MU2}")
+    print(f"Infeed-to-matrix gap: {GAP_X:.3f} m")
     print(f"Velocity limits: {-MAX_SPEED}..{MAX_SPEED} m/s")
     print(
         "Acceleration limits: "

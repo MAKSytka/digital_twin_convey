@@ -7,15 +7,15 @@ cd "$PROJECT_ROOT"
 CONTROLLER="src/singulator_control/singulator_control/singulation_controller.py"
 LOGIC="src/singulator_control/singulator_control/global_queue_logic.py"
 LAUNCH="src/singulator_bringup/launch/matrix_stream_roller.launch.py"
+ROLLER_GENERATOR="src/singulator_gazebo/scripts/generate_matrix_14x4_stream_v2.py"
 
-python3 -m py_compile "$CONTROLLER" "$LOGIC" "$LAUNCH"
+python3 -m py_compile "$CONTROLLER" "$LOGIC" "$LAUNCH" "$ROLLER_GENERATOR"
 python3 tools/test_v7_logic.py
 
 grep -q 'control_v7:' "$CONTROLLER"
 grep -q 'global_order' "$CONTROLLER"
 grep -q 'build_pairwise_speed_profile' "$CONTROLLER"
 grep -q 'merged_track_timeout_s' "$CONTROLLER"
-grep -q 'cell_r17_c03' 'src/singulator_gazebo/worlds/matrix_14x4_stream_v2.sdf'
 grep -q '/singulator/cell/r17_c03/cmd_vel' \
   'src/singulator_bringup/config/bridge_rows_14_17.yaml'
 grep -q '/singulator/outfeed/cmd_vel' \
@@ -26,6 +26,18 @@ grep -q '"4.590"' "$LAUNCH"
 grep -q 'SetLaunchConfiguration("matrix_rows", "18")' "$LAUNCH"
 grep -q 'ParameterValue(matrix_rows, value_type=int)' \
   'src/singulator_bringup/launch/matrix_stream.launch.py'
+
+# The final roller world is generated at build time and is intentionally not
+# tracked in Git. Generate a temporary copy so this static check also works in
+# a fresh clone and in GitHub Actions.
+TEMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TEMP_DIR"' EXIT
+TEMP_WORLD="$TEMP_DIR/matrix_14x4_stream_v2.sdf"
+python3 "$ROLLER_GENERATOR" --output "$TEMP_WORLD" >/dev/null
+
+grep -q 'cell_r17_c03' "$TEMP_WORLD"
+grep -q '<mu>0.8</mu><mu2>0.2</mu2>' "$TEMP_WORLD"
+grep -q 'InteractiveViewControl' "$TEMP_WORLD"
 
 if grep -qE 'next_available_exit_s|slot_time_by_id|_assign_exit_slots' "$CONTROLLER"; then
   echo "FAIL: obsolete exit-slot scheduler symbols are still present." >&2

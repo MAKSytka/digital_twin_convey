@@ -1,17 +1,19 @@
 # Полезные команды для симуляции КТЯ
 
-## 1. Обновление рабочей ветки
+## 1. Обновление текущей рабочей ветки
 
 ```bash
 cd ~/singulator_digital_twin
 
 git fetch origin
-git switch fix/kty-mechatronics-runtime-v7
-git pull --ff-only origin fix/kty-mechatronics-runtime-v7
+git pull --ff-only
 
+git branch --show-current
 git rev-parse --short HEAD
 git status --short
 ```
+
+Документ не требует переключения на историческую KTY-ветку: финальный runtime должен запускаться из текущей release-ветки или из `main` после merge.
 
 ## 2. Остановка старого runtime
 
@@ -27,10 +29,12 @@ pkill -f parameter_bridge 2>/dev/null || true
 
 ## 3. Чистая сборка
 
-Не подключать старый `install/setup.bash` перед сборкой.
+Перед чистой сборкой не подключать старый `install/setup.bash`.
 
 ```bash
 cd ~/singulator_digital_twin
+
+rm -rf build install log
 
 unset AMENT_PREFIX_PATH
 unset CMAKE_PREFIX_PATH
@@ -73,7 +77,7 @@ source install/setup.bash
 bash ./scripts/run_kty_perception_3d.sh
 ```
 
-Запуск с окном dashboard через launch:
+Запуск со встроенным dashboard:
 
 ```bash
 bash ./scripts/run_kty_perception_3d.sh show_dashboard:=true
@@ -97,12 +101,13 @@ ros2 run kty_station_sim vision_dashboard_3d \
 
 ## 6. Проверка четырёх непрерывных циклов
 
+Во втором терминале:
+
 ```bash
 cd ~/singulator_digital_twin
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash
 
-chmod +x scripts/check_kty_runtime_v18.sh
 bash ./scripts/check_kty_runtime_v18.sh
 ```
 
@@ -187,15 +192,10 @@ python3 -m json.tool ~/.ros/kty_vision/polygons_latest.json | less
 
 ```bash
 ros2 topic echo /kty/mech/model_pose_registry_json --once
-```
-
-Проверка частоты:
-
-```bash
 ros2 topic hz /kty/mech/model_pose_registry_json
 ```
 
-В реестре должны присутствовать имена вида:
+В реестре должны появляться имена вида:
 
 ```text
 kty_mech_container_0001
@@ -252,17 +252,15 @@ python3 tools/validate_kty_runtime_v17.py
 python3 tools/validate_kty_runtime_v18.py
 ```
 
-## 14. Проверка RTF
+Полный release-набор:
 
-Предпочтительно использовать панель `World stats` в Gazebo GUI.
-
-Нормальная оценка:
-
-```text
-real_time_factor
+```bash
+bash scripts/run_release_checks.sh
 ```
 
-Dashboard лучше открывать после проверки механики, поскольку отдельное окно увеличивает нагрузку.
+## 14. Проверка RTF
+
+Предпочтительно использовать панель `World stats` в Gazebo GUI. Dashboard лучше открывать после проверки механики, поскольку отдельное окно увеличивает нагрузку.
 
 ## 15. Перезапуск автомата без закрытия Gazebo
 
@@ -270,7 +268,7 @@ Dashboard лучше открывать после проверки механи
 ros2 service call /kty/mech/restart std_srvs/srv/Trigger '{}'
 ```
 
-## 16. Диагностический снимок перед отчётом об ошибке
+## 16. Диагностический снимок
 
 ```bash
 {
@@ -293,12 +291,7 @@ ros2 service call /kty/mech/restart std_srvs/srv/Trigger '{}'
 } | tee /tmp/kty_diagnostic_snapshot.txt
 ```
 
-## 17. Подготовка к публикации
-
-```bash
-git status
-git log --oneline --decorate -10
-```
+## 17. Данные для финальной приёмки
 
 После успешного четырёхциклового теста сохранить:
 

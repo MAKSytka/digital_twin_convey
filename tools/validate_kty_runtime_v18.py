@@ -5,6 +5,9 @@ from __future__ import annotations
 
 from pathlib import Path
 import py_compile
+import sys
+import tempfile
+import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,9 +24,50 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def validate_generated_chute(source_world: Path) -> None:
+    """Build the release world and inspect the physical funnel geometry."""
+    sys.path.insert(0, str(SIM))
+    try:
+        from kty_station_sim.world_patch_v4 import build_runtime_v13_world
+    finally:
+        sys.path.pop(0)
+
+    with tempfile.TemporaryDirectory(prefix="kty_v18_validate_") as temp_dir:
+        destination = Path(temp_dir) / "kty_runtime_v18.sdf"
+        build_runtime_v13_world(source_world, destination)
+        root = ET.parse(destination).getroot()
+        chute = root.find(
+            "world/model[@name='kty_product_chute']/link[@name='chute']"
+        )
+        require(chute is not None, "Generated KTY chute is missing")
+
+        expected = {
+            "funnel_guide_neg_y": "0 -0.255 0.120 0 0 0.079830",
+            "funnel_guide_pos_y": "0 0.255 0.120 0 0 -0.079830",
+        }
+        for name, expected_pose in expected.items():
+            collision = chute.find(f"collision[@name='{name}_collision']")
+            visual = chute.find(f"visual[@name='{name}_visual']")
+            require(collision is not None, f"Generated chute misses {name} collision")
+            require(visual is not None, f"Generated chute misses {name} visual")
+            require(
+                collision.findtext("pose") == expected_pose,
+                f"Unexpected pose for {name}",
+            )
+            require(
+                collision.findtext("geometry/box/size") == "1.010 0.030 0.240",
+                f"Unexpected dimensions for {name}",
+            )
+            require(
+                collision.findtext("surface/bounce/restitution_coefficient") == "0.0",
+                f"{name} must use an inelastic contact",
+            )
+
+
 def main() -> None:
     runtime_path = SIM / "kty_station_sim" / "mechatronics_cycle_v18.py"
     world_path = SIM / "kty_station_sim" / "world_patch_v4.py"
+    source_world_path = SIM / "worlds" / "kty_mechatronics.sdf"
     perception_launch_path = SIM / "launch" / "kty_perception_3d.launch.py"
     v15_launch_path = SIM / "launch" / "kty_mechatronics_v15.launch.py"
     v13_launch_path = SIM / "launch" / "kty_mechatronics_v13.launch.py"
@@ -63,6 +107,11 @@ def main() -> None:
         "physical_then_bounded_empty_kty_respawn",
         '"runtime_profile": "kty_mechatronics_v18"',
         '"product_size_max_m": [0.280, 0.190, 0.145]',
+        '"product_spawn_center_half_width_m": 0.090',
+        '"product_landing_half_width_m": 0.170',
+        "_transverse_half_projection",
+        "self.product_landing_half_width - projected_half_y",
+        '"chute_guidance_policy": "tapered_side_guides_to_kty_opening"',
     ):
         require(fragment in runtime, f"Missing runtime-v18 behavior: {fragment}")
 
@@ -71,10 +120,14 @@ def main() -> None:
     require('"contact_tolerance", "0.300"' in world, "Transport Z envelope not widened")
     require('"min_x", "-0.800"' in world, "Active-zone overlap not widened")
     require('"max_x", "-0.100"' in world, "Infeed-zone overlap not widened")
+    require("_append_chute_guide" in world, "Chute guide generator is missing")
+    require("funnel_guide_neg_y" in world, "Negative-Y chute guide is missing")
+    require("funnel_guide_pos_y" in world, "Positive-Y chute guide is missing")
     require(
         '"0 0 1.60 0 1.57079632679 1.57079632679"' in world,
         "RGB-D camera was not lowered to Z=1.60 m",
     )
+    validate_generated_chute(source_world_path)
 
     for name, launch in (
         ("kty_perception_3d.launch.py", perception_launch),
@@ -123,7 +176,10 @@ def main() -> None:
     require("82%" in handoff and "340 мм" in handoff, "Handoff misses fill limits")
     require("check_kty_runtime_v18.sh" in commands, "Command runbook misses continuity test")
 
-    print("KTY runtime v18 continuous-cycle and release-default validation: OK")
+    print(
+        "KTY runtime v18 continuous-cycle, guided-chute and release-default "
+        "validation: OK"
+    )
 
 
 if __name__ == "__main__":

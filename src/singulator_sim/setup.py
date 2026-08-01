@@ -24,7 +24,7 @@ setup(
             "cleanup_passed_boxes = singulator_sim.cleanup_passed_boxes:main",
             "singulation_row_spawner = singulator_sim.singulation_row_spawner:main",
             "matrix_command_fanout = singulator_sim.matrix_command_fanout:main",
-            "separator_demo_spawner = singulator_sim.separator_demo_spawner:main",
+            "separator_demo_spawner = singulator_sim.separator_continuous_roller_spawner:main",
             "separator_demo_cleanup = singulator_sim.separator_demo_cleanup:main",
         ]
     },

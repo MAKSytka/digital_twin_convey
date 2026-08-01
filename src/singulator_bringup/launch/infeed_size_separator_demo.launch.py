@@ -170,7 +170,7 @@ def generate_launch_description() -> LaunchDescription:
                     value_type=float,
                 ),
                 "cutoff_m": 0.070,
-                "upper_safety_projection_m": 0.090,
+                "upper_safety_projection_m": 0.110,
                 "seed": ParameterValue(
                     seed,
                     value_type=int,
@@ -217,7 +217,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 "small_item_probability",
-                default_value="0.50",
+                default_value="0.70",
             ),
             DeclareLaunchArgument(
                 "seed",
@@ -233,27 +233,27 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 "spawn_clearance_m",
-                default_value="0.002",
+                default_value="0.001",
             ),
             DeclareLaunchArgument(
                 "box_restitution",
-                default_value="0.02",
+                default_value="0.0",
             ),
             DeclareLaunchArgument(
                 "bounce_capture_velocity_mps",
-                default_value="0.35",
+                default_value="1.0",
             ),
             DeclareLaunchArgument(
                 "linear_velocity_decay",
-                default_value="0.05",
+                default_value="0.12",
             ),
             DeclareLaunchArgument(
                 "angular_velocity_decay",
-                default_value="0.30",
+                default_value="0.60",
             ),
             DeclareLaunchArgument(
                 "contact_max_correcting_velocity_mps",
-                default_value="0.05",
+                default_value="0.02",
             ),
             gazebo,
             bridge,
