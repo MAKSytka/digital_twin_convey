@@ -7,7 +7,6 @@ on:
       - "src/singulator_interfaces/**"
       - "scripts/*kty_perception_3d.sh"
       - "tools/validate_kty_classical_3d.py"
-      - "docs/KTY_CLASSICAL_3D_STAGE6.md"
       - ".github/workflows/kty-classical-3d-static.yml"
   push:
     branches:
