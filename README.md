@@ -8,14 +8,37 @@
 2. матрица сингуляризации 18×4 с роликовым горлышком;
 3. станция операций с КТЯ, виброуплотнением и RGB-D контролем.
 
+<p align="center">
+  <a href="docs/media/matrix_18x4_overview.png">
+    <img src="docs/media/matrix_18x4_overview.png" alt="Матрица сингуляризации 18×4" width="49%">
+  </a>
+  <a href="docs/media/kty_rgbd_dashboard.png">
+    <img src="docs/media/kty_rgbd_dashboard.png" alt="RGB-D dashboard станции КТЯ" width="49%">
+  </a>
+</p>
+
 ## Быстрая навигация
 
 | Что проверить | Команда | Документация |
 |---|---|---|
 | Матрица сингуляризации | `bash ./scripts/run_roller_demo.sh` | [DEMO_SCENARIOS.md](docs/DEMO_SCENARIOS.md) |
+| GUI зрения матрицы | `ros2 run rqt_image_view rqt_image_view /singulator/perception/debug_image` | [Раздел ниже](#gui-машинного-зрения-матрицы) |
 | Инфид-сепаратор | `ros2 launch singulator_bringup infeed_size_separator_demo.launch.py` | [INFEED_SIZE_SEPARATOR.md](docs/INFEED_SIZE_SEPARATOR.md) |
 | Станция КТЯ | `bash ./scripts/run_kty_perception_3d.sh` | [KTY_RUNTIME_COMMANDS.md](docs/KTY_RUNTIME_COMMANDS.md) |
 | Полный статический набор | `bash ./scripts/run_release_checks.sh` | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
+| Все скриншоты | — | [docs/media](docs/media/README.md) |
+
+## Демонстрационные материалы
+
+Все изображения хранятся непосредственно в репозитории и открываются в полном разрешении 1920×1080:
+
+- [общий вид матрицы 18×4](docs/media/matrix_18x4_overview.png);
+- [GUI машинного зрения матрицы](docs/media/singulation_vision_gui.png);
+- [работа полноширинного инфид-сепаратора](docs/media/infeed_separator.png);
+- [общий вид станции КТЯ](docs/media/kty_station_scene.png);
+- [RGB-D dashboard станции КТЯ](docs/media/kty_rgbd_dashboard.png).
+
+Полная галерея с пояснениями: [docs/media/README.md](docs/media/README.md).
 
 ## 1. Назначение решения
 
@@ -91,6 +114,8 @@ source install/setup.bash
 bash ./scripts/run_roller_demo.sh
 ```
 
+[![Матрица сингуляризации 18×4](docs/media/matrix_18x4_overview.png)](docs/media/matrix_18x4_overview.png)
+
 ### Принятая конфигурация
 
 | Параметр | Значение |
@@ -124,7 +149,43 @@ bash ./scripts/run_roller_demo.sh
 
 Подробно: [SINGULATION_CONTROL.md](docs/SINGULATION_CONTROL.md).
 
-Проверка:
+### GUI машинного зрения матрицы
+
+Контур зрения запускается вместе с `run_roller_demo.sh`. Камера публикует исходный кадр в `/singulator/camera/image_raw`, а узел `vision_stream_node` формирует:
+
+- массив наблюдений `/singulator/boxes`;
+- отладочное изображение `/singulator/perception/debug_image`;
+- контуры, ID, центры и оценку геометрии товаров;
+- бинарную маску сегментации в нижней части debug-кадра.
+
+Открой GUI во втором терминале:
+
+```bash
+cd ~/singulator_digital_twin
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+
+ros2 run rqt_image_view rqt_image_view \
+  /singulator/perception/debug_image
+```
+
+Если поток не выбран автоматически, выбери в выпадающем списке:
+
+```text
+/singulator/perception/debug_image
+```
+
+Проверка частоты и данных:
+
+```bash
+ros2 topic hz /singulator/perception/debug_image
+ros2 topic echo /singulator/boxes --once
+bash ./scripts/check_vision.sh
+```
+
+[![GUI машинного зрения матрицы](docs/media/singulation_vision_gui.png)](docs/media/singulation_vision_gui.png)
+
+Общая проверка управления:
 
 ```bash
 bash ./scripts/check_v7_control.sh
@@ -152,6 +213,8 @@ ros2 launch singulator_bringup \
   small_item_probability:=0.70 \
   seed:=42
 ```
+
+[![Полноширинный инфид-сепаратор](docs/media/infeed_separator.png)](docs/media/infeed_separator.png)
 
 ### Принятая конфигурация
 
@@ -207,6 +270,8 @@ bash ./scripts/check_kty_runtime_v18.sh
 
 Успешный тест: минимум четыре различных цикла `LOAD` без `ERROR` и с `position_recovery_failures=0`.
 
+[![Станция операций с КТЯ](docs/media/kty_station_scene.png)](docs/media/kty_station_scene.png)
+
 Рабочий цикл:
 
 ```text
@@ -251,6 +316,8 @@ LOAD
 
 ### RGB-D машинное зрение
 
+Dashboard обычно запускается основным сценарием. Для ручного открытия:
+
 ```bash
 ros2 run kty_station_sim vision_dashboard_3d \
   --ros-args \
@@ -272,6 +339,8 @@ ros2 run kty_station_sim vision_dashboard_3d \
 ```
 
 Результат perception содержит постоянный ID, верхний полигон, OBB, размеры XYZ, центроид, yaw, нормаль поверхности, состояние `VISIBLE`/`OCCLUDED` и кандидатов безопасного захвата.
+
+[![RGB-D dashboard станции КТЯ](docs/media/kty_rgbd_dashboard.png)](docs/media/kty_rgbd_dashboard.png)
 
 Подробные материалы:
 
@@ -303,6 +372,7 @@ Diagnostics, validators and dashboards
 - [Алгоритм сингуляризации](docs/SINGULATION_CONTROL.md)
 - [Runtime-приёмка](docs/RUNTIME_ACCEPTANCE.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
+- [Галерея скриншотов](docs/media/README.md)
 - [Очистка репозитория](docs/REPOSITORY_CLEANUP.md)
 
 ## 8. Структура пакетов
@@ -336,6 +406,7 @@ python3 tools/validate_separator_demo.py
 python3 tools/validate_kty_runtime_v18.py
 python3 tools/test_v7_logic.py
 bash ./scripts/check_v7_control.sh
+bash ./scripts/check_vision.sh
 ```
 
 CI и статические валидаторы проверяют Python, XML/SDF, shell-скрипты и межфайловые контракты, но не заменяют физический runtime-прогон Gazebo.
@@ -345,8 +416,10 @@ CI и статические валидаторы проверяют Python, XML
 На целевой машине подтверждены:
 
 - матрица 18×4 и роликовое горлышко;
+- машинное зрение матрицы с публикацией ID, координат и debug-изображения;
 - инфид-сепаратор с шагом 150 мм и демпфированной контактной моделью;
-- станция КТЯ runtime v18 с четырьмя непрерывными циклами, сходящимися направляющими и суженной зоной спавна.
+- станция КТЯ runtime v18 с четырьмя непрерывными циклами, сходящимися направляющими и суженной зоной спавна;
+- RGB-D dashboard станции КТЯ.
 
 Подробная фиксация: [RUNTIME_ACCEPTANCE.md](docs/RUNTIME_ACCEPTANCE.md).
 
@@ -362,11 +435,13 @@ CI и статические валидаторы проверяют Python, XML
 
 ## 12. Воспроизводимость релиза
 
-После финального merge рекомендуется создать git tag и сохранить:
+Стабильный runtime зафиксирован тегом `v1.0.0`. Тег остаётся на принятом release-коммите; последующие изменения документации и медиа оформляются отдельными PR.
 
-- commit SHA;
+Для воспроизводимости сохраняются:
+
+- commit SHA и release tag;
 - `seed=42`;
 - вывод `bash ./scripts/run_release_checks.sh`;
 - версии Ubuntu, ROS 2 и Gazebo;
 - результат `check_kty_runtime_v18.sh`;
-- RTF и скриншоты трёх демонстраций.
+- RTF и скриншоты демонстраций из [docs/media](docs/media/README.md).
